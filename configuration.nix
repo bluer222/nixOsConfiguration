@@ -5,7 +5,7 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
 let
-sddmTheme = pkgs.callPackage ./sddmbkrd.nix { };
+#sddmTheme = pkgs.callPackage ./sddmbkrd.nix { };
 in{
   imports = [ # Include the results of the hardware scan.
     ./hardware-configuration.nix
@@ -30,6 +30,14 @@ in{
   ];
 
 
+  #nixpkgs.hostPlatform = {
+  #  system = "x86_64-linux";
+  #  gcc.arch = "raptorlake";
+  #  gcc.tune = "raptorlake";
+  #};
+
+  nix.settings.system-features = [ "gccarch-raptorlake" ];
+
 
    home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
@@ -48,7 +56,16 @@ services.timesyncd.enable = true;
 
   #sudo password feedback
   security.sudo.extraConfig = "Defaults pwfeedback";
-
+#polkit
+  security.polkit.enable = true;
+#run0 dont ask every time
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (subject.isInGroup("wheel")) {
+        return polkit.Result.AUTH_KEEP;
+      }
+    });
+  '';
   #appimage stuff(makes appimages work)
   boot.binfmt.registrations.appimage = {
     wrapInterpreterInShell = false;
@@ -71,12 +88,20 @@ GTK_USE_PORTAL=1;
 
   # Enable networking via network manager
   networking.networkmanager.enable = true;
+  boot.blacklistedKernelModules = [ "cdc_ncm" ];
 
   # Enable BBR congestion control and nvidia_uvm for cuda and i2c for auto brightness maybe
-  boot.kernelModules = [ "tcp_bbr" "nvidia_uvm" "i2c-dev" ];
-  boot.kernel.sysctl."net.ipv4.tcp_congestion_control" = "bbr";
-  boot.kernel.sysctl."net.core.default_qdisc" =
-    "fq"; # see https://news.ycombinator.com/item?id=14814530
+  boot.kernelModules = [ "tcp_bbr" "nvidia_uvm" "i2c-dev" "ax88179_178a" "ec_sys"];
+
+boot.extraModprobeConfig = ''
+  softdep cdc_ncm pre: ax88179_178a
+'';
+    networking.usePredictableInterfaceNames = true;
+
+boot.kernel.sysctl = {
+  "net.core.default_qdisc" = "fq";
+  "net.ipv4.tcp_congestion_control" = "bbr";
+}; # see https://news.ycombinator.com/item?id=14814530
 
   #firewall
   networking.firewall.enable = true;
@@ -111,11 +136,14 @@ services.displayManager.sddm.wayland.enable = true;
 services.displayManager.sddm.enable = true;
 services.desktopManager.plasma6.enable = true;
 services.displayManager.sddm.package = lib.mkForce pkgs.kdePackages.sddm;
-services.displayManager.sddm.theme = "sddm-astronaut-theme";
-environment.systemPackages = [ sddmTheme ];
+services.displayManager.sddm.theme = "breeze";
+environment.systemPackages = [ ];
 #lets try hyprland
-programs.hyprlock.enable = true;
-programs.hyprland.xwayland.enable = true;
+  programs.hyprland = {
+    enable = true;
+    withUWSM = true; # recommended for most users
+    xwayland.enable = true; # Xwayland can be disabled.
+  };
 services.displayManager.sessionPackages = [ pkgs.hyprland ];
 services.vnstat.enable = true;
   # Enable sound with pipewire.
@@ -148,8 +176,8 @@ services.vnstat.enable = true;
   syntaxHighlighting.enable = true;
 
   shellAliases = {
-    rebs = "sudo nixos-rebuild switch --flake '/etc/nixos#default' ";
-        rebb = "sudo nixos-rebuild boot --flake '/etc/nixos#default' ";
+    rebs = "run0 nixos-rebuild switch --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
+        rebb = "run0 nixos-rebuild boot --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
 
   };
   histSize = 10000;
@@ -173,6 +201,8 @@ services.vnstat.enable = true;
 
   #nix version
   nix.package = pkgs.nixVersions.latest;
+  #new version
+  system.rebuild.enableNg = true;
 
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions

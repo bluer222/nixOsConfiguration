@@ -38,6 +38,12 @@
             (final: prev: {
               kwin-gestures = inputs.kwin-gestures.packages."${prev.system}";
               glaumar_repo = inputs.glaumar_repo.packages."${prev.system}";
+              google-chrome = prev.google-chrome.overrideAttrs (old: {
+        postInstall = ''
+          wrapProgram $out/bin/google-chrome-stable \
+            --add-flags "--enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder"
+        '';
+      });
             })
           ];
         })

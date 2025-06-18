@@ -3,49 +3,24 @@
 imports = [
     inputs.home-manager.nixosModules.home-manager
 ];
- home-manager.users.samm = {
-#xdg.configFile."openxr/1/active_runtime.json".source = "${pkgs.monado}/share/openxr/1/openxr_monado.json";
-
-# For WiVRn:
-xdg.configFile."openxr/1/active_runtime.json".source = "${pkgs.wivrn}/share/openxr/1/openxr_wivrn.json";
-
-xdg.configFile."openvr/openvrpaths.vrpath".text = ''
-  {
-     "config" :
-    [
-      "~/.local/share/Steam/config"
-    ],
-    "external_drivers" : null,
-    "jsonid" : "vrpathreg",
-    "log" :
-    [
-      "~/.local/share/Steam/logs"
-    ],
-    "runtime" :
-    [
-      "~/opencomposite/vrclient.so"
-    ],
-    "version" : 1
-  }
-'';
-  };
 
 hardware.graphics.extraPackages = [pkgs.monado-vulkan-layers];
 
   #fixes conflict or somthing
-  environment.etc."xdg/openxr/1/active_runtime.json".source = lib.mkForce "${pkgs.wivrn}/share/openxr/1/openxr_wivrn.json";
+  #environment.etc."xdg/openxr/1/active_runtime.json".source = lib.mkForce "${pkgs.wivrn}/share/openxr/1/openxr_wivrn.json";
   #environment.etc."xdg/openxr/1/active_runtime.json".source = lib.mkForce "${pkgs.monado}/share/openxr/1/openxr_monado.json";
 
 services.monado = {
   enable = true;
-  defaultRuntime = true; # Register as default OpenXR runtime
+  #wivrn is the defualt runtime not this
+  #defaultRuntime = true; # Register as default OpenXR runtime
 };
 
-systemd.user.services.monado.environment = {
-  STEAMVR_LH_ENABLE = "1";
-  XRT_COMPOSITOR_COMPUTE = "1";
-  WMR_HANDTRACKING = "0";
-};
+#systemd.user.services.monado.environment = {
+#  STEAMVR_LH_ENABLE = "1";
+#  XRT_COMPOSITOR_COMPUTE = "1";
+ # WMR_HANDTRACKING = "0";
+#};
 #required for had tracking or somthing
 programs.git = {
   enable = true;

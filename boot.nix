@@ -11,7 +11,7 @@
 
     };
         #quiet grub and ec sys for MControlCenter
-    kernelParams = [ "quiet" "loglevel=3" "udev.log_level=3" /*"ec_sys.write_support=1" */];
+    kernelParams = [ "quiet" "loglevel=3" "udev.log_level=3" "ec_sys.write_support=1" ];
     consoleLogLevel = 3;
     # https://github.com/NixOS/nixpkgs/pull/108294
     initrd.verbose = false;

@@ -12,10 +12,17 @@ in
 environment.systemPackages = [ pkgs.hyprland pkgs.monado-vulkan-layers pkgs.kwin-gestures.default ];
 
 #input remaper
-services.input-remapper.enable = true;
+#services.input-remapper.enable = true;
 
 services.flatpak.enable = true;
-
+  programs.chromium = {
+    enable = true;
+    #set automatically
+    #plasmaBrowserIntegrationPackage = pkgs.kdePackages.plasma-browser-integration;
+    extraOpts = {
+      "args" = "--enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder";
+    };
+  };
 programs.gamescope.enable = true;
   #add nix-ld for dynamic executables
     programs.nix-ld.enable = true;
@@ -25,7 +32,26 @@ programs.gamescope.enable = true;
  remotePlay.openFirewall = true;
  localNetworkGameTransfers.openFirewall = true;
  dedicatedServer.openFirewall = true;
+ #use igpu
+   package = pkgs.steam.override {
+    extraPkgs = pkgs: with pkgs; [
+      vaapiIntel
+      libva
+      libvdpau-va-gl
+      vulkan-loader
+      vulkan-tools
+      mesa
+      intel-media-driver
+    ];
+  };
  };
+ #use igpu by default
+ environment.variables = {
+  __GLX_VENDOR_LIBRARY_NAME = "mesa";  # Avoids loading NVIDIA GLX
+  LIBVA_DRIVER_NAME = "iHD";           # Use Intel VAAPI
+  VDPAU_DRIVER = "va_gl";              # Use VAAPI for VDPAU
+};
+
   #add quemu
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
@@ -49,6 +75,7 @@ programs.gamescope.enable = true;
       burpsuite
       wget
       lshw
+      vlc
       gparted
       vulkan-tools
       xdotool
@@ -107,8 +134,9 @@ programs.gamescope.enable = true;
       mcontrolcenter
       alsa-utils
       gcc14
-      python312Packages.conda
-     thorium-browser
+micromamba
+
+    google-chrome
      #for swarmui
      dotnet-sdk_8
      kdePackages.kolourpaint
@@ -148,6 +176,20 @@ gnumake
 kiwix
 #normcap
 cura-appimage
+v4l-utils
+qview
+#spellcheck
+   aspell
+    aspellDicts.en
+    aspellDicts.en-computers
+    aspellDicts.en-science
+
+    kicad
+
+    upscayl
+    nicotine-plus
+fastfetch
+
 ];
   };
   programs.partition-manager.enable = true;
@@ -162,5 +204,7 @@ programs.wireshark.enable = true;
 
 services.udev.extraRules = ''
 SUBSYSTEM=="usb", MODE="0666"
+     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b95", ATTR{idProduct}=="1790", \
+    RUN+="${pkgs.bash}/bin/bash -c 'echo 0b95 1790 > /sys/bus/usb/drivers/cdc_ncm/unbind; echo 0b95 1790 > /sys/bus/usb/drivers/ax88179_178a/bind'"
 '';
 }
