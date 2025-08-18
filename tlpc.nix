@@ -178,7 +178,7 @@ CPU_MAX_PERF_ON_BAT=100;
 # Default: <none>
 
 CPU_BOOST_ON_AC=1;
-CPU_BOOST_ON_BAT=1;
+CPU_BOOST_ON_BAT=0;
 
 # Set CPU dynamic boost feature:
 #   0=disable, 1=enable.
@@ -189,7 +189,7 @@ CPU_BOOST_ON_BAT=1;
 # Default: <none>
 
 CPU_HWP_DYN_BOOST_ON_AC=1;
-CPU_HWP_DYN_BOOST_ON_BAT=1;
+CPU_HWP_DYN_BOOST_ON_BAT=0;
 
 # Kernel NMI Watchdog:
 #   0=disable (default, saves power), 1=enable (for kernel debugging only).

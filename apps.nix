@@ -1,7 +1,7 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
 let
-#Mcontrolcenter = pkgs.callPackage ./mcontrolcenter.nix { };
+Mcontrolcenter = pkgs.callPackage ./mcontrolcenter.nix { };
 thorium-browser = pkgs.callPackage ./thorium.nix { };
 
 astronaut = pkgs.sddm-astronaut;
@@ -9,7 +9,7 @@ astronaut = pkgs.sddm-astronaut;
 in
 {
 #some packages need to be system
-environment.systemPackages = [ pkgs.hyprland pkgs.monado-vulkan-layers pkgs.kwin-gestures.default ];
+environment.systemPackages = [ Mcontrolcenter pkgs.hyprland pkgs.monado-vulkan-layers pkgs.kwin-gestures.default ];
 
 #input remaper
 #services.input-remapper.enable = true;
@@ -65,10 +65,11 @@ programs.gamescope.enable = true;
     isNormalUser = true;
     home = "/home/samm";
     description = "Sam Merlin";
-    extraGroups = [ "networkmanager" "wheel" "ydotool" "audio" "i2c" ];
+    extraGroups = [ "networkmanager" "wheel" "ydotool" "audio" "i2c" "dialout" ];
     #add packages here if theres no config to add it
     packages = with pkgs; [
       kdePackages.kate
+      libGL
       steam
       lutris
       kdePackages.partitionmanager
@@ -116,7 +117,6 @@ programs.gamescope.enable = true;
       libuuid
       nodejs_20
       wayland-utils
-      python3
       pciutils
       clinfo
       #vm shared folder
@@ -131,7 +131,6 @@ programs.gamescope.enable = true;
       kdePackages.qtstyleplugin-kvantum
       btop
       #ydotool
-      mcontrolcenter
       alsa-utils
       gcc14
 micromamba
@@ -189,6 +188,12 @@ qview
     upscayl
     nicotine-plus
 fastfetch
+converseen
+arduino-ide
+python314
+kdePackages.kmail
+kdePackages.kmail-account-wizard
+libreoffice-qt6-fresh
 
 ];
   };
@@ -202,9 +207,9 @@ programs.wireshark.enable = true;
 #steelseries
 #KERNEL=="hidraw*", ATTRS{idVendor}=="1038", MODE="0666"
 
-services.udev.extraRules = ''
-SUBSYSTEM=="usb", MODE="0666"
-     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b95", ATTR{idProduct}=="1790", \
-    RUN+="${pkgs.bash}/bin/bash -c 'echo 0b95 1790 > /sys/bus/usb/drivers/cdc_ncm/unbind; echo 0b95 1790 > /sys/bus/usb/drivers/ax88179_178a/bind'"
-'';
+#services.udev.extraRules = ''
+#SUBSYSTEM=="usb", MODE="0666"
+#     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0b95", ATTR{idProduct}=="1790", \
+#    RUN+="${pkgs.bash}/bin/bash -c 'echo 0b95 1790 > /sys/bus/usb/drivers/cdc_ncm/unbind; echo 0b95 1790 > /sys/bus/usb/drivers/ax88179_178a/bind'"
+#'';
 }

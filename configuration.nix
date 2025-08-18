@@ -47,6 +47,7 @@ home-manager.backupFileExtension = "hm-backup";
   home.stateVersion = "25.05";
 
   };
+
   #allows hybernate
   security.protectKernelImage = false;
 
@@ -91,7 +92,9 @@ GTK_USE_PORTAL=1;
   boot.blacklistedKernelModules = [ "cdc_ncm" ];
 
   # Enable BBR congestion control and nvidia_uvm for cuda and i2c for auto brightness maybe
-  boot.kernelModules = [ "tcp_bbr" "nvidia_uvm" "i2c-dev" "ax88179_178a" "ec_sys"];
+  #msi ec for mcontrolcenter
+  boot.extraModulePackages = [ config.boot.kernelPackages.msi-ec ];
+  boot.kernelModules = [ "tcp_bbr" "nvidia_uvm" "i2c-dev" "ax88179_178a" "ec_sys" "msi-ec"];
 
 boot.extraModprobeConfig = ''
   softdep cdc_ncm pre: ax88179_178a
@@ -162,6 +165,7 @@ services.vnstat.enable = true;
   };
   users.users.samm.shell = pkgs.zsh;
 
+
   programs.zsh = {
   enable = true;
   enableCompletion = true;
@@ -176,8 +180,9 @@ services.vnstat.enable = true;
   syntaxHighlighting.enable = true;
 
   shellAliases = {
-    rebs = "run0 nixos-rebuild switch --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
-        rebb = "run0 nixos-rebuild boot --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
+    srun = "systemd-run";
+    rebs = "srun nixos-rebuild switch --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
+    rebb = "srun nixos-rebuild boot --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
 
   };
   histSize = 10000;
@@ -201,7 +206,7 @@ services.vnstat.enable = true;
 
   #nix version
   nix.package = pkgs.nixVersions.latest;
-  #new version
+  #new version for run0
   system.rebuild.enableNg = true;
 
   # This value determines the NixOS release from which the default

@@ -26,6 +26,42 @@ programs.git = {
   enable = true;
   lfs.enable = true;
 };
+
+
+
+ # Optional: Set up environment variables for VR
+   home-manager.users.samm = {
+
+     # Create the openvrpaths.vrpath file
+  xdg.configFile."openvr/openvrpaths.vrpath".text = ''
+  {
+  "jsonid": "vrpathreg",
+  "version": 1,
+  "runtime": [
+    "${pkgs.opencomposite}/lib/opencomposite/bin/linux64"
+  ],
+  "config": [
+    "/home/samm/.config/openvr"
+  ],
+  "log": [
+    "/home/samm/.config/openvr/logs"
+  ],
+  "external_drivers": []
+}
+'';
+
+  home.sessionVariables = {
+    # Force applications to use OpenComposite instead of SteamVR
+    VR_OVERRIDE = "${pkgs.opencomposite}/lib/opencomposite";
+  XDG_CACHE_HOME  = "@{HOME}/.cache";
+  XDG_CONFIG_HOME = "@{HOME}/.config";
+  XDG_DATA_HOME   = "@{HOME}/.local/share";
+  XDG_STATE_HOME  = "@{HOME}/.local/state";
+    # Optional: Set OpenXR runtime to WiVRn if needed
+    # XR_RUNTIME_JSON = "${pkgs.wivrn}/share/openxr/1/openxr_wivrn.json";
+  };
+  };
+
 services.wivrn = {
   enable = true;
   openFirewall = true;

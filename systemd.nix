@@ -1,10 +1,14 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
-{
+let
+Mcontrolcenter = pkgs.callPackage ./mcontrolcenter.nix { };
+in{
 # List services that you want to enable:
 
 #shutdown faster
-systemd.extraConfig = ''DefaultTimeoutStopSec=10s'';
+systemd.settings.Manager = {
+  DefaultTimeoutStopSec = "10s";
+};
 systemd.user.extraConfig = ''DefaultTimeoutStopSec=10s'';
 
   #systemd stuffs
@@ -21,15 +25,15 @@ systemd.user.extraConfig = ''DefaultTimeoutStopSec=10s'';
   systemd.oomd.enable = false;
 
   #mcontrolcenter
-services.dbus.packages = [ "${pkgs.mcontrolcenter}" ];
-  systemd.services."mcontrolcenter.helper" = {
-  serviceConfig = {
-    Type = "dbus";
-    BusName = "mcontrolcenter.helper";
-    ExecStart = "${pkgs.mcontrolcenter}/libexec/mcontrolcenter-helper";
-    User = "root";
-  };
-};
+#services.dbus.packages = [ "${pkgs.mcontrolcenter}" ];
+#  systemd.services."mcontrolcenter.helper" = {
+#  serviceConfig = {
+#    Type = "dbus";
+#    BusName = "mcontrolcenter.helper";
+#    ExecStart = "${pkgs.mcontrolcenter}/libexec/mcontrolcenter-helper";
+#    User = "root";
+#  };
+#};
   #mcontrolcenter-ui
   systemd.user.services.mcontrolcenter-ui = {
     enable = true;
@@ -38,7 +42,7 @@ services.dbus.packages = [ "${pkgs.mcontrolcenter}" ];
         wantedBy = ["graphical-session.target"];
         serviceConfig = {
       Type = "simple";
-            ExecStart = "${pkgs.mcontrolcenter}/bin/mcontrolcenter";
+            ExecStart = "${Mcontrolcenter}/bin/mcontrolcenter";
     };
   };
    #krunner daemon
@@ -53,16 +57,16 @@ services.dbus.packages = [ "${pkgs.mcontrolcenter}" ];
     };
   };
     #portmaster-ui
-  systemd.user.services."portmaster-ui" = {
-    enable = true;
-    description = "portmaster ui";
-    after = ["graphical-session.target"];
-        wantedBy = ["graphical-session.target"];
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "/opt/safing/portmaster/portmaster-start notifier";
-    };
-  };
+  #systemd.user.services."portmaster-ui" = {
+  #  enable = true;
+  #  description = "portmaster ui";
+  #  after = ["graphical-session.target"];
+  #      wantedBy = ["graphical-session.target"];
+  #  serviceConfig = {
+  #    Type = "simple";
+  #    ExecStart = "/opt/safing/portmaster/portmaster-start notifier";
+  #  };
+  #};
       #signal
   systemd.user.services."signal" = {
     enable = true;
@@ -88,7 +92,7 @@ services.dbus.packages = [ "${pkgs.mcontrolcenter}" ];
     wantedBy = [ "multi-user.target" ]; # Start after basic system services
     serviceConfig = {
       ExecStart =
-        "/opt/safing/portmaster/portmaster-start core -- -devmode"; # Path to the executable
+        "/usr/lib/portmaster/portmaster-core --devmode"; # Path to the executable
       Type = "simple";
       Restart = "on-failure";
       RestartSec = "10";
