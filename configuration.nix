@@ -27,14 +27,37 @@ in{
     ./vr.nix
     #home manager?
     inputs.home-manager.nixosModules.home-manager
-  ];
 
+  ];
+  # Enable Howdy facial authentication
+  services.howdy.enable = true;
+security.pam.services.sudo.howdyAuth = true;
+  # Enable IR emitter support (for infrared cameras)
+  services.linux-enable-ir-emitter.enable = true;
+
+  # Optional: Configure the IR camera device (default is "video2")
+  services.linux-enable-ir-emitter.device = "video2"; # change if your device is different
+
+  # Optional: Customize Howdy settings
+  services.howdy.settings = {
+    video = {
+      device_path = "/dev/video2"; # match your IR camera path
+      certainty = 3.5; # lower = more strict, higher = more lenient
+      timeout = 4;
+    };
+    core = {
+      abort_if_ssh = true; # won't try to authenticate over SSH
+      abort_if_lid_closed = true; # won't try when laptop lid is closed
+    };
+  };
 
   #nixpkgs.hostPlatform = {
   #  system = "x86_64-linux";
   #  gcc.arch = "raptorlake";
   #  gcc.tune = "raptorlake";
   #};
+#cachex or something
+  nix.settings.trusted-users = [ "root" "samm" ];
 
   nix.settings.system-features = [ "gccarch-raptorlake" ];
 
@@ -82,7 +105,17 @@ environment.variables = {
 GTK_USE_PORTAL=1;
 };
   #set swappieness
-  boot.kernel.sysctl = { "vm.swappiness" = 20; };
+  boot.kernel.sysctl = { "vm.swappiness" = 40; };
+
+  #memory comression
+  zramSwap = {
+  #disabled, use zswap instead
+  enable = false;
+  memoryPercent = 100;  # safe default
+  algorithm = "zstd";
+  priority= 5;
+  };
+
 
   #what it shows up as on the newtwork
   networking.hostName = "Sam-Computer"; # Define your hostname.
@@ -180,10 +213,20 @@ services.vnstat.enable = true;
   syntaxHighlighting.enable = true;
 
   shellAliases = {
-    srun = "systemd-run";
+    srun = "run0";
     rebs = "srun nixos-rebuild switch --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
     rebb = "srun nixos-rebuild boot --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
-
+    vr = ''
+        if systemctl --user is-active --quiet wivrn; then
+          echo "🔴 Stopping WiVRn..."
+          systemctl --user stop wivrn
+          echo "✅ WiVRn stopped"
+        else
+          echo "🟢 Starting WiVRn..."
+          systemctl --user start wivrn
+          echo "✅ WiVRn started - Ready for VR streaming!"
+        fi
+      '';
   };
   histSize = 10000;
 };

@@ -35,7 +35,7 @@ programs.gamescope.enable = true;
  #use igpu
    package = pkgs.steam.override {
     extraPkgs = pkgs: with pkgs; [
-      vaapiIntel
+      intel-vaapi-driver
       libva
       libvdpau-va-gl
       vulkan-loader
@@ -56,6 +56,8 @@ programs.gamescope.enable = true;
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
   programs.virt-manager.enable = true;
+  programs.direnv.enable = true;
+  programs.direnv.enableZshIntegration = true;
 
   programs.java.enable = true;
   programs.java.package = pkgs.jdk21;
@@ -65,7 +67,7 @@ programs.gamescope.enable = true;
     isNormalUser = true;
     home = "/home/samm";
     description = "Sam Merlin";
-    extraGroups = [ "networkmanager" "wheel" "ydotool" "audio" "i2c" "dialout" ];
+    extraGroups = [ "video" "networkmanager" "wheel" "ydotool" "audio" "i2c" "dialout" ];
     #add packages here if theres no config to add it
     packages = with pkgs; [
       kdePackages.kate
@@ -81,11 +83,11 @@ programs.gamescope.enable = true;
       vulkan-tools
       xdotool
       wineWowPackages.stagingFull
-      glxinfo
+      mesa-demos #glx-info
       github-desktop
       git
       protonvpn-gui
-      tor-browser-bundle-bin
+      tor-browser
       postgresql_15
       vscode
       #printrun
@@ -102,7 +104,7 @@ programs.gamescope.enable = true;
       kazam
       nmap
       metasploit
-      nmapsi4
+      #nmapsi4
       kdePackages.filelight
       jdk21
       libuuid
@@ -133,7 +135,7 @@ programs.gamescope.enable = true;
       #ydotool
       alsa-utils
       gcc14
-micromamba
+mamba-cpp
 
     google-chrome
      #for swarmui
@@ -145,7 +147,7 @@ neovim
 ffmpeg-full
 #hyperland stuff
 kitty
-anyrun
+#anyrun
 #hyprlandPlugins.hyprscroller
 go
 vnstat
@@ -163,7 +165,7 @@ wireshark-qt
 usbutils
 nix-output-monitor
 #questpircay
-pkgs.glaumar_repo.qrookie
+#k\pkgs.glaumar_repo.qrookie
 #vr
 libsysprof-capture
 gdk-pixbuf
@@ -190,11 +192,21 @@ qview
 fastfetch
 converseen
 arduino-ide
-python314
+#python314
 kdePackages.kmail
 kdePackages.kmail-account-wizard
 libreoffice-qt6-fresh
-
+python312
+python312Packages.matplotlib
+gimp3
+qview
+#vr desktop?
+wlx-overlay-s
+winetricks
+devenv
+direnv
+kdePackages.keysmith
+servo
 ];
   };
   programs.partition-manager.enable = true;
@@ -202,6 +214,10 @@ libreoffice-qt6-fresh
   programs.ssh.setXAuthLocation = true;
 
 programs.wireshark.enable = true;
+
+nixpkgs.config.permittedInsecurePackages = [];
+nixpkgs.config.allowBroken = true;
+
   #services.netdata.enable = true;
 #programs.ydotool.enable = true;
 #steelseries

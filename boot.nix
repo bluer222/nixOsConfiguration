@@ -11,7 +11,17 @@
 
     };
         #quiet grub and ec sys for MControlCenter
-    kernelParams = [ "quiet" "loglevel=3" "udev.log_level=3" "ec_sys.write_support=1" ];
+    kernelParams = [
+      "quiet"
+      "loglevel=3"
+      "udev.log_level=3"
+      "ec_sys.write_support=1"
+      "zswap.enabled=1"          #rather than swapping out ram, try to compress it
+      "zswap.shrinker_enabled=1" # if the page is unused for long enough, move it to disk swap
+      "zswap.compressor=zstd"    # You can also try lzo-rle (faster, less compression)
+      "zswap.max_pool_percent=50"  # default = 20% of RAM, can tweak
+      "zswap.zpool=zsmalloc"     # default, usually best
+      ];
     consoleLogLevel = 3;
     # https://github.com/NixOS/nixpkgs/pull/108294
     initrd.verbose = false;
@@ -35,7 +45,7 @@
       #enable grub
       grub = {
         enable = true;
-        useOSProber = false;
+        useOSProber = true;
         device = "nodev";
         efiSupport = true;
       };
