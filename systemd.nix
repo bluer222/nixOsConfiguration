@@ -45,17 +45,6 @@ systemd.user.extraConfig = ''DefaultTimeoutStopSec=10s'';
             ExecStart = "${Mcontrolcenter}/bin/mcontrolcenter";
     };
   };
-   #krunner daemon
-  systemd.user.services.krunner = {
-    enable = true;
-    description = "krunner";
-    after = ["graphical-session.target"];
-        wantedBy = ["graphical-session.target"];    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.kdePackages.plasma-workspace}/bin/krunner -d";
-          User = "samm";
-    };
-  };
     #portmaster-ui
   #systemd.user.services."portmaster-ui" = {
   #  enable = true;

@@ -282,7 +282,7 @@ DISK_IOSCHED="mq-deadline mq-deadline";
 # Multiple values separated with spaces are tried sequentially until success.
 # Default: med_power_with_dipm (AC & BAT)
 
-SATA_LINKPWR_ON_AC="max_performance";
+SATA_LINKPWR_ON_AC="max_performance med_power_with_dipm";
 SATA_LINKPWR_ON_BAT="min_power med_power_with_dipm";
 
 # Exclude SATA links from AHCI link power management (ALPM).

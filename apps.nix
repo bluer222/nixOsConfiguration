@@ -52,12 +52,19 @@ programs.gamescope.enable = true;
   VDPAU_DRIVER = "va_gl";              # Use VAAPI for VDPAU
 };
 
+  #firmware updates with discover
+  services.fwupd.enable = true;
+
   #add quemu
   virtualisation.libvirtd.enable = true;
   virtualisation.spiceUSBRedirection.enable = true;
   programs.virt-manager.enable = true;
   programs.direnv.enable = true;
   programs.direnv.enableZshIntegration = true;
+
+  #waydroid
+  virtualisation.waydroid.enable = true;
+  virtualisation.waydroid.package = pkgs.waydroid-nftables;
 
   programs.java.enable = true;
   programs.java.package = pkgs.jdk21;
@@ -106,10 +113,9 @@ programs.gamescope.enable = true;
       metasploit
       #nmapsi4
       kdePackages.filelight
-      jdk21
       libuuid
       #blender
-      signal-desktop
+      flare-signal
       android-tools
       mangohud
       kdePackages.kdenlive
@@ -195,7 +201,6 @@ arduino-ide
 #python314
 kdePackages.kmail
 kdePackages.kmail-account-wizard
-libreoffice-qt6-fresh
 python312
 python312Packages.matplotlib
 gimp3
@@ -207,6 +212,11 @@ devenv
 direnv
 kdePackages.keysmith
 servo
+inputs.affinity-nix.packages.x86_64-linux.v3
+onlyoffice-desktopeditors
+normcap
+yt-dlp
+digikam
 ];
   };
   programs.partition-manager.enable = true;

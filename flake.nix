@@ -31,12 +31,15 @@
       url = "github:fufexan/nixpkgs/howdy";
     };
 
+        affinity-nix.url = "github:mrshmllow/affinity-nix";
+
+
    # kwin-effects-forceblur = {
    #   url = "github:taj-ny/kwin-effects-forceblur";
    #   inputs.nixpkgs.follows = "nixpkgs";
    # };
   };
-  outputs = { self, nixpkgs, home-manager, nixpkgs-howdy, nixpkgs-xr, devenv, ... }@inputs: {
+  outputs = { self, nixpkgs, home-manager, nixpkgs-howdy, affinity-nix, nixpkgs-xr, devenv, ... }@inputs: {
     nixosConfigurations = {
       default = nixpkgs.lib.nixosSystem {
         specialArgs = {inherit inputs;};
