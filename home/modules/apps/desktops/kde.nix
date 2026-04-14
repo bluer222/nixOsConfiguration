@@ -17,14 +17,7 @@
     (pkgs.kdePackages.spectacle.override {
         tesseractLanguages = [ "eng" ];
     })
-    kde-rounded-corners.overrideAttrs (oldAttrs: {
-      src = pkgs.fetchFromGitHub {
-        owner = "matinlotfali";
-        repo = "KDE-Rounded-Corners";
-        rev = "2cf9329b31b3152e5513f7069c4bb11c765fdc6e";
-        sha256 = "sha256-mVoLCnpWHC2qDouO97n2cmxiewLCokjnWl1I9tnkIN4=";
-      };
-    })
+    kde-rounded-corners
   ];
 
   programs.kde-pim.kmail = true;
