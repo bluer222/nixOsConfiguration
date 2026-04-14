@@ -52,61 +52,12 @@
   };
 
   # Home Manager can also manage your environment variables through
-  # 'home.sessionVariables'. These will be explicitly sourced when using a
-  # shell provided by Home Manager. If you don't want to manage your shell
-  # through Home Manager then you have to manually source 'hm-session-vars.sh'
-  # located at either
-  #
-  #  ~/.nix-profile/etc/profile.d/hm-session-vars.sh
-  #
-  # or
-  #
-  #  ~/.local/state/nix/profiles/profile/etc/profile.d/hm-session-vars.sh
-  #
-  # or
-  #
-  #  /etc/profiles/per-user/samm/etc/profile.d/hm-session-vars.sh
-  #
+  # 'home.sessionVariables'. These will be automatically sourced on login. However, these
+  # should be relatively simple and piccolini, as they might be used in contexts which
+  # don't support shell syntax.
   home.sessionVariables = {
     # EDITOR = "emacs";
   };
-  systemd.user.enable = true;
-  /**
-  systemd.user.services.llama-cpp = {
-    Unit = {
-      Description = "LLaMA C++ server";
-      After = [ "network.target" ];
-    };
-
-    Service = {
-      ExecStart = ''
-        ${pkgs.llama-cpp-cuda}/bin/llama-server \
-          --host 127.0.0.1 \
-          --port 6573 \
-          --mmproj %h/.local/share/llama-cpp/models/qwen/mmproj.gguf \
-          -m %h/.local/share/llama-cpp/models/qwen/model.gguf \
-          --n-gpu-layers auto \
-          -fa on \
-          --no-context-shift \
-          --fit on
-''; #--no-webui
-
-      WorkingDirectory = "%h/.local/share/llama-cpp";
-
-      Restart = "on-failure";
-      RestartSec = "5min";
-
-      TimeoutStopSec = 10;
-
-      Environment = [
-        "LLAMA_CACHE=%h/.cache/llama-cpp"
-      ];
-    };
-
-    Install = {
-     # WantedBy = [ "default.target" ];
-    };
-  };**/
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;

@@ -50,24 +50,11 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
-            home-manager.users.samm = import ./home.nix;
+            home-manager.users.samm = import ./home/home.nix;
           }
 
           ./hardware-configuration.nix
           ./configuration.nix
-          #include gpu config because nvidia
-          ./gpu.nix
-          ./tlp.nix
-          ./nginx.nix
-          ./printers.nix
-          #systemd services
-          ./systemd.nix
-          #boot stuff
-          ./boot.nix
-          #instll apps and user config
-          ./apps.nix
-          #vr
-          ./vr.nix
 
           # Import Portmaster module
           "${nixpkgs-portmaster}/nixos/modules/services/networking/portmaster.nix"
