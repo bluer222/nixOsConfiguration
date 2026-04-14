@@ -6,8 +6,6 @@
   home.username = "samm";
   home.homeDirectory = "/home/samm";
 
-  home-manager.useGlobalPkgs = true;
-
   # This value determines the Home Manager release that your configuration is
   # compatible with. This helps avoid breakage when a new Home Manager release
   # introduces backwards incompatible changes.
@@ -73,6 +71,7 @@
     # EDITOR = "emacs";
   };
   systemd.user.enable = true;
+  /**
   systemd.user.services.llama-cpp = {
     Unit = {
       Description = "LLaMA C++ server";
@@ -84,11 +83,13 @@
         ${pkgs.llama-cpp-cuda}/bin/llama-server \
           --host 127.0.0.1 \
           --port 6573 \
-          -m %h/.local/share/llama-cpp/models/model.gguf \
-          --n-gpu-layers all \
+          --mmproj %h/.local/share/llama-cpp/models/qwen/mmproj.gguf \
+          -m %h/.local/share/llama-cpp/models/qwen/model.gguf \
+          --n-gpu-layers auto \
           -fa on \
-          --no-context-shift
-      ''; #--no-webui
+          --no-context-shift \
+          --fit on
+''; #--no-webui
 
       WorkingDirectory = "%h/.local/share/llama-cpp";
 
@@ -103,9 +104,9 @@
     };
 
     Install = {
-      WantedBy = [ "default.target" ];
+     # WantedBy = [ "default.target" ];
     };
-  };
+  };**/
 
   # Let Home Manager install and manage itself.
   programs.home-manager.enable = true;

@@ -7,31 +7,21 @@
 let
 #sddmTheme = pkgs.callPackage ./sddmbkrd.nix { };
 in{
-  imports = [ # Include the results of the hardware scan.
-    ./hardware-configuration.nix
-    #include gpu config because nvidia
-    ./gpu.nix
-    #enable tlp(power saving stuff) and config
-    ./tlp.nix
-    #enable nginx and config(locahlost)
-    ./nginx.nix
-    #printer
-    ./printers.nix
-    #systemd services
-    ./systemd.nix
-    #boot stuff
-    ./boot.nix
-    #instll apps and user config
-    ./apps.nix
-    #vr
-    ./vr.nix
-    #home manager?
-    inputs.home-manager.nixosModules.home-manager
-
-  ];
+  nix.settings = {
+    substituters = [
+      "https://cache.nixos.org"
+      "https://comfyui.cachix.org"
+      "https://nix-community.cachix.org"
+    ];
+    trusted-public-keys = [
+      "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      "comfyui.cachix.org-1:33mf9VzoIjzVbp0zwj+fT51HG0y31ZTK3nzYZAX0rec="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+    ];
+  };
   # Enable Howdy facial authentication
   services.howdy.enable = true;
-security.pam.services.sudo.howdyAuth = true;
+#security.pam.services.sudo.howdyAuth = true;
   # Enable IR emitter support (for infrared cameras)
   services.linux-enable-ir-emitter.enable = true;
 
@@ -39,16 +29,15 @@ security.pam.services.sudo.howdyAuth = true;
   services.linux-enable-ir-emitter.device = "video2"; # change if your device is different
 
   # Optional: Customize Howdy settings
-  services.howdy.settings = {
-    video = {
-      device_path = "/dev/video2"; # match your IR camera path
-      certainty = 3.5; # lower = more strict, higher = more lenient
-      timeout = 4;
+  services.howdy = {
+  #face id is enough to login
+  control = "sufficient";
+  #the default settings seem good enough
+  settings = {
+   video = {
+      dark_threshold = 90;
     };
-    core = {
-      abort_if_ssh = true; # won't try to authenticate over SSH
-      abort_if_lid_closed = true; # won't try when laptop lid is closed
-    };
+  };
   };
 
   #nixpkgs.hostPlatform = {
@@ -62,14 +51,6 @@ security.pam.services.sudo.howdyAuth = true;
   nix.settings.system-features = [ "gccarch-raptorlake" ];
 
 
-   home-manager.useGlobalPkgs = true;
-  home-manager.useUserPackages = true;
-home-manager.backupFileExtension = "hm-backup";
-   # Configure Home Manager for a specific user
-  home-manager.users.samm = {
-  home.stateVersion = "25.05";
-
-  };
 
   #allows hybernate
   security.protectKernelImage = false;
@@ -82,14 +63,7 @@ services.timesyncd.enable = true;
   security.sudo.extraConfig = "Defaults pwfeedback";
 #polkit
   security.polkit.enable = true;
-#run0 dont ask every time
-  security.polkit.extraConfig = ''
-    polkit.addRule(function(action, subject) {
-      if (subject.isInGroup("wheel")) {
-        return polkit.Result.AUTH_KEEP;
-      }
-    });
-  '';
+
   #appimage stuff(makes appimages work)
   boot.binfmt.registrations.appimage = {
     wrapInterpreterInShell = false;
@@ -127,6 +101,7 @@ GTK_USE_PORTAL=1;
   # Enable BBR congestion control and nvidia_uvm for cuda and i2c for auto brightness maybe
   #msi ec for mcontrolcenter
   boot.extraModulePackages = [ config.boot.kernelPackages.msi-ec ];
+  #ethernet driver(AX88179)
   boot.kernelModules = [ "tcp_bbr" "nvidia_uvm" "i2c-dev" "ax88179_178a" "ec_sys" "msi-ec"];
 
 boot.extraModprobeConfig = ''
@@ -174,14 +149,16 @@ system.autoUpgrade = {
   flake = inputs.self.outPath;
   flags = [
     "--print-build-logs"
+    "--recreate-lock-file"
   ];
   dates = "09:00";
+  runGarbageCollection = true;
 };
 
 nix.gc = {
-  automatic = true;
-  dates = "10:00";
-  options = "--delete-older-than 2d";
+  automatic = false;
+  #dates = "10:00";
+  options = "--delete-generations +1";
 };
 
   # Set your time zone.
@@ -204,20 +181,14 @@ nix.gc = {
   };
 
   # Enable the KDE Plasma Desktop Environment.
-services.displayManager.sddm.wayland.enable = true;
-services.displayManager.sddm.enable = true;
+#services.displayManager.sddm.wayland.enable = true;
+#services.displayManager.sddm.enable = true;
+services.displayManager.plasma-login-manager.enable = true;
 services.desktopManager.plasma6.enable = true;
-services.displayManager.sddm.package = lib.mkForce pkgs.kdePackages.sddm;
-services.displayManager.sddm.theme = "breeze";
+#services.displayManager.sddm.package = lib.mkForce pkgs.kdePackages.sddm;
+#services.displayManager.sddm.theme = "breeze";
 environment.systemPackages = [ ];
-#lets try hyprland
-  programs.hyprland = {
-    enable = true;
-    withUWSM = true; # recommended for most users
-    xwayland.enable = true; # Xwayland can be disabled.
-  };
-services.displayManager.sessionPackages = [ pkgs.hyprland ];
-services.vnstat.enable = true;
+
   # Enable sound with pipewire.
   security.rtkit.enable = true;
   services.pipewire = {
@@ -250,8 +221,8 @@ services.vnstat.enable = true;
 
   shellAliases = {
     srun = "run0";
-    rebs = "srun nixos-rebuild switch --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
-    rebb = "srun nixos-rebuild boot --flake '/etc/nixos#default' --log-format internal-json -v  |& nom --json";
+    rebs = "srun nixos-rebuild switch --flake '/etc/nixos#samm-desktop' --log-format internal-json -v  |& nom --json";
+    rebb = "srun nixos-rebuild boot --flake '/etc/nixos#samm-desktop' --log-format internal-json -v  |& nom --json";
     vr = ''
         if systemctl --user is-active --quiet wivrn; then
           echo "🔴 Stopping WiVRn..."
@@ -292,5 +263,5 @@ services.vnstat.enable = true;
   # this value at the release version of the first install of this system.
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "24.05"; # Did you read the comment?
+ system.stateVersion = "24.05"; # Did you read the comment?
 }

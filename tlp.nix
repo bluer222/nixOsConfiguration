@@ -54,7 +54,7 @@ TLP_ENABLE=1;
 #   3=combination of 1 and 2
 # Default: 3
 
-TLP_WARN_LEVEL=3;
+#TLP_WARN_LEVEL=3;
 
 # Colorize error, warning, notice and success messages. Colors are specified
 # with ANSI codes:
@@ -79,7 +79,7 @@ TLP_DEFAULT_MODE="BAT";
 # Note: use in conjunction with TLP_DEFAULT_MODE=BAT for BAT settings on AC.
 # Default: 0
 
-TLP_PERSISTENT_DEFAULT=0;
+#TLP_PERSISTENT_DEFAULT=0;
 
 # Power supply classes to ignore when determining operation mode: AC, USB, BAT.
 # Separate multiple classes with spaces.
@@ -92,14 +92,14 @@ TLP_PERSISTENT_DEFAULT=0;
 # Non-zero value enables, zero disables laptop mode.
 # Default: 0 (AC), 2 (BAT)
 
-DISK_IDLE_SECS_ON_AC=0;
-DISK_IDLE_SECS_ON_BAT=2;
+#DISK_IDLE_SECS_ON_AC=0;
+#DISK_IDLE_SECS_ON_BAT=2;
 
 # Dirty page values (timeouts in secs).
 # Default: 15 (AC), 60 (BAT)
 
-MAX_LOST_WORK_SECS_ON_AC=15;
-MAX_LOST_WORK_SECS_ON_BAT=60;
+#MAX_LOST_WORK_SECS_ON_AC=15;
+#MAX_LOST_WORK_SECS_ON_BAT=60;
 
 # Select a CPU scaling driver operation mode.
 # Intel CPU with intel_pstate driver:
@@ -165,10 +165,10 @@ CPU_ENERGY_PERF_POLICY_ON_BAT="power";
 # Requires Intel Core i 2nd gen. or newer CPU with intel_pstate driver.
 # Default: <none>
 
-CPU_MIN_PERF_ON_AC=0;
-CPU_MAX_PERF_ON_AC=100;
-CPU_MIN_PERF_ON_BAT=0;
-CPU_MAX_PERF_ON_BAT=100;
+#CPU_MIN_PERF_ON_AC=0;
+#CPU_MAX_PERF_ON_AC=100;
+#CPU_MIN_PERF_ON_BAT=0;
+#CPU_MAX_PERF_ON_BAT=100;
 
 # Set the CPU "turbo boost" (Intel) or "core performance boost" (AMD) feature:
 #   0=disable, 1=allow.
@@ -245,7 +245,7 @@ DISK_APM_LEVEL_ON_BAT="keep";
 # media before removing 'usb' or 'ieee1394' from the denylist!
 # Default: "usb ieee1394"
 
-DISK_APM_CLASS_DENYLIST="usb ieee1394";
+#DISK_APM_CLASS_DENYLIST="usb ieee1394";
 
 # Hard disk spin down timeout:
 #   0:        spin down disabled
@@ -308,7 +308,7 @@ AHCI_RUNTIME_PM_ON_BAT="auto";
 # Note: effective only when AHCI_RUNTIME_PM_ON_AC/BAT is activated.
 # Default: 15
 
-AHCI_RUNTIME_PM_TIMEOUT=15;
+#AHCI_RUNTIME_PM_TIMEOUT=15;
 
 # Power off optical drive in UltraBay/MediaBay: 0=disable, 1=enable.
 # Drive can be powered on again by releasing (and reinserting) the eject lever
@@ -431,7 +431,7 @@ RUNTIME_PM_DRIVER_DENYLIST="nouveau nvidia";
 # Set to 0 to disable, 1 to enable USB autosuspend feature.
 # Default: 1
 
-USB_AUTOSUSPEND=1;
+#USB_AUTOSUSPEND=1;
 
 # Exclude listed devices from USB autosuspend (separate with spaces).
 # Use lsusb to get the ids.
@@ -445,7 +445,7 @@ USB_AUTOSUSPEND=1;
 #   0=do not exclude, 1=exclude.
 # Default: 1
 
-USB_EXCLUDE_AUDIO=1;
+#USB_EXCLUDE_AUDIO=1;
 
 # Exclude bluetooth devices from USB autosuspend:
 #   0=do not exclude, 1=exclude.

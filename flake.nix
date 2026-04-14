@@ -1,92 +1,77 @@
 {
   description = "Nixos config flake";
   inputs = {
-      nixpkgs = {
+    nixpkgs = {
       url = "github:NixOS/nixpkgs/nixos-unstable";
     };
+
     home-manager = {
       url = "github:nix-community/home-manager/master";
-      inputs.nixpkgs.follows =
-        "nixpkgs"; # Use system packages list where available
+      inputs.nixpkgs.follows = "nixpkgs";
     };
+
     glaumar_repo = {
-    url = "github:glaumar/nur";
-    inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:glaumar/nur";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nixpkgs-portmaster = {
+      url = "github:WitteShadovv/nixpkgs/init-portmaster";
+    };
+
+    affinity-nix.url = "github:mrshmllow/affinity-nix";
+
+    comfyui-nix.url = "github:utensils/comfyui-nix";
+
+    nixpkgs-nvidia.url = "github:NixOS/nixpkgs/ab9ad415916a0fb89d1f539a9291d9737e95148e";
   };
-    kwin-gestures = {
-      url = "github:taj-ny/kwin-gestures";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    # Add nixpkgs-xr input
-    nixpkgs-xr = {
-      url = "github:nix-community/nixpkgs-xr";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    devenv = {
-      url = "github:cachix/devenv";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nixpkgs-howdy = {
-      url = "github:fufexan/nixpkgs/howdy";
-    };
-
-        affinity-nix.url = "github:mrshmllow/affinity-nix";
-
-
-   # kwin-effects-forceblur = {
-   #   url = "github:taj-ny/kwin-effects-forceblur";
-   #   inputs.nixpkgs.follows = "nixpkgs";
-   # };
-  };
-  outputs = { self, nixpkgs, home-manager, nixpkgs-howdy, affinity-nix, nixpkgs-xr, devenv, ... }@inputs: {
+  outputs = { self, nixpkgs, home-manager, affinity-nix, nixpkgs-nvidia, comfyui-nix, nixpkgs-portmaster, ... }@inputs: {
     nixosConfigurations = {
-      default = nixpkgs.lib.nixosSystem {
+      samm-desktop = nixpkgs.lib.nixosSystem {
         specialArgs = {inherit inputs;};
         modules = [
          ({
           nixpkgs.overlays = [
-            # Add nixpkgs-xr overlay
-            nixpkgs-xr.overlays.default
+            comfyui-nix.overlays.default
             (final: prev: {
-              howdy = nixpkgs-howdy.legacyPackages.${prev.system}.howdy;
-                linux-enable-ir-emitter = nixpkgs-howdy.legacyPackages.${prev.system}.linux-enable-ir-emitter;
-              })
-
-            (final: prev: {
-              kwin-gestures = inputs.kwin-gestures.packages."${prev.system}";
+              portmaster = nixpkgs-portmaster.legacyPackages.${prev.system}.portmaster;
               glaumar_repo = inputs.glaumar_repo.packages."${prev.system}";
-              google-chrome = prev.google-chrome.overrideAttrs (old: {
-        postInstall = ''
-          wrapProgram $out/bin/google-chrome-stable \
-            --add-flags "--enable-features=AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoEncoder"
-        '';
-      });
+              llama-cpp-cuda = prev.llama-cpp.override {
+                cudaSupport = true;
+                rocmSupport = false;
+                metalSupport = false;
+              };
             })
           ];
         })
 
-        #nixpkgs-xr.nixosModules.nixpkgs-xr
-          ./configuration.nix
         home-manager.nixosModules.home-manager
 
-        # Disable the default PAM module
-        ({ disabledModules = [ "security/pam.nix" ]; })
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.samm = import ./home.nix;
+          }
 
-            # Import the Howdy modules from nixpkgs-howdy
-          "${nixpkgs-howdy}/nixos/modules/services/security/howdy"
-          "${nixpkgs-howdy}/nixos/modules/services/misc/linux-enable-ir-emitter.nix"
-    "${nixpkgs-howdy}/nixos/modules/security/pam.nix"
+          ./hardware-configuration.nix
+          ./configuration.nix
+          #include gpu config because nvidia
+          ./gpu.nix
+          ./tlp.nix
+          ./nginx.nix
+          ./printers.nix
+          #systemd services
+          ./systemd.nix
+          #boot stuff
+          ./boot.nix
+          #instll apps and user config
+          ./apps.nix
+          #vr
+          ./vr.nix
+
+          # Import Portmaster module
+          "${nixpkgs-portmaster}/nixos/modules/services/networking/portmaster.nix"
         ];
-      };
-    };
-     # Add this if you want a devenv shell via `devenv shell`
-    devShells = {
-      x86_64-linux = {
-        default = devenv.lib.mkShell {
-          inherit inputs;
-          # devenv.yaml is read automatically
-        };
       };
     };
   };
