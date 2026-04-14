@@ -1,8 +1,6 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
-let
-  Mcontrolcenter = pkgs.callPackage ../../mcontrolcenter.nix { };
-in {
+{
   # List services that you want to enable:
 
   #shutdown faster
@@ -30,18 +28,6 @@ in {
   systemd.services.NetworkManager-wait-online.enable = false;
   #this adds like half a second to boot time
   systemd.oomd.enable = false;
-
-  #mcontrolcenter-ui
-  systemd.user.services.mcontrolcenter-ui = {
-    enable = true;
-    description = "mcontrolcenter";
-    after = ["graphical-session.target"];
-    wantedBy = ["graphical-session.target"];
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${Mcontrolcenter}/bin/mcontrolcenter";
-    };
-  };
 
   systemd.services.libvirtd = {
     enable = true;

@@ -1,11 +1,22 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
 let
-  Mcontrolcenter = pkgs.callPackage ./mcontrolcenter.nix { };
+  #ovveride version to 0.5.0
+  mcontrolcenter = pkgs.mcontrolcenter.overrideAttrs (oldAttrs: rec {
+    version = "0.5.0";
+    src = pkgs.fetchFromGitHub {
+      owner = "dmitry-s93";
+      repo = "MControlCenter";
+      rev = version;
+      hash = "sha256-Gl+YnbUbwtwF2WHT39bIKh48qSIMe3fpzxgdvifR4DQ=";
+    };
+  });
 in
 {
   #some packages need to be system
-  environment.systemPackages = [ Mcontrolcenter ];
+  environment.systemPackages = [ 
+    mcontrolcenter
+  ];
 
   services.flatpak.enable = true;
   programs.gamescope.enable = true;
