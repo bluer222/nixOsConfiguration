@@ -18,6 +18,8 @@
     ./modules/system/shell.nix
     ./modules/system/audio.nix
     ./modules/system/desktop.nix
+    ./modules/system/kde.nix
+    ./modules/system/hyprland.nix
     ./modules/system/systemd.nix
 
     # Networking services

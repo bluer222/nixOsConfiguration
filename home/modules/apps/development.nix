@@ -15,5 +15,6 @@
     arduino-ide
     kdePackages.umbrello
     gnumake
+    gemini-cli
   ];
 }
