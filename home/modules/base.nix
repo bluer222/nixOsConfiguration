@@ -1,7 +1,7 @@
 { config, inputs, pkgs, lib, stdenv, ... }:
 
 let
-  Mcontrolcenter = pkgs.callPackage ../../../mcontrolcenter.nix { };
+  Mcontrolcenter = pkgs.callPackage ./mcontrolcenter.nix { };
 in
 {
   #some packages need to be system

@@ -17,11 +17,8 @@
     clinfo
     virtiofsd
     inkscape
-    kdePackages.baloo
-    kdePackages.oxygen-sounds
     btop
     mamba-cpp
-    kdePackages.kde-gtk-config
     unrar
     wayland-utils
     xclicker
@@ -50,7 +47,6 @@
     mediawriter
     wl-clipboard
     postman
-    kdePackages.kate
     libGL
     noto-fonts-cjk-sans
     noto-fonts-cjk-serif
@@ -58,17 +54,12 @@
     onlyoffice-desktopeditors
     brave
     konsave
-    kdePackages.karousel
     caligula
     kdePackages.isoimagewriter
     ocs-url
     digikam
     ddrescue
     ddcutil
-    kdePackages.ghostwriter
     nss
-    (pkgs.spectacle.override {
-      tesseractLanguages = [ "eng" ];
-    })
   ];
 }
