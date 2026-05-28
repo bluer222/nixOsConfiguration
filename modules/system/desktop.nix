@@ -13,10 +13,36 @@
   # Howdy facial authentication
   services.howdy.enable = true;
   services.howdy = {
-    control = "sufficient";
     settings = {
       video = {
         dark_threshold = 90;
+      };
+    };
+  };
+
+  # Use Howdy only for screen locking, sudo, and polkit (run0), not for initial login
+  security.pam = {
+    howdy.enable = false;
+    services = {
+      kde.howdy = {
+        enable = true;
+        control = "sufficient";
+      };
+      hyprlock.howdy = {
+        enable = true;
+        control = "sufficient";
+      };
+      sudo.howdy = {
+        enable = true;
+        control = "sufficient";
+      };
+      polkit-1.howdy = {
+        enable = true;
+        control = "sufficient";
+      };
+      systemd-run0.howdy = {
+        enable = true;
+        control = "sufficient";
       };
     };
   };

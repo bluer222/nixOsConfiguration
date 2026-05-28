@@ -1,6 +1,8 @@
 { config, pkgs, ... }:
 
 {
+programs.zoom-us.enable = true;
+programs.qgroundcontrol.enable = true;
   # Utilities and system tools
   environment.systemPackages = with pkgs; [
     wget
@@ -11,6 +13,7 @@
     libva-utils
     powertop
     zoom-us
+    #teams
     scrcpy
     libGL
     pciutils
@@ -55,11 +58,13 @@
     brave
     konsave
     caligula
-    kdePackages.isoimagewriter
     ocs-url
     digikam
     ddrescue
     ddcutil
     nss
+    ckan
+    immich-go
+    kubectl
   ];
 }

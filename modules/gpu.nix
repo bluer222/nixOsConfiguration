@@ -24,6 +24,9 @@
     LIBVA_DRIVER_NAME = "iHD";
   }; # Force intel-media-driver
 
+  # Enable switcheroo-control for hybrid GPU switching
+  services.switcherooControl.enable = true;
+
   # GPU kernel modules for CUDA and similar
   boot.kernelModules = [ "nvidia_uvm" ];
 
@@ -61,6 +64,12 @@
     #switching to beta because its newer(560{open is the default now})
     package = config.boot.kernelPackages.nvidiaPackages.vulkan_beta;
   };
+
+  services.udev.extraRules = ''
+    KERNEL=="card*", KERNELS=="0000:00:02.0", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/intel-igpu"
+    KERNEL=="card*", KERNELS=="0000:01:00.0", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/nvidia-dgpu", ENV{ID_VGA_SWITCHEROO}="1"
+  '';
+
   hardware.nvidia.prime = {
     offload = {
       enable = true;

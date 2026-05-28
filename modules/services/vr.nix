@@ -10,9 +10,7 @@
 
     # Run WiVRn as a systemd service on startup
     autoStart = false;
-    package = pkgs.wivrn.override {
-      cudaSupport = true;
-    };
+    package = pkgs.wivrn;
 
     # Config for WiVRn (https://github.com/WiVRn/WiVRn/blob/master/docs/configuration.md)
     config = {
@@ -24,7 +22,7 @@
         bitrate = 100000000;
         encoders = [
           {
-            encoder = "nvenc";
+            encoder = "vaapi";
             codec = "av1";
             # 1.0 x 1.0 scaling
             width = 1.0;

@@ -3,9 +3,11 @@
 {
   programs.hyprland = {
     enable = true;
+    package = pkgs.hyprland;
+    portalPackage = pkgs.xdg-desktop-portal-hyprland;
+    withUWSM = true; # recommended for most users
     xwayland.enable = true;
-  };
+    };
 
-  # Optional: Enable hint for Ozone apps (like Chrome/VSCode) to use Wayland
-  environment.sessionVariables.NIXOS_OZONE_WL = "1";
-}
+    # Hint for Ozone apps to use Wayland is moved to user-level env for consistency
+    }

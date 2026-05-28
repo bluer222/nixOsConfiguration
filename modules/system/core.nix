@@ -2,9 +2,22 @@
 
 {
   # Security settings
-  security.protectKernelImage = false;
-  security.sudo.extraConfig = "Defaults pwfeedback";
-  security.polkit.enable = true;
+  security = {
+    protectKernelImage = false;
+    sudo.extraConfig = "Defaults pwfeedback";
+    polkit.enable = true;
+
+    # Minimize password verification delay
+    pam.services = {
+      plasmalogin.nodelay = true;
+      login.nodelay = true;
+      kde.nodelay = true;
+      sudo.nodelay = true;
+      hyprlock.nodelay = true;
+      polkit-1.nodelay = true;
+      su.nodelay = true;
+    };
+  };
 
   # Time and locale
   services.automatic-timezoned.enable = true;
@@ -47,14 +60,21 @@
   };
 
   # Nix settings
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  nix.package = pkgs.nixVersions.latest;
+  nix = {
+    package = pkgs.nixVersions.latest;
+    settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      auto-optimise-store = true;
+    };
+    gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 7d";
+    };
+  };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
-
-  # Auto optimize store
-  nix.settings.auto-optimise-store = true;
 
   # System auto-upgrade
   system.autoUpgrade = {
@@ -66,11 +86,5 @@
     ];
     dates = "09:00";
     runGarbageCollection = true;
-  };
-
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 7d";
   };
 }

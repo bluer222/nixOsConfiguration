@@ -14,9 +14,10 @@
     kdePackages.oxygen-sounds
     kdePackages.kde-gtk-config
     kdePackages.karousel
-    (pkgs.kdePackages.spectacle.override {
-        tesseractLanguages = [ "eng" ];
-    })
+    kdePackages.spectacle
+    #(pkgs.kdePackages.spectacle.override {
+    #    tesseractLanguages = [ "eng" ];
+    #})
     kde-rounded-corners
   ];
 

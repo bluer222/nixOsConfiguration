@@ -13,6 +13,7 @@
       "quiet"
       "loglevel=3"
       "udev.log_level=3"
+      "preempt=full"
     ];
     consoleLogLevel = 3;
     # https://github.com/NixOS/nixpkgs/pull/108294
