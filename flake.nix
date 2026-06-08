@@ -21,10 +21,6 @@
     nixpkgs-msi-ec.url = "github:Svenum/nixpkgs/e1dca387c47d6bb82fd563ee1ba89bb1e438c8f3";
 
     hyprland.url = "github:hyprwm/Hyprland";
-    hyprchroma = {
-      url = "github:RomeoCavazza/Hyprchroma";
-      inputs.hyprland.follows = "hyprland";
-    };
   };
 
   outputs = { self, nixpkgs, home-manager, comfyui-nix, nixpkgs-portmaster, ... }@inputs: {

@@ -123,12 +123,12 @@
 
         "pulseaudio" = {
           format = "Vol: {volume}%";
-          on-click = "pavucontrol"; # Audio settings UI
+          on-click = "~/.config/hypr/scripts/qt-popup.sh volume";
         };
 
         "bluetooth" = {
           format = "BT: {status}";
-          on-click = "blueman-manager";
+          on-click = "~/.config/hypr/scripts/qt-popup.sh bluetooth";
         };
 
         "battery" = {

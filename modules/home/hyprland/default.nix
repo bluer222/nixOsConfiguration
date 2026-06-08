@@ -2,6 +2,7 @@
 
 {
   imports = [
+    inputs.hyprland.homeManagerModules.default
     ./hyprland.nix
     ./waybar.nix
     ./idle.nix
@@ -18,13 +19,24 @@
 
     # Waybar & Launchers
     waybar
-    rofi-wayland
+    rofi
+    networkmanagerapplet
+    kdePackages.bluedevil
+    kdePackages.plasma-pa
+    kdePackages.plasma-workspace
+    
+    # Audio & Brightness
+    kdePackages.oxygen-sounds
+    brightnessctl
     
     # Idle & Lock
     hypridle
     hyprlock
+    hyprpolkitagent
 
     # Screenshot
-    spectacle
+    grim
+    slurp
+    swappy
   ];
 }

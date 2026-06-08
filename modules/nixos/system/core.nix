@@ -22,6 +22,7 @@
   services.automatic-timezoned.enable = true;
   services.timesyncd.enable = true;
   services.geoclue2.enable = true;
+  programs.dconf.enable = true;
 
   # Name service caching
   services.nscd.enable = true;

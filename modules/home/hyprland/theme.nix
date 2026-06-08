@@ -13,12 +13,26 @@
   home.packages = with pkgs; [
     catppuccin-kvantum
     libsForQt5.qt5ct
+    libsForQt5.qt5.qtwayland
     kdePackages.qt6ct
+    kdePackages.qtwayland
+    hyprland-qtutils
+    hyprland-qt-support
   ];
 
   xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
     [General]
     theme=catppuccin-mocha-teal
+  '';
+
+  xdg.configFile."qt5ct/qt5ct.conf".text = ''
+    [Appearance]
+    style=kvantum
+  '';
+
+  xdg.configFile."qt6ct/qt6ct.conf".text = ''
+    [Appearance]
+    style=kvantum
   '';
 
   # -----------------------------------------------------
@@ -35,6 +49,18 @@
         variant = "mocha";
       };
     };
+    gtk3.extraConfig = {
+      gtk-application-prefer-dark-theme = true;
+    };
+    gtk4.theme = config.gtk.theme;
+    gtk4.extraConfig = {
+      gtk-application-prefer-dark-theme = true;
+    };
+  };
+
+  dconf.settings."org/gnome/desktop/interface" = {
+    color-scheme = "prefer-dark";
+    gtk-theme = "Catppuccin-Mocha-Standard-Teal-Dark";
   };
 
   # -----------------------------------------------------

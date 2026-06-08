@@ -3,6 +3,7 @@
 {
   home.packages = with pkgs; [
     swaybg
+    kdialog
   ];
 
   xdg.configFile."hypr/scripts/change_wallpaper.sh" = {
@@ -86,6 +87,74 @@
         echo "1" > "$STATE_FILE"
         echo "Trackpad Enabled"
       fi
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/volume.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      # Handle volume and play feedback sound
+      
+      ACTION=$1
+      
+      case $ACTION in
+        up)
+          wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
+          ;;
+        down)
+          wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+          ;;
+        mute)
+          wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+          ;;
+      esac
+      
+      # Play Oxygen sound (don't block)
+      paplay /run/current-system/sw/share/sounds/oxygen/stereo/audio-volume-change.ogg || paplay ~/.nix-profile/share/sounds/oxygen/stereo/audio-volume-change.ogg || true &
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/qt-popup.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      APPLET=''${1:-}
+      case "$APPLET" in
+        volume)
+          PLASMOID="org.kde.plasma.volume"
+          ;;
+        bluetooth)
+          PLASMOID="org.kde.plasma.bluetooth"
+          ;;
+        *)
+          exit 2
+          ;;
+      esac
+
+      if pgrep -af "plasmawindowed $PLASMOID" >/dev/null; then
+        pkill -f "plasmawindowed $PLASMOID"
+        exit 0
+      fi
+
+      hyprctl dispatch exec "[float; size 380 460; move 100%-392 32; opacity 0.97 0.97] plasmawindowed $PLASMOID"
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/screenshot-region.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      mkdir -p "$HOME/Pictures/Screenshots"
+      OUT="$HOME/Pictures/Screenshots/screenshot-$(date +%Y%m%d-%H%M%S).png"
+      GEOMETRY=$(slurp -d)
+
+      grim -g "$GEOMETRY" "$OUT"
+      swappy -f "$OUT"
     '';
   };
 }

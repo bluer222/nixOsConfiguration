@@ -10,7 +10,7 @@ programs.qgroundcontrol.enable = true;
     vulkan-tools
     mesa-demos #glx-info
     libva-utils
-    powertop
+    oxygen-sounds
     zoom-us
     #teams
     scrcpy
