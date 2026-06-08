@@ -16,5 +16,6 @@
     kdePackages.umbrello
     gnumake
     gemini-cli
+    antigravity
   ];
 }

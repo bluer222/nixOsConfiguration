@@ -7,6 +7,7 @@
     #splashscreen
     plymouth = {
       enable = true;
+      theme = "bgrt";
     };
     # Bootloader and console verbosity
     kernelParams = [

@@ -10,10 +10,11 @@
     # Kernel parameters for embedded controller and memory compression
     kernelParams = [
       "ec_sys.write_support=1"  # For MControlCenter (embedded controller)
+      "lru_gen.enabled=y"       # Enable Multi-Gen LRU
       "zswap.enabled=1"
       "zswap.shrinker_enabled=1"
       "zswap.compressor=zstd"
-      "zswap.max_pool_percent=50"
+      "zswap.max_pool_percent=40"
       "zswap.zpool=zsmalloc"
     ];
   };

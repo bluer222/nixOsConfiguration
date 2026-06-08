@@ -21,7 +21,7 @@
   # Distribute interrupts across CPU cores
   services.irqbalance.enable = true;
 
-  # Resource management for active user sessions
+  # Resource management for active user sessions (custom module)
   services.uresourced.enable = true;
 
   # Optimize for gaming

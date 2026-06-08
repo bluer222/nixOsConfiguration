@@ -28,10 +28,6 @@
         enable = true;
         control = "sufficient";
       };
-      hyprlock.howdy = {
-        enable = true;
-        control = "sufficient";
-      };
       sudo.howdy = {
         enable = true;
         control = "sufficient";

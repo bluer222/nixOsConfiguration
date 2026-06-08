@@ -33,9 +33,5 @@
   #ssd thing or somthing
   services = {
     fstrim.enable = true;
-    portmaster = {
-      enable = true;
-      settings.devmode = true;  # UI at 127.0.0.1:817
-    };
   };
 }

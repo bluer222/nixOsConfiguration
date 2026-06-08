@@ -35,5 +35,15 @@
     };
 
     histSize = 10000;
+
+    # Initialize mamba-cpp
+    interactiveShellInit = ''
+      # >>> mamba initialize >>>
+      # !! Contents within this block are managed by mamba-cpp !!
+      # If you make changes here, they will be overwritten.
+      # To disable, run: mamba shell hook --undo (or similar for micromamba)
+      eval "$(${pkgs.mamba-cpp}/bin/mamba shell hook --shell zsh)"
+      # <<< mamba initialize <<<
+    '';
   };
 }

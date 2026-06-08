@@ -1,7 +1,13 @@
 { config, pkgs, ... }:
 {
   # Power management core
-  powerManagement.enable = true;
+  powerManagement = {
+    enable = true;
+    powertop.enable = true;
+  };
+
+  # Thermal management for Intel CPUs
+  services.thermald.enable = true;
 
   # Power profiles daemon conflicts with TLP
   services.power-profiles-daemon.enable = false;
@@ -26,7 +32,7 @@
 
       # Governor: 'powersave' is the correct partner for 'active' mode EPP
       # It ramps up when needed, no need to set anything else
-      CPU_SCALING_GOVERNOR_ON_AC = "powersave";
+      CPU_SCALING_GOVERNOR_ON_AC = "performance";
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 

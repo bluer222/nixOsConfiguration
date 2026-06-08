@@ -13,7 +13,6 @@
       login.nodelay = true;
       kde.nodelay = true;
       sudo.nodelay = true;
-      hyprlock.nodelay = true;
       polkit-1.nodelay = true;
       su.nodelay = true;
     };
@@ -22,6 +21,11 @@
   # Time and locale
   services.automatic-timezoned.enable = true;
   services.timesyncd.enable = true;
+  services.geoclue2.enable = true;
+
+  # Name service caching
+  services.nscd.enable = true;
+  services.nscd.enableNsncd = true;
 
   i18n.defaultLocale = "en_US.UTF-8";
   i18n.extraLocaleSettings = {
@@ -48,7 +52,7 @@
 
   # Kernel settings
   boot.kernel.sysctl = {
-    "vm.swappiness" = 40;
+    "vm.swappiness" = 100;
   };
 
   # Memory compression settings (disabled, using zswap instead)

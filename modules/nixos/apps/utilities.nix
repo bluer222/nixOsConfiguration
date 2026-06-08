@@ -7,7 +7,6 @@ programs.qgroundcontrol.enable = true;
   environment.systemPackages = with pkgs; [
     wget
     lshw
-    gparted
     vulkan-tools
     mesa-demos #glx-info
     libva-utils
