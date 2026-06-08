@@ -2,7 +2,6 @@
 
 let
   oxygenVolumeSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/audio-volume-change.ogg";
-  paplayBin = lib.getExe pkgs.pulseaudio;
 in {
   home.packages = with pkgs; [
     swaybg
@@ -149,8 +148,6 @@ in {
     text = ''
       #!/usr/bin/env bash
       set -euo pipefail
-
-      ${paplayBin} "${oxygenVolumeSound}" >/dev/null 2>&1 &
     '';
   };
 
@@ -176,12 +173,7 @@ in {
       #!/usr/bin/env bash
       set -euo pipefail
 
-      mkdir -p "$HOME/Pictures/Screenshots"
-      OUT="$HOME/Pictures/Screenshots/screenshot-$(date +%Y%m%d-%H%M%S).png"
-      GEOMETRY=$(slurp -d)
-
-      grim -g "$GEOMETRY" "$OUT"
-      swappy -f "$OUT"
+      hyprshot -m region --output-folder "$HOME/Pictures/Screenshots"
     '';
   };
 }

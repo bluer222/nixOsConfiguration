@@ -2,12 +2,18 @@
 
 {
   systemd.user.services.avizo = {
-    description = "Avizo volume/brightness notification service";
-    wantedBy = [ "graphical-session.target" ];
-    after = [ "graphical-session.target" ];
-    serviceConfig = {
+    Unit = {
+      Description = "Avizo volume/brightness notification service";
+      After = [ "graphical-session.target" ];
+    };
+
+    Service = {
       ExecStart = "${pkgs.avizo}/bin/avizo-service";
       Restart = "on-failure";
+    };
+
+    Install = {
+      WantedBy = [ "graphical-session.target" ];
     };
   };
 }

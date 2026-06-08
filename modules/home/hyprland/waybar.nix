@@ -65,7 +65,6 @@
         ];
 
         modules-right = [
-          "pulseaudio"
           "bluetooth"
           "network"
           "tray"

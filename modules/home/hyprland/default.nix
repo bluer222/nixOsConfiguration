@@ -27,7 +27,6 @@
     kdePackages.plasma-workspace
     kdePackages.systemsettings
     kdePackages.breeze-icons
-    pulseaudio
 
     # Audio, brightness OSD, and feedback
     kdePackages.oxygen-sounds
@@ -39,10 +38,8 @@
     hypridle
     hyprlock
     hyprpolkitagent
+    hyprshot
 
     # Screenshot
-    grim
-    slurp
-    swappy
   ];
 }

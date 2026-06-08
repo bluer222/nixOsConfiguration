@@ -25,7 +25,8 @@
       hl.env("XDG_CURRENT_DESKTOP", "KDE")
       hl.env("GDK_BACKEND", "wayland,x11")
       hl.env("QT_QPA_PLATFORM", "wayland;xcb")
-      hl.env("QT_QPA_PLATFORMTHEME", "kvantum")
+      hl.env("QT_QPA_PLATFORMTHEME", "qt5ct")
+      hl.env("QT_STYLE_OVERRIDE", "kvantum")
       hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
       hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
 
@@ -51,9 +52,9 @@
           layout = "scrolling",
         },
         scrolling = {
-          follow_focus = false,
+          follow_focus = true,
           fullscreen_on_one_column = false,
-          follow_min_visible = 1.0,
+          follow_min_visible = 0.01,
         },
         decoration = {
           rounding = 10,
@@ -153,6 +154,7 @@
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
         opacity = "0.97 0.97",
+        -- nofocus = true, -- I will NOT add this yet, as it might make it unusable.
       })
       hl.window_rule({
         name = "menu-opacity",

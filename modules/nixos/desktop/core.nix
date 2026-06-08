@@ -26,7 +26,6 @@
     services = {
       systemd-run0 = {
         enable = true;
-        unix = true;
         howdy = {
           enable = true;
           control = "sufficient";
