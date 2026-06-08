@@ -1,44 +1,36 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
-{
+let
+  oxygenVolumeSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/audio-volume-change.ogg";
+  paplayBin = lib.getExe pkgs.pulseaudio;
+in {
   home.packages = with pkgs; [
     swaybg
-    kdialog
+    avizo
   ];
 
   xdg.configFile."hypr/scripts/change_wallpaper.sh" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      # Helper script to change wallpaper per workspace across all monitors
-      
+      set -euo pipefail
+
       WORKSPACE=$1
-      
-      # Define placeholder wallpaper files for each workspace
-      WP1="/tmp/wp_workspace_1.png"
-      WP2="/tmp/wp_workspace_2.png"
-      WP3="/tmp/wp_workspace_3.png"
+      WP_DIR="$HOME/Pictures/Wallpapers"
 
-      # Create placeholders if they don't exist
-      if [ ! -f "$WP1" ]; then
-        # Just create simple colored images using imagemagick if available, or just touch the file
-        echo "Creating placeholder wallpapers in /tmp"
-        touch $WP1 $WP2 $WP3
-      fi
-
-      WP=""
-      case $WORKSPACE in
-        1) WP="$WP1" ;;
-        2) WP="$WP2" ;;
-        3) WP="$WP3" ;;
-        *) WP="$WP1" ;;
+      case "$WORKSPACE" in
+        1) WP="$WP_DIR/workspace-1.png" ;;
+        2) WP="$WP_DIR/workspace-2.png" ;;
+        3) WP="$WP_DIR/workspace-3.png" ;;
+        *) WP="$WP_DIR/workspace-1.png" ;;
       esac
 
-      # If the file exists and has size, use swaybg
-      if [ -s "$WP" ]; then
-        # Kill old swaybg instances
-        killall swaybg
-        # Launch new one
+      if [ ! -f "$WP" ]; then
+        WP="$WP_DIR/default.png"
+      fi
+
+      if [ -f "$WP" ]; then
+        pkill -x swaybg || true
         swaybg -i "$WP" -m fill &
       fi
     '';
@@ -48,8 +40,19 @@
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      # Run the change script for workspace 1 on startup
       ~/.config/hypr/scripts/change_wallpaper.sh 1
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/focus_workspace.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      WS="$1"
+      hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${WS} }))"
+      ~/.config/hypr/scripts/change_wallpaper.sh "$WS"
     '';
   };
 
@@ -57,61 +60,62 @@
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      # Toggle the trackpad state dynamically
+      set -euo pipefail
 
-      # Find trackpad name from hyprctl devices
-      TRACKPAD=$(hyprctl devices -j | jq -r '.mice[] | select(.name | contains("touchpad") or contains("trackpad")) | .name' | head -n 1)
-
+      TRACKPAD=$(hyprctl devices -j | jq -r '.mice[] | select(.name | test("touchpad|trackpad"; "i")) | .name' | head -n 1)
       if [ -z "$TRACKPAD" ]; then
-        echo "No trackpad found"
+        notify-send "Trackpad" "No touchpad found"
         exit 1
       fi
 
-      # Get current state
-      # hyprctl getoption does not return device specific options easily, 
-      # but we can track state in a file
-      STATE_FILE="/tmp/hypr_trackpad_state"
-
+      STATE_FILE="$XDG_RUNTIME_DIR/hypr-trackpad-enabled"
       if [ ! -f "$STATE_FILE" ]; then
         echo "1" > "$STATE_FILE"
       fi
 
-      STATE=$(cat "$STATE_FILE")
-
-      if [ "$STATE" -eq 1 ]; then
-        hyprctl keyword "device:$TRACKPAD:enabled" false
+      if [ "$(cat "$STATE_FILE")" = "1" ]; then
+        hyprctl eval "hl.device({ name = \"''${TRACKPAD}'\", enabled = false })"
         echo "0" > "$STATE_FILE"
-        echo "Trackpad Disabled"
+        notify-send "Trackpad" "Disabled"
       else
-        hyprctl keyword "device:$TRACKPAD:enabled" true
+        hyprctl eval "hl.device({ name = \"''${TRACKPAD}'\", enabled = true })"
         echo "1" > "$STATE_FILE"
-        echo "Trackpad Enabled"
+        notify-send "Trackpad" "Enabled"
       fi
     '';
   };
 
-  xdg.configFile."hypr/scripts/volume.sh" = {
+  xdg.configFile."hypr/scripts/show_desktop.sh" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      # Handle volume and play feedback sound
-      
-      ACTION=$1
-      
-      case $ACTION in
-        up)
-          wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+
-          ;;
-        down)
-          wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
-          ;;
-        mute)
-          wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
-          ;;
-      esac
-      
-      # Play Oxygen sound (don't block)
-      paplay /run/current-system/sw/share/sounds/oxygen/stereo/audio-volume-change.ogg || paplay ~/.nix-profile/share/sounds/oxygen/stereo/audio-volume-change.ogg || true &
+      set -euo pipefail
+
+      TMP_FILE="$XDG_RUNTIME_DIR/hyprland-show-desktop"
+      CURRENT_WORKSPACE=$(hyprctl monitors -j | jq -r '.[] | .activeWorkspace.name')
+
+      if [ -s "$TMP_FILE-$CURRENT_WORKSPACE" ]; then
+        mapfile -t ADDRESS_ARRAY < "$TMP_FILE-$CURRENT_WORKSPACE"
+        CMDS=""
+        for address in "''${ADDRESS_ARRAY[@]}"; do
+          [ -n "$address" ] || continue
+          CMDS+="dispatch movetoworkspacesilent name:$CURRENT_WORKSPACE,address:$address;"
+        done
+        hyprctl --batch "$CMDS"
+        rm "$TMP_FILE-$CURRENT_WORKSPACE"
+      else
+        mapfile -t ADDRESS_ARRAY < <(hyprctl clients -j | jq -r --arg CW "$CURRENT_WORKSPACE" '.[] | select(.workspace.name == $CW) | .address')
+        CMDS=""
+        TMP_ADDRESS=""
+        for address in "''${ADDRESS_ARRAY[@]}"; do
+          [ -n "$address" ] || continue
+          TMP_ADDRESS+="$address"$'\n'
+          CMDS+="dispatch movetoworkspacesilent special:desktop,address:$address;"
+        done
+        [ -n "$CMDS" ] || exit 0
+        hyprctl --batch "$CMDS"
+        printf '%s' "$TMP_ADDRESS" | sed -e '/^$/d' > "$TMP_FILE-$CURRENT_WORKSPACE"
+      fi
     '';
   };
 
@@ -123,15 +127,12 @@
 
       APPLET=''${1:-}
       case "$APPLET" in
-        volume)
-          PLASMOID="org.kde.plasma.volume"
-          ;;
-        bluetooth)
-          PLASMOID="org.kde.plasma.bluetooth"
-          ;;
-        *)
-          exit 2
-          ;;
+        volume) PLASMOID="org.kde.plasma.volume" ;;
+        bluetooth) PLASMOID="org.kde.plasma.bluetooth" ;;
+        battery) PLASMOID="org.kde.plasma.battery" ;;
+        network) PLASMOID="org.kde.plasma.networkmanagement" ;;
+        clock) PLASMOID="org.kde.plasma.calendar" ;;
+        *) exit 2 ;;
       esac
 
       if pgrep -af "plasmawindowed $PLASMOID" >/dev/null; then
@@ -139,9 +140,35 @@
         exit 0
       fi
 
-      hyprctl dispatch exec "[float; size 380 460; move 100%-392 32; opacity 0.97 0.97] plasmawindowed $PLASMOID"
+      plasmawindowed "$PLASMOID" &
     '';
   };
+
+  xdg.configFile."hypr/scripts/media-feedback.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      ${paplayBin} "${oxygenVolumeSound}" >/dev/null 2>&1 &
+    '';
+  };
+
+  xdg.configFile."avizo/config.ini".text = ''
+    [default]
+    background = rgba(30, 30, 46, 0.95)
+    border-color = rgba(148, 226, 213, 0.9)
+    bar-fg-color = rgba(148, 226, 213, 0.95)
+    bar-bg-color = rgba(49, 50, 68, 0.9)
+    border-radius = 12
+    border-width = 2
+    padding = 20
+    y-offset = 0.12
+    x-offset = 0.5
+    time = 1.5
+    fade-in = 0.15
+    fade-out = 0.3
+  '';
 
   xdg.configFile."hypr/scripts/screenshot-region.sh" = {
     executable = true;

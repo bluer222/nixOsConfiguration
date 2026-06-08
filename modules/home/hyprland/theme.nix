@@ -49,6 +49,10 @@
         variant = "mocha";
       };
     };
+    iconTheme = {
+      name = "breeze-dark";
+      package = pkgs.kdePackages.breeze-icons;
+    };
     gtk3.extraConfig = {
       gtk-application-prefer-dark-theme = true;
     };
@@ -58,9 +62,14 @@
     };
   };
 
+  home.sessionVariables = {
+    GTK_THEME = "Catppuccin-Mocha-Standard-Teal-Dark";
+  };
+
   dconf.settings."org/gnome/desktop/interface" = {
     color-scheme = "prefer-dark";
     gtk-theme = "Catppuccin-Mocha-Standard-Teal-Dark";
+    icon-theme = "breeze-dark";
   };
 
   # -----------------------------------------------------

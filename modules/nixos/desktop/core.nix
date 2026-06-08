@@ -24,6 +24,14 @@
   security.pam = {
     howdy.enable = false;
     services = {
+      systemd-run0 = {
+        enable = true;
+        unix = true;
+        howdy = {
+          enable = true;
+          control = "sufficient";
+        };
+      };
       kde.howdy = {
         enable = true;
         control = "sufficient";
@@ -33,10 +41,6 @@
         control = "sufficient";
       };
       polkit-1.howdy = {
-        enable = true;
-        control = "sufficient";
-      };
-      systemd-run0.howdy = {
         enable = true;
         control = "sufficient";
       };

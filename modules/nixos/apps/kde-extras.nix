@@ -15,6 +15,7 @@
     kdePackages.kde-gtk-config
     kdePackages.karousel
     kdePackages.spectacle
+    kdePackages.kitemmodels
     #(pkgs.kdePackages.spectacle.override {
     #    tesseractLanguages = [ "eng" ];
     #})

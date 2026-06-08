@@ -5,9 +5,9 @@
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;
+    # hyprland portal is provided by programs.hyprland.portalPackage
     extraPortals = with pkgs; [
       xdg-desktop-portal-gtk
-      xdg-desktop-portal-hyprland
     ];
     # Default portal configuration
     config = {

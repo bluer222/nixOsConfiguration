@@ -17,6 +17,8 @@
     ../../modules/nixos/system/audio.nix
     ../../modules/nixos/desktop/core.nix
     ../../modules/nixos/desktop/portals.nix
+    ../../modules/nixos/desktop/polkit.nix
+    ../../modules/nixos/desktop/power_button.nix
     ../../modules/nixos/system/performance.nix
     ../../modules/nixos/desktop/kde.nix
     ../../modules/nixos/desktop/hyprland.nix

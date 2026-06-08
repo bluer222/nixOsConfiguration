@@ -7,6 +7,6 @@
     isNormalUser = true;
     home = "/home/samm";
     description = "Sam Merlin";
-    extraGroups = [ "video" "networkmanager" "wheel" "ydotool" "audio" "i2c" "dialout" "docker" ];
+    extraGroups = [ "video" "networkmanager" "wheel" "ydotool" "audio" "i2c" "dialout" "docker" "input" ];
   };
 }

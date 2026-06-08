@@ -8,13 +8,14 @@
     ./idle.nix
     ./theme.nix
     ./scripts.nix
+    ./notifications.nix
+    ./avizo.nix
   ];
 
   home.packages = with pkgs; [
     # Wayland basics
     wl-clipboard
     cliphist
-    wdisplays
     jq
 
     # Waybar & Launchers
@@ -24,10 +25,15 @@
     kdePackages.bluedevil
     kdePackages.plasma-pa
     kdePackages.plasma-workspace
-    
-    # Audio & Brightness
+    kdePackages.systemsettings
+    kdePackages.breeze-icons
+    pulseaudio
+
+    # Audio, brightness OSD, and feedback
     kdePackages.oxygen-sounds
+    avizo
     brightnessctl
+    libnotify
     
     # Idle & Lock
     hypridle

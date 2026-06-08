@@ -61,6 +61,7 @@ programs.qgroundcontrol.enable = true;
     digikam
     ddrescue
     ddcutil
+    albert
     nss
     ckan
     immich-go

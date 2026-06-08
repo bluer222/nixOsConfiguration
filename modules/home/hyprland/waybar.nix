@@ -4,19 +4,9 @@
   programs.waybar = {
     enable = true;
     style = ''
-      /* Catppuccin Mocha */
       @define-color base   #1e1e2e;
-      @define-color mantle #181825;
-      @define-color crust  #11111b;
       @define-color text   #cdd6f4;
       @define-color subtext0 #a6adc8;
-      @define-color subtext1 #bac2de;
-      @define-color surface0 #313244;
-      @define-color surface1 #45475a;
-      @define-color surface2 #585b70;
-      @define-color overlay0 #6c7086;
-      @define-color overlay1 #7f849c;
-      @define-color overlay2 #9399b2;
       @define-color teal      #94e2d5;
 
       * {
@@ -35,12 +25,11 @@
         color: @subtext0;
         background: transparent;
         border: none;
-        box-shadow: none;
       }
       #workspaces button.active {
         color: @teal;
       }
-      
+
       #taskbar button {
         color: @text;
         padding: 0 4px;
@@ -55,7 +44,6 @@
         padding: 0 10px;
       }
 
-      /* Base styling for modules */
       #clock, #battery, #pulseaudio, #network, #bluetooth, #cpu, #memory {
         padding: 0 10px;
       }
@@ -65,41 +53,40 @@
         layer = "top";
         position = "top";
         height = 30;
-        
+
         modules-left = [
           "wlr/taskbar"
           "cpu"
           "memory"
         ];
-        
+
         modules-center = [
           "hyprland/workspaces"
         ];
-        
+
         modules-right = [
-          "network"
           "pulseaudio"
           "bluetooth"
+          "network"
           "tray"
           "battery"
           "clock"
         ];
 
-        # Tool choice: wlr/taskbar handles window enumeration cleanly inside Waybar.
-        # Alternative: nwg-dock or another external panel.
         "wlr/taskbar" = {
           format = "{icon} {name}";
-          icon-size = 14;
+          icon-size = 16;
+          icon-theme = "breeze-dark";
           on-click = "activate";
           on-click-middle = "close";
         };
 
         "cpu" = {
-          format = "CPU: {usage}%";
+          format = "CPU {usage}%";
         };
 
         "memory" = {
-          format = "RAM: {}%";
+          format = "RAM {}%";
         };
 
         "hyprland/workspaces" = {
@@ -108,40 +95,47 @@
             "1" = "1";
             "2" = "2";
             "3" = "3";
-            "default" = "";
+            "default" = "•";
           };
         };
 
-        # Interval set to 1 for 1-second real-time feel
         "network" = {
-          format-wifi = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
-          format-ethernet = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
-          format-disconnected = "Offline";
+          format-wifi = "WiFi";
+          format-ethernet = "Eth";
+          format-disconnected = "Off";
+          tooltip-format = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
           interval = 1;
-          on-click = "nm-connection-editor"; # Wifi configurator
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh network";
         };
 
         "pulseaudio" = {
-          format = "Vol: {volume}%";
-          on-click = "~/.config/hypr/scripts/qt-popup.sh volume";
+          format = "Vol {volume}%";
+          format-muted = "Vol mute";
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh volume";
         };
 
         "bluetooth" = {
-          format = "BT: {status}";
-          on-click = "~/.config/hypr/scripts/qt-popup.sh bluetooth";
+          format = "BT {status}";
+          format-off = "BT off";
+          format-on = "BT on";
+          format-connected = "BT {num_connections}";
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh bluetooth";
         };
 
         "battery" = {
-          format = "Bat: {capacity}%";
+          format = "Bat {capacity}%";
+          format-charging = "Bat {capacity}%";
+          format-plugged = "Bat {capacity}%";
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh battery";
         };
 
-        # Format: day-of-week, date, month, year, time
         "clock" = {
-          format = "{:%w %a / %d %b / %Y  %H:%M}";
+          format = "{:%a %d %b  %H:%M}";
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh clock";
         };
-        
+
         "tray" = {
-          icon-size = 14;
+          icon-size = 16;
           spacing = 10;
         };
       };

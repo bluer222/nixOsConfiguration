@@ -5,7 +5,10 @@
     enable = true;
     package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
 
-    plugins = [ "hyprland-dynamic-cursors" ];
+    plugins = [
+      pkgs.hyprlandPlugins.hypr-dynamic-cursors
+      pkgs.hyprlandPlugins.hypr-darkwindow
+    ];
 
     configType = "lua";
 
@@ -19,6 +22,7 @@
       hl.env("XCURSOR_SIZE", "24")
       hl.env("HYPRCURSOR_SIZE", "24")
       hl.env("GTK_THEME", "Catppuccin-Mocha-Standard-Teal-Dark")
+      hl.env("XDG_CURRENT_DESKTOP", "KDE")
       hl.env("GDK_BACKEND", "wayland,x11")
       hl.env("QT_QPA_PLATFORM", "wayland;xcb")
       hl.env("QT_QPA_PLATFORMTHEME", "kvantum")
@@ -47,14 +51,14 @@
           layout = "scrolling",
         },
         scrolling = {
-          follow_focus = true,
+          follow_focus = false,
           fullscreen_on_one_column = false,
           follow_min_visible = 1.0,
         },
         decoration = {
           rounding = 10,
-          active_opacity = 0.92,
-          inactive_opacity = 0.88,
+          active_opacity = 1.0,
+          inactive_opacity = 1.0,
           blur = {
             enabled = true,
             size = 6,
@@ -66,6 +70,7 @@
         },
         cursor = {
           no_warps = true,
+          no_hardware_cursors = 1,
         },
         animations = {
           enabled = true,
@@ -77,6 +82,7 @@
           sensitivity = 0.7,
           touchpad = {
             natural_scroll = true,
+            tap_to_click = false,
           },
         },
         misc = {
@@ -142,7 +148,7 @@
       })
       hl.window_rule({
         name = "qt-plasmawindowed-popup",
-        match = { class = "^(plasmashell|plasmawindowed)$" },
+        match = { class = "^org\\.kde\\.plasmawindowed.*$" },
         float = true,
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
@@ -167,11 +173,24 @@
       hl.on("hyprland.start", function()
         hl.exec_cmd("waybar")
         hl.exec_cmd("hypridle")
+        hl.exec_cmd("mcontrolcenter")
         hl.exec_cmd("wl-paste --type text --watch cliphist store")
         hl.exec_cmd("wl-paste --type image --watch cliphist store")
         hl.exec_cmd("~/.config/hypr/scripts/wallpaper_init.sh")
         hl.exec_cmd("nm-applet --indicator")
-        # hl.exec_cmd("hyprpolkitagent")
+
+        if hl.plugin.darkwindow ~= nil then
+          hl.plugin.darkwindow.load_shader("mochaChromakey", {
+            from = "chromakey",
+            args = "bkg=[0.118 0.118 0.180] similarity=0.08 amount=1.0 targetOpacity=0.0",
+            introduces_transparency = true,
+          })
+          hl.window_rule({
+            name = "darkwindow-mocha",
+            match = { class = ".*" },
+            ["darkwindow:shade"] = "mochaChromakey",
+          })
+        end
       end)
 
       -- -----------------------------------------------------
@@ -180,23 +199,25 @@
       local mainMod = "SUPER"
 
 
-      hl.bind(mainMod .. " + SUPER_L", hl.dsp.exec_cmd("pkill rofi || rofi -show drun -unfocus-exit -theme ~/.config/rofi/spotlight.rasi"), { release = true })
+      hl.bind(mainMod .. " + SUPER_L", hl.dsp.exec_cmd("albert toggle"), { release = true })
 
       hl.bind(mainMod .. " + Escape", hl.dsp.window.close())
       hl.bind(mainMod .. " + SHIFT + Escape", hl.dsp.exec_cmd("hyprctl activewindow -j | jq -r '.pid' | xargs kill -9"))
 
-      hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("hyprctl dispatch movewindow u"))
-      hl.bind(mainMod .. " + A", hl.dsp.exec_cmd("hyprctl dispatch movewindow l"))
-      hl.bind(mainMod .. " + S", hl.dsp.exec_cmd("hyprctl dispatch movewindow d"))
-      hl.bind(mainMod .. " + D", hl.dsp.exec_cmd("hyprctl dispatch movewindow r"))
+      hl.bind(mainMod .. " + W", hl.dsp.window.move({ direction = "up" }))
+      hl.bind(mainMod .. " + A", hl.dsp.window.move({ direction = "left" }))
+      hl.bind(mainMod .. " + S", hl.dsp.window.move({ direction = "down" }))
+      hl.bind(mainMod .. " + D", hl.dsp.window.move({ direction = "right" }))
 
-      hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("hyprctl dispatch workspace 1 && ~/.config/hypr/scripts/change_wallpaper.sh 1"))
-      hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("hyprctl dispatch workspace 2 && ~/.config/hypr/scripts/change_wallpaper.sh 2"))
-      hl.bind(mainMod .. " + F", hl.dsp.exec_cmd("hyprctl dispatch workspace 3 && ~/.config/hypr/scripts/change_wallpaper.sh 3"))
+      hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("~/.config/hypr/scripts/focus_workspace.sh 1"))
+      hl.bind(mainMod .. " + R", hl.dsp.exec_cmd("~/.config/hypr/scripts/focus_workspace.sh 2"))
+      hl.bind(mainMod .. " + F", hl.dsp.exec_cmd("~/.config/hypr/scripts/focus_workspace.sh 3"))
 
       hl.bind(mainMod .. " + SHIFT + E", hl.dsp.window.move({ workspace = 1 }))
       hl.bind(mainMod .. " + SHIFT + R", hl.dsp.window.move({ workspace = 2 }))
       hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.move({ workspace = 3 }))
+
+      hl.bind(mainMod .. " + GRAVE", hl.dsp.exec_cmd("~/.config/hypr/scripts/show_desktop.sh"))
 
       hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("cliphist list | rofi -dmenu -unfocus-exit -theme ~/.config/rofi/spotlight.rasi | cliphist decode | wl-copy"))
 
@@ -206,19 +227,16 @@
       hl.bind(mainMod .. " + mouse:272", hl.dsp.window.resize(), { mouse = true })
       hl.bind(mainMod .. " + mouse:273", hl.dsp.window.drag(), { mouse = true })
 
-      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh mute"), { locked = true, repeating = true })
-      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh down"), { locked = true, repeating = true })
-      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume.sh up"), { locked = true, repeating = true })
-      hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true, repeating = true })
+      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("volumectl -d toggle-mute && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("volumectl -d down && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("volumectl -d up && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("volumectl -d -m toggle-mute"), { locked = true, repeating = true })
 
-      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl s 5%+"), { locked = true, repeating = true })
-      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl s 5%-"), { locked = true, repeating = true })
-      --fn+f4
-      --hl.bind(mainMod .. " + CTRL + F24", hl.dsp.exec_cmd("~/.config/hypr/scripts/toggle_trackpad.sh"), { locked = true })
-      --fn+f7
-      --hl.bind("code:179", hl.dsp.exec_cmd("rofi -show run"), { locked = true })
-      -- fn+f11
-      -- hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("kcmshell6 kcm_kscreen"), { locked = true })
+      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("lightctl -d up 5"), { locked = true, repeating = true })
+      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("lightctl -d down 5"), { locked = true, repeating = true })
+
+      hl.bind("XF86PowerOff", hl.dsp.exec_cmd("/etc/power_menu.sh"), { locked = true })
+      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("kcmshell6 kcm_kscreen"), { locked = true })
     '';
   };
 }
