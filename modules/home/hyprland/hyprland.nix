@@ -47,7 +47,7 @@
           layout = "scrolling",
         },
         scrolling = {
-          follow_focus = false,
+          follow_focus = true,
           fullscreen_on_one_column = false,
           follow_min_visible = 1.0,
         },
@@ -72,7 +72,7 @@
         },
         input = {
           kb_layout = "us",
-          follow_mouse = 0,
+          follow_mouse = 1,
           accel_profile = "flat",
           sensitivity = 0.7,
           touchpad = {
@@ -81,6 +81,7 @@
         },
         misc = {
           focus_on_activate = true,
+          middle_click_paste = false
         },
       })
 
@@ -170,7 +171,7 @@
         hl.exec_cmd("wl-paste --type image --watch cliphist store")
         hl.exec_cmd("~/.config/hypr/scripts/wallpaper_init.sh")
         hl.exec_cmd("nm-applet --indicator")
-        hl.exec_cmd("hyprpolkitagent")
+        # hl.exec_cmd("hyprpolkitagent")
       end)
 
       -- -----------------------------------------------------
