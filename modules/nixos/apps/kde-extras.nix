@@ -19,7 +19,6 @@
     #(pkgs.kdePackages.spectacle.override {
     #    tesseractLanguages = [ "eng" ];
     #})
-    kde-rounded-corners
   ];
 
   programs.kde-pim.kmail = true;

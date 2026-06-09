@@ -10,7 +10,7 @@
       @define-color teal      #94e2d5;
 
       * {
-        font-family: "Inter", "Sans", sans-serif;
+        font-family: "FiraCode Nerd Font", "Inter", "Sans", sans-serif;
         font-size: 14px;
         min-height: 0;
       }
@@ -30,13 +30,13 @@
         color: @teal;
       }
 
-      #taskbar button {
+      #workspaces button .taskbar button {
         color: @text;
         padding: 0 4px;
         background: transparent;
         border: none;
       }
-      #taskbar button.active {
+      #workspaces button .taskbar button.active {
         color: @teal;
       }
 
@@ -44,7 +44,7 @@
         padding: 0 10px;
       }
 
-      #clock, #battery, #pulseaudio, #network, #bluetooth, #cpu, #memory {
+      #clock, #battery, #pulseaudio, #network, #bluetooth, #cpu, #memory, #custom-notifications {
         padding: 0 10px;
       }
     '';
@@ -55,29 +55,52 @@
         height = 30;
 
         modules-left = [
-          "wlr/taskbar"
+          "hyprland/workspaces"
+          "hyprland/workspaces#windows"
           "cpu"
           "memory"
         ];
 
-        modules-center = [
-          "hyprland/workspaces"
-        ];
+        modules-center = [ ];
 
         modules-right = [
           "bluetooth"
           "network"
+          "pulseaudio"
+          "custom/notifications"
           "tray"
           "battery"
           "clock"
         ];
 
-        "wlr/taskbar" = {
-          format = "{icon} {name}";
-          icon-size = 16;
-          icon-theme = "breeze-dark";
-          on-click = "activate";
-          on-click-middle = "close";
+        "hyprland/workspaces" = {
+          format = "{icon}";
+          format-icons = {
+            "1" = "1";
+            "2" = "2";
+            "3" = "3";
+            "default" = "•";
+          };
+          persistent-workspaces = {
+            "1" = [ ];
+            "2" = [ ];
+            "3" = [ ];
+          };
+        };
+
+        "hyprland/workspaces#windows" = {
+          active-only = true;
+          format = "{windows}";
+          workspace-taskbar = {
+            enable = true;
+            update-active-window = true;
+            format = "{icon}";
+            icon-size = 16;
+            icon-theme = "breeze-dark";
+            orientation = "horizontal";
+            on-click-window = "activate";
+            on-click-middle-window = "close";
+          };
         };
 
         "cpu" = {
@@ -88,48 +111,61 @@
           format = "RAM {}%";
         };
 
-        "hyprland/workspaces" = {
-          format = "{icon}";
-          format-icons = {
-            "1" = "1";
-            "2" = "2";
-            "3" = "3";
-            "default" = "•";
-          };
-        };
-
         "network" = {
-          format-wifi = "WiFi";
-          format-ethernet = "Eth";
-          format-disconnected = "Off";
+          format-wifi = "󰖩";
+          format-ethernet = "󰈀";
+          format-disconnected = "󰖪";
           tooltip-format = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
           interval = 1;
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh network";
         };
 
         "pulseaudio" = {
-          format = "Vol {volume}%";
-          format-muted = "Vol mute";
+          format = "{icon} {volume}%";
+          format-muted = "󰝟 mute";
+          format-icons = {
+            headphone = "󰋋";
+            handsfree = "󰋎";
+            headset = "󰋎";
+            phone = "󰄜";
+            portable = "󰦧";
+            car = "󰄋";
+            default = [ "󰕿" "󰖀" "󰕾" ];
+          };
+          tooltip-format = "{desc} · {volume}%";
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh volume";
         };
 
+        "custom/notifications" = {
+          format = "󰂚";
+          tooltip = "Notification history";
+          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh notifications";
+        };
+
         "bluetooth" = {
-          format = "BT {status}";
-          format-off = "BT off";
-          format-on = "BT on";
-          format-connected = "BT {num_connections}";
+          format = "󰂯 {status}";
+          format-off = "󰂲 off";
+          format-on = "󰂯 on";
+          format-connected = "󰂱 {num_connections}";
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh bluetooth";
         };
 
         "battery" = {
-          format = "Bat {capacity}%";
-          format-charging = "Bat {capacity}%";
-          format-plugged = "Bat {capacity}%";
+          format = "{icon} {capacity}%";
+          format-charging = "󰂄 {capacity}%";
+          format-plugged = "󰚥 {capacity}%";
+          format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+          states = {
+            warning = 30;
+            critical = 15;
+          };
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh battery";
         };
 
         "clock" = {
-          format = "{:%a %d %b  %H:%M}";
+          format = "{:%a %d/%b %m  %H:%M}";
+          interval = 1;
+          tooltip-format = "{:%A, %d %B %Y  %H:%M:%S}";
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh clock";
         };
 

@@ -1,19 +1,17 @@
 { config, pkgs, ... }:
 
 {
-  # Enable XDG Desktop Portals for screensharing and cross-desktop compatibility
   xdg.portal = {
     enable = true;
-    xdgOpenUsePortal = true;
-    # hyprland portal is provided by programs.hyprland.portalPackage
-    extraPortals = with pkgs; [
-      xdg-desktop-portal-gtk
-    ];
-    # Default portal configuration
+    xdgOpenUsePortal = false;
+    extraPortals = [ pkgs.kdePackages.xdg-desktop-portal-kde ];
     config = {
-      common.default = [ "kde" ];
-      plasma.default = [ "kde" ];
-      Hyprland.default = [ "hyprland" "gtk" ];
+      # Desktop name is case-folded to lowercase by xdg-desktop-portal.
+      hyprland = {
+        default = [ "hyprland" "kde" ];
+        "org.freedesktop.impl.portal.FileChooser" = [ "kde" ];
+        "org.freedesktop.impl.portal.OpenURI" = [ "kde" ];
+      };
     };
   };
 }

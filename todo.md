@@ -1,21 +1,25 @@
 Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland native tools(generally qt, hyprland native if it is clearly better than the qt option)
 
-new:
-the waybar menus(that use plasmawindowed) for volume etc should close on lose focus
-screenshot util for prtscr is gtk
-darkwindow and one other hting has a version mismatch(check logs)
-the cursor issue seems fixed maybe?
-can ou make waybar track the active apps of each workspace independently
-when chrome or another app opens a file manager for download choosing etc, it should use dolphin, not whatever gtk app its using
-wallpaper change only works when i use the keybind, not when i swipe to change workspace(is this not possible using real hyperland fucntionality rather than scripts?, if not, do not have some sort of daemon checking every time interval, use somthing event based)
-albert needs to be launched on login for toggle command to work
-make window corners square(no roundness)
-run0 instantly auths without any howdy or password input
-gui auth doesnt work with eg for partitionmanager or right click+open as admin in dolphin(this and previous makes it seem like polkit is not properly set up, i think we need to stick to one impementation while rn we have multiple)
-add icons for volume, battery, etc in the taskbar
-is it possible for plasmawindowed applets to open faster?
-switch "show desktop" to a window opacity based show(make sure it also toggles off blur)
-mcontrolcenter seems to not work right when launched by hyprland(maybe use a systemd service?)
+still todo:
+- super+p montior settings are gtk
+- some qt apps dont get styled(one example is kde sound settings), i think just delete what we have now and start fresh with what theoretically shuld be enough(follow the docs to a t)
+- (later) replace plasma login with a hyprland native login. style it to look like the bgrt screen with the password *'s where the loading spinner would be, and a nixos logo somewere(naybe a bit below the password). (you can read the image from /sys/firmware/acpi/bgrt/image), this will implictly fix the cursor issue.
+- chrome/file-picker still uses somthing gtk not dolphin
+- rework show desktop(super+grave toggles) to create and switch to a new desktop, then back to the old one rather than using transparency
+- kwalletd6 started on login for vscode/cursor secret storage. when brave is opened kwallet prompts for password(preferably unlock wallet when computer is unlocked). vscode now just says no keyring found
+- still no sound for volume change, unplug etc (use kde oxygen sounds)
+- logout power menu option still doesnt work(kills brave then doesnt logout)
+- add lock option to power menu
+- make a report to me listing all gtk apps currently installed. i would prefer to not have gtk installed at all. dont do this manually, use some nix tool to find what depends on it. 
+- make waybar include window titles not just icon
+- trigger howdy on wake instead of needing to press enter
+- add back darkwindow with a working transparency effect. (look at the github to confirm lua and config values)
+- waybar no longer shows the workspace numbers and which one is active
+- disable shadows around windows
+- inconsistant startup (sometimes mcontrolcenter doesnt start property, but trying to start it says another instance is already running, sometimes brigness keys dont work)
+- waybar crashes sometimes not sure why
+- clean out redundant hyprland configs
+- (once all problems are fixed) remove plasma completly and switch to hyprland fully(may need to explicitly install things like the plasma wifi settings etc which were installed via plasma before)
 
 done:
 - volume/bluetooth/battery/network/clock waybar popups via plasmawindowed (Qt plasma applets)
@@ -25,7 +29,6 @@ done:
 - Hypr-DarkWindow for transparency with opaque text
 - volume/brightness on-screen popups via avizo (volumectl/lightctl + avizo-service)
 - oxygen sound on volume key press
-- screen recording / xdg-open portal fix (removed duplicate xdg-desktop-portal-hyprland)
 - notifications via mako (home-manager)
 - power menu on power button (logind ignore + XF86PowerOff -> wofi menu)
 - fixed scripts: trackpad toggle uses hyprctl eval, show desktop uses official hyprland pattern, qt-popup for all waybar menus
@@ -35,6 +38,7 @@ done:
 - super+P -> wdisplays for temporary monitor layout
 - plasma login: howdy for unlock, password for login
 - waybar icon positioning fixed
+- migrated to ppd (power-profiles-daemon)
 - display configuration error (missing kitemmodels)
 - removed trackpad toggle
 - replaced rofi with albert (Qt-based)
@@ -43,9 +47,22 @@ done:
 - fixed volume notifications (managed avizo with systemd service)
 - fixed power menu debug notifications
 - replaced GTK screenshot utility with Hyprshot (Hyprland native)
-- configured Qt styling to use qt5ct + kvantum for consistency
-
-still todo:
-- desktop sounds for power plug/unplug etc (beyond volume key press)
-- switch from kwallet to something else unlocked with hyprland
-- settings app for multi monitor beyond wdisplays if needed
+- stripped over-troubleshooting: removed redundant hyprland env vars, wheel-group polkit bypass, duplicate polkit systemd service, gtk portal, and global KDE session env overrides
+- xdg-open fixed: disabled xdgOpenUsePortal, added xdg-utils + mime defaults for brave and dolphin
+- albert launched on hyprland login (albert -d in autostart)
+- window corners are square (decoration.rounding = 0)
+- run0 no longer auto-auths: removed wheel-group polkit YES rule
+- gui polkit auth unified to kde agent only (removed hyprpolkitagent, start polkit-kde-authentication-agent-1 from hyprland autostart)
+- waybar icons for volume, battery, network, bluetooth (nerd font icons)
+- screen recording portals simplified to hyprland-only defaults
+- hyprland/plasma coexistence: nixpkgs hyprland, simplified portals (no duplicate dbus registrations), removed global XDG_CURRENT_DESKTOP=KDE override
+- darkwindow plugin version mismatch fixed by switching hyprland from flake input to nixpkgs (plugins now match)
+- notification history in waybar
+- plasmawindowed applets open fine now
+- power menu styled and no more notifications
+- clock shows day name and number as well as month name and number(e.g. Tus 09/Jun 06 14:30)
+- brightness control works
+- waybar plasmawindowed popups close when focus is lost
+- darkwindow removed for now (mochaChromakey shader broke hyprland startup on 0.55 lua config)
+- wallpaper changes on workspace swipe
+- howdy sufficient for unlock after sleep

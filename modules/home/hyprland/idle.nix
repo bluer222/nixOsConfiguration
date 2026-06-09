@@ -68,6 +68,7 @@
       general = {
         disable_loading_bar = true;
         hide_cursor = true;
+        ignore_empty_input = false;
       };
 
       background = [
@@ -89,7 +90,7 @@
           inner_color = "rgb(30, 30, 46)";
           outer_color = "rgb(148, 226, 213)";
           outline_thickness = 2;
-          placeholder_text = "Password...";
+          placeholder_text = "Enter for face unlock, or type password...";
           shadow_passes = 2;
         }
       ];

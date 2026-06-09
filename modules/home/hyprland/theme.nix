@@ -1,43 +1,60 @@
 { config, pkgs, ... }:
 
 {
-  # -----------------------------------------------------
-  # Qt Theming (Catppuccin via Kvantum)
-  # -----------------------------------------------------
   qt = {
     enable = true;
+    style = {
+      name = "kvantum";
+      package = pkgs.catppuccin-kvantum;
+    };
     platformTheme.name = "qtct";
-    style.name = "kvantum";
   };
 
   home.packages = with pkgs; [
     catppuccin-kvantum
     libsForQt5.qt5ct
-    libsForQt5.qt5.qtwayland
     kdePackages.qt6ct
     kdePackages.qtwayland
-    hyprland-qtutils
     hyprland-qt-support
   ];
 
   xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
     [General]
-    theme=catppuccin-mocha-teal
-  '';
-
-  xdg.configFile."qt5ct/qt5ct.conf".text = ''
-    [Appearance]
-    style=kvantum
+    theme=catppuccin-frappe-blue
   '';
 
   xdg.configFile."qt6ct/qt6ct.conf".text = ''
     [Appearance]
     style=kvantum
+    icon_theme=breeze-dark
+    standard_dialogs=default
+    palette=${pkgs.kdePackages.qt6ct}/share/qt6ct/colors/darker.conf
   '';
 
-  # -----------------------------------------------------
-  # GTK Theming (Fallback if needed)
-  # -----------------------------------------------------
+  xdg.configFile."qt5ct/qt5ct.conf".text = ''
+    [Appearance]
+    style=kvantum
+    icon_theme=breeze-dark
+    standard_dialogs=default
+    palette=${pkgs.libsForQt5.qt5ct}/share/qt5ct/colors/darker.conf
+  '';
+
+  xdg.configFile."kdeglobals".text = ''
+    [General]
+    ColorScheme=BreezeDark
+    AccentColor=94,226,213
+
+    [Icons]
+    Theme=breeze-dark
+
+    [KDE]
+    widgetStyle=Kvantum
+    colorScheme=BreezeDark
+
+    [UiSettings]
+    ColorScheme=qt6ct
+  '';
+
   gtk = {
     enable = true;
     theme = {
@@ -62,26 +79,19 @@
     };
   };
 
-  home.sessionVariables = {
-    GTK_THEME = "Catppuccin-Mocha-Standard-Teal-Dark";
-  };
-
   dconf.settings."org/gnome/desktop/interface" = {
     color-scheme = "prefer-dark";
     gtk-theme = "Catppuccin-Mocha-Standard-Teal-Dark";
     icon-theme = "breeze-dark";
   };
 
-  # -----------------------------------------------------
-  # Rofi Config (Spotlight style)
-  # -----------------------------------------------------
   xdg.configFile."rofi/spotlight.rasi".text = ''
     * {
-        bg: #1e1e2ee6; /* Mocha Base with transparency */
-        bg-alt: #313244e6; /* Surface0 */
-        fg: #cdd6f4; /* Text */
-        fg-alt: #a6adc8; /* Subtext0 */
-        border: #94e2d5; /* Teal active border */
+        bg: #1e1e2ee6;
+        bg-alt: #313244e6;
+        fg: #cdd6f4;
+        fg-alt: #a6adc8;
+        border: #94e2d5;
 
         background-color: transparent;
         text-color: @fg;
@@ -137,7 +147,7 @@
         background-color: @bg-alt;
         text-color: @border;
     }
-    
+
     element-text {
         vertical-align: 0.5;
     }

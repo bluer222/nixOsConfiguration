@@ -16,6 +16,7 @@
     kdePackages.umbrello
     gnumake
     gemini-cli
+    cursor-cli
     antigravity
   ];
 }

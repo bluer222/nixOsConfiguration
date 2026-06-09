@@ -1,7 +1,9 @@
 { config, pkgs, lib, ... }:
 
 let
-  oxygenVolumeSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/audio-volume-change.ogg";
+  volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
+  oxygenPowerSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/power-plug.ogg";
+  oxygenUnplugSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/power-unplug.ogg";
 in {
   home.packages = with pkgs; [
     swaybg
@@ -51,36 +53,6 @@ in {
 
       WS="$1"
       hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${WS} }))"
-      ~/.config/hypr/scripts/change_wallpaper.sh "$WS"
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/toggle_trackpad.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      TRACKPAD=$(hyprctl devices -j | jq -r '.mice[] | select(.name | test("touchpad|trackpad"; "i")) | .name' | head -n 1)
-      if [ -z "$TRACKPAD" ]; then
-        notify-send "Trackpad" "No touchpad found"
-        exit 1
-      fi
-
-      STATE_FILE="$XDG_RUNTIME_DIR/hypr-trackpad-enabled"
-      if [ ! -f "$STATE_FILE" ]; then
-        echo "1" > "$STATE_FILE"
-      fi
-
-      if [ "$(cat "$STATE_FILE")" = "1" ]; then
-        hyprctl eval "hl.device({ name = \"''${TRACKPAD}'\", enabled = false })"
-        echo "0" > "$STATE_FILE"
-        notify-send "Trackpad" "Disabled"
-      else
-        hyprctl eval "hl.device({ name = \"''${TRACKPAD}'\", enabled = true })"
-        echo "1" > "$STATE_FILE"
-        notify-send "Trackpad" "Enabled"
-      fi
     '';
   };
 
@@ -90,31 +62,62 @@ in {
       #!/usr/bin/env bash
       set -euo pipefail
 
-      TMP_FILE="$XDG_RUNTIME_DIR/hyprland-show-desktop"
-      CURRENT_WORKSPACE=$(hyprctl monitors -j | jq -r '.[] | .activeWorkspace.name')
+      STATE_FILE="$XDG_RUNTIME_DIR/hyprland-show-desktop"
 
-      if [ -s "$TMP_FILE-$CURRENT_WORKSPACE" ]; then
-        mapfile -t ADDRESS_ARRAY < "$TMP_FILE-$CURRENT_WORKSPACE"
-        CMDS=""
-        for address in "''${ADDRESS_ARRAY[@]}"; do
-          [ -n "$address" ] || continue
-          CMDS+="dispatch movetoworkspacesilent name:$CURRENT_WORKSPACE,address:$address;"
-        done
-        hyprctl --batch "$CMDS"
-        rm "$TMP_FILE-$CURRENT_WORKSPACE"
+      if [ -f "$STATE_FILE" ]; then
+        hyprctl eval "hl.config({ decoration = { blur = { enabled = true } } })"
+        while read -r addr; do
+          [ -n "''${addr}" ] && hyprctl dispatch setprop "address:''${addr}" alpha 1
+        done < <(hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[] | select(.mapped == true) | .address')
+        rm "$STATE_FILE"
       else
-        mapfile -t ADDRESS_ARRAY < <(hyprctl clients -j | jq -r --arg CW "$CURRENT_WORKSPACE" '.[] | select(.workspace.name == $CW) | .address')
-        CMDS=""
-        TMP_ADDRESS=""
-        for address in "''${ADDRESS_ARRAY[@]}"; do
-          [ -n "$address" ] || continue
-          TMP_ADDRESS+="$address"$'\n'
-          CMDS+="dispatch movetoworkspacesilent special:desktop,address:$address;"
-        done
-        [ -n "$CMDS" ] || exit 0
-        hyprctl --batch "$CMDS"
-        printf '%s' "$TMP_ADDRESS" | sed -e '/^$/d' > "$TMP_FILE-$CURRENT_WORKSPACE"
+        hyprctl eval "hl.config({ decoration = { blur = { enabled = false } } })"
+        while read -r addr; do
+          [ -n "''${addr}" ] && hyprctl dispatch setprop "address:''${addr}" alpha 0.15
+        done < <(hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[] | select(.mapped == true) | .address')
+        touch "$STATE_FILE"
       fi
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/popup-closer.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -uo pipefail
+
+      socket_path() {
+        printf '%s/hypr/%s/.socket2.sock' "''${XDG_RUNTIME_DIR:?}" "''${HYPRLAND_INSTANCE_SIGNATURE:?}"
+      }
+
+      until [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -S "$(socket_path)" ]; do
+        sleep 1
+      done
+
+      close_plasma_popups() {
+        hyprctl eval 'hl.dispatch(hl.dsp.window.close({ window = "class:org.kde.plasmawindowed" }))' >/dev/null 2>&1 || true
+      }
+
+      while true; do
+        ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
+          case "''${line}" in
+            activewindow\>\>*)
+              cls="''${line#activewindow>>}"
+              cls="''${cls%%,*}"
+              if [[ "''${cls}" != org.kde.plasmawindowed* ]]; then
+                close_plasma_popups
+              fi
+              ;;
+            activewindowv2\>\>*)
+              cls=$(hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.class // empty')
+              if [[ "''${cls}" != org.kde.plasmawindowed* ]]; then
+                close_plasma_popups
+              fi
+              ;;
+          esac
+        done
+        sleep 1
+      done
     '';
   };
 
@@ -131,11 +134,12 @@ in {
         battery) PLASMOID="org.kde.plasma.battery" ;;
         network) PLASMOID="org.kde.plasma.networkmanagement" ;;
         clock) PLASMOID="org.kde.plasma.calendar" ;;
+        notifications) PLASMOID="org.kde.plasma.notifications" ;;
         *) exit 2 ;;
       esac
 
-      if pgrep -af "plasmawindowed $PLASMOID" >/dev/null; then
-        pkill -f "plasmawindowed $PLASMOID"
+      if pgrep -af "plasmawindowed.*''${PLASMOID}" >/dev/null 2>&1; then
+        pkill -f "plasmawindowed.*''${PLASMOID}"
         exit 0
       fi
 
@@ -148,6 +152,97 @@ in {
     text = ''
       #!/usr/bin/env bash
       set -euo pipefail
+      ${pkgs.pipewire}/bin/paplay "${volumeSound}" &
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/brightness-key.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      case "$1" in
+        up) lightctl -d up ;;
+        down) lightctl -d down ;;
+        *) exit 2 ;;
+      esac
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/wallpaper-watcher.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -uo pipefail
+
+      socket_path() {
+        printf '%s/hypr/%s/.socket2.sock' "''${XDG_RUNTIME_DIR:?}" "''${HYPRLAND_INSTANCE_SIGNATURE:?}"
+      }
+
+      until [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -S "$(socket_path)" ]; do
+        sleep 1
+      done
+
+      last=""
+      while true; do
+        ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
+          case "''${line}" in
+            workspace\>\>*|workspacev2\>\>*|focusedmon\>\>*|focusedmonv2\>\>*)
+              ws=$(hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id')
+              if [ -n "''${ws}" ] && [ "''${ws}" != "''${last}" ]; then
+                last="''${ws}"
+                "$HOME/.config/hypr/scripts/change_wallpaper.sh" "''${ws}"
+              fi
+              ;;
+          esac
+        done
+        sleep 1
+      done
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/power-sounds.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      LAST_STATE_FILE="''${XDG_RUNTIME_DIR}/hypr-power-online"
+      PLUG_SOUND="${oxygenPowerSound}"
+      UNPLUG_SOUND="${oxygenUnplugSound}"
+
+      get_online() {
+        for supply in /sys/class/power_supply/*; do
+          [ -f "''${supply}/online" ] || continue
+          cat "''${supply}/online"
+          return 0
+        done
+        echo 0
+      }
+
+      play_sound() {
+        ${pkgs.pipewire}/bin/paplay "''${1}" &
+      }
+
+      CURRENT="''$(get_online)"
+      echo "''${CURRENT}" > "''${LAST_STATE_FILE}"
+
+      udevadm monitor --subsystem-match=power_supply --property | while read -r line; do
+        case "''${line}" in
+          *"POWER_SUPPLY_ONLINE="*)
+            NEW="''${line#*=}"
+            OLD="''$(cat "''${LAST_STATE_FILE}" 2>/dev/null || echo "''${CURRENT}")"
+            if [ "''${NEW}" != "''${OLD}" ]; then
+              if [ "''${NEW}" = "1" ]; then
+                play_sound "''${PLUG_SOUND}"
+              else
+                play_sound "''${UNPLUG_SOUND}"
+              fi
+              echo "''${NEW}" > "''${LAST_STATE_FILE}"
+            fi
+            ;;
+        esac
+      done
     '';
   };
 

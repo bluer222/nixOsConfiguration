@@ -12,7 +12,8 @@
       padding = "8";
       margin = "10";
       font = "Inter 12";
-      default-timeout = 5000;
+      default-timeout = 8000;
+      ignore-timeout = false;
     };
   };
 }

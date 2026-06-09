@@ -24,6 +24,13 @@
   security.pam = {
     howdy.enable = false;
     services = {
+      hyprlock = {
+        enable = true;
+        howdy = {
+          enable = true;
+          control = "[success=done default=ignore]";
+        };
+      };
       systemd-run0 = {
         enable = true;
         howdy = {

@@ -1,13 +1,11 @@
-{ config, pkgs, inputs, lib, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   wayland.windowManager.hyprland = {
     enable = true;
-    package = inputs.hyprland.packages.${pkgs.stdenv.hostPlatform.system}.hyprland;
 
     plugins = [
       pkgs.hyprlandPlugins.hypr-dynamic-cursors
-      pkgs.hyprlandPlugins.hypr-darkwindow
     ];
 
     configType = "lua";
@@ -17,18 +15,9 @@
       -- -----------------------------------------------------
       -- Display & Environment
       -- -----------------------------------------------------
-      hl.env("AQ_DRM_DEVICES", "/dev/dri/intel-igpu:/dev/dri/card0")
-      hl.env("WLR_DRM_DEVICES", "/dev/dri/intel-igpu:/dev/dri/card0")
       hl.env("XCURSOR_SIZE", "24")
       hl.env("HYPRCURSOR_SIZE", "24")
-      hl.env("GTK_THEME", "Catppuccin-Mocha-Standard-Teal-Dark")
-      hl.env("XDG_CURRENT_DESKTOP", "KDE")
-      hl.env("GDK_BACKEND", "wayland,x11")
-      hl.env("QT_QPA_PLATFORM", "wayland;xcb")
-      hl.env("QT_QPA_PLATFORMTHEME", "qt5ct")
-      hl.env("QT_STYLE_OVERRIDE", "kvantum")
-      hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
-      hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
+      hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
 
       hl.monitor({
         output = "",
@@ -57,7 +46,7 @@
           follow_min_visible = 0.01,
         },
         decoration = {
-          rounding = 10,
+          rounding = 0,
           active_opacity = 1.0,
           inactive_opacity = 1.0,
           blur = {
@@ -154,7 +143,6 @@
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
         opacity = "0.97 0.97",
-        -- nofocus = true, -- I will NOT add this yet, as it might make it unusable.
       })
       hl.window_rule({
         name = "menu-opacity",
@@ -175,24 +163,12 @@
       hl.on("hyprland.start", function()
         hl.exec_cmd("waybar")
         hl.exec_cmd("hypridle")
+        hl.exec_cmd("albert")
+        hl.exec_cmd("kwalletd6")
         hl.exec_cmd("mcontrolcenter")
         hl.exec_cmd("wl-paste --type text --watch cliphist store")
         hl.exec_cmd("wl-paste --type image --watch cliphist store")
         hl.exec_cmd("~/.config/hypr/scripts/wallpaper_init.sh")
-        hl.exec_cmd("nm-applet --indicator")
-
-        if hl.plugin.darkwindow ~= nil then
-          hl.plugin.darkwindow.load_shader("mochaChromakey", {
-            from = "chromakey",
-            args = "bkg=[0.118 0.118 0.180] similarity=0.08 amount=1.0 targetOpacity=0.0",
-            introduces_transparency = true,
-          })
-          hl.window_rule({
-            name = "darkwindow-mocha",
-            match = { class = ".*" },
-            ["darkwindow:shade"] = "mochaChromakey",
-          })
-        end
       end)
 
       -- -----------------------------------------------------
@@ -229,16 +205,16 @@
       hl.bind(mainMod .. " + mouse:272", hl.dsp.window.resize(), { mouse = true })
       hl.bind(mainMod .. " + mouse:273", hl.dsp.window.drag(), { mouse = true })
 
-      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("volumectl -d toggle-mute && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
-      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("volumectl -d down && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
-      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("volumectl -d up && ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("volumectl -d toggle-mute; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("volumectl -d down; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("volumectl -d up; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
       hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("volumectl -d -m toggle-mute"), { locked = true, repeating = true })
 
-      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("lightctl -d up 5"), { locked = true, repeating = true })
-      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("lightctl -d down 5"), { locked = true, repeating = true })
+      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh up"), { locked = true, repeating = true })
+      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh down"), { locked = true, repeating = true })
 
       hl.bind("XF86PowerOff", hl.dsp.exec_cmd("/etc/power_menu.sh"), { locked = true })
-      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("kcmshell6 kcm_kscreen"), { locked = true })
+      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("wdisplays"), { locked = true })
     '';
   };
 }
