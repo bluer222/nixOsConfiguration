@@ -5,6 +5,7 @@ Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland n
 - rather than moving windows, super+` should swich the monitor to a fourth desk(this way window positioning can be maintained)
 
 done:
+- HM consolidation: hyprpolkitagent via services.hyprpolkitagent; cliphist/avizo/waybar via HM systemd; wayland.systemd.target = hyprland-session.target; Hyprland config refactored to settings + extraLuaFiles; cliphist db persisted at ~/.local/share/cliphist/db
  - portmaster tray starts on startup
 - in the place of plasma, add a more "agreeable" DE like xfce which can act as backup without conflicting with hyprland(do a minimal install, i dont want the xfce file manager and stuff)
 -  remove plasma completly and switch to hyprland fully(keep kde libraries and applications that we are using, may need to explicitly install things like the plasma wifi settings etc which were installed via plasma before)

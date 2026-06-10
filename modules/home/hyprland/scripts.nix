@@ -7,10 +7,6 @@ let
   oxygenUnplugSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/power-unplug.ogg";
   sessionStateDir = "${config.xdg.dataHome}/hyprland";
 in {
-  home.packages = with pkgs; [
-    avizo
-  ];
-
   xdg.configFile."hypr/scripts/change_wallpaper.sh" = {
     executable = true;
     text = ''
@@ -81,26 +77,6 @@ in {
     '';
   };
 
-  # Needs WAYLAND_DISPLAY — cannot start from systemd at hyprland-session.target.
-  xdg.configFile."hypr/scripts/polkit-agent.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      agent="${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
-      force="''${1:-}"
-
-      if [ "$force" != "--force" ] && pgrep -f "$agent" >/dev/null; then
-        exit 0
-      fi
-
-      pkill -f "$agent" 2>/dev/null || true
-      sleep 0.2
-      exec "$agent"
-    '';
-  };
-
   xdg.configFile."hypr/scripts/session-resume.sh" = {
     executable = true;
     text = ''
@@ -128,7 +104,7 @@ in {
         ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
       ) &
 
-      "$HOME/.config/hypr/scripts/polkit-agent.sh" --force &
+      systemctl --user restart hyprpolkitagent.service 2>/dev/null || true
     '';
   };
 
@@ -340,24 +316,6 @@ in {
         done
         sleep 1
       done
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/avizo-start.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      if pgrep -x avizo-service >/dev/null; then
-        exit 0
-      fi
-
-      export DISPLAY="''${DISPLAY}"
-      [ -n "$DISPLAY" ] || export DISPLAY=:0
-      export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY}"
-      [ -n "$WAYLAND_DISPLAY" ] || export WAYLAND_DISPLAY=wayland-1
-      exec ${pkgs.avizo}/bin/avizo-service
     '';
   };
 

@@ -21,17 +21,22 @@ in {
   imports = [
     inputs.hyprland.homeManagerModules.default
     ./hyprland.nix
+    ./cliphist.nix
     ./waybar.nix
     ./idle.nix
     ./theme.nix
     ./scripts.nix
     ./notifications.nix
-    ./avizo.nix
   ];
+
+  wayland.systemd.target = lib.mkIf config.wayland.windowManager.hyprland.enable
+    "hyprland-session.target";
+
+  services.hyprpolkitagent.enable = true;
+  services.avizo.enable = true;
 
   home.packages = with pkgs; [
     wl-clipboard
-    cliphist
     jq
     xdg-utils
     libxcb-cursor
@@ -46,7 +51,6 @@ in {
     kdePackages.plasma-workspace
     kdePackages.plasma-integration
     kdePackages.breeze
-    kdePackages.polkit-kde-agent-1
     kdePackages.kded
     kdePackages.plasma-nm
 
@@ -55,7 +59,6 @@ in {
     kdePackages.kwallet-pam
     libsecret
     hyprshutdown
-    avizo
     libnotify
     nerdFont
 

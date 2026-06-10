@@ -61,31 +61,28 @@ Started via `hyprland-session.target` unless noted.
 | `power-sounds` | Oxygen plug/unplug sounds via udev monitor |
 | `wallpaper-watcher` | Changes wallpaper on workspace switch; resets show-desktop state |
 | `popup-closer` | Closes plasmawindowed waybar popups when focus is lost |
+| `hyprpolkitagent` (HM) | GUI polkit authentication agent |
+| `cliphist` + `cliphist-images` (HM) | Clipboard history watcher (text + images); db at `~/.local/share/cliphist/db` |
+| `avizo` (HM) | Volume/brightness on-screen display daemon |
 | `mako` (HM) | Notification daemon |
 | `hypridle` (HM) | Idle dim/lock/suspend policy |
 | `xdg-desktop-portal` + `xdg-desktop-portal-hyprland` (HM) | XDG portal hub + Hyprland screencast/screenshot backend |
 | `pipewire-pulse` (user) | PulseAudio socket for session apps |
 
-**Disabled / blocked user units**
+**Not started at session target**
 
 | Service | Reason |
 |---|---|
-| `polkit-kde-agent` | Started from Hyprland autostart once `WAYLAND_DISPLAY` exists |
-| `avizo` | Started from Hyprland autostart (`avizo-start.sh`) |
-| `kwalletd6` at session target | Avoids race with greetd PAM unlock |
+| `kwalletd6` | Avoids race with greetd PAM unlock — started by `kwallet-unlock.sh` |
 
 ## Hyprland autostart (non-systemd)
 
-Started from `hyprland.start` in `hyprland.nix`.
+Started from `hyprland.start` in generated `hyprland.lua`.
 
 | Process | Description |
 |---|---|
 | `kwallet-unlock.sh` | Ensures kwalletd6/ksecretd are running after greetd PAM |
-| `polkit-agent.sh` | KDE polkit authentication agent |
-| `avizo-start.sh` | Volume/brightness on-screen display daemon |
 | `albert` | Qt launcher / clipboard search |
-| `wl-paste --type text --watch cliphist store` | Clipboard history (text) |
-| `wl-paste --type image --watch cliphist store` | Clipboard history (images) |
 | `session-restore.sh` | Restores windows saved on last Hyprland exit |
 
 ## Session helpers (scripts invoked by services/keys, not always running)
@@ -93,7 +90,7 @@ Started from `hyprland.start` in `hyprland.nix`.
 | Script | Role |
 |---|---|
 | `show_desktop.sh` | Super+` — toggle workspace 4 (empty desk) / restore previous |
-| `session-resume.sh` | After sleep/hibernate — restart KDE services, polkit, portals |
+| `session-resume.sh` | After sleep/hibernate — restart KDE services, hyprpolkitagent, portals |
 | `qt-popup.sh` | Waybar module popups (volume, network, bluetooth, …) |
 | `open-monitors.sh` | Super+P — rofi + hyprctl monitor scale/enable/disable |
 | `change_wallpaper.sh` | Sets wallpaper via `hyprctl hyprpaper` |

@@ -1,8 +1,9 @@
-{ config, pkgs, lib, ... }:
+{ config, pkgs, ... }:
 
 {
   programs.waybar = {
     enable = true;
+    systemd.enable = true;
     style = ''
       @define-color base   #1e1e2e;
       @define-color text   #cdd6f4;
@@ -173,19 +174,5 @@
         };
       };
     };
-  };
-
-  # HM defaults to graphical-session.target; Hyprland uses hyprland-session.target.
-  systemd.user.services.waybar = {
-    Unit = {
-      Description = "Waybar";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "dbus.service" ];
-    };
-    Service = {
-      ExecStart = "${config.programs.waybar.package}/bin/waybar";
-      Restart = "on-failure";
-    };
-    Install.WantedBy = lib.mkForce [ "hyprland-session.target" ];
   };
 }
