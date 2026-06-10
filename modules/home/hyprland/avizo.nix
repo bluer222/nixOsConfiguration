@@ -4,7 +4,8 @@
   systemd.user.services.avizo = {
     Unit = {
       Description = "Avizo volume/brightness notification service";
-      After = [ "graphical-session.target" ];
+      PartOf = [ "hyprland-session.target" ];
+      After = [ "hyprland-session.target" ];
     };
 
     Service = {
@@ -13,7 +14,7 @@
     };
 
     Install = {
-      WantedBy = [ "graphical-session.target" ];
+      WantedBy = [ "hyprland-session.target" ];
     };
   };
 }

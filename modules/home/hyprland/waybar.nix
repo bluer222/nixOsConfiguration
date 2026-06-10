@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   programs.waybar = {
@@ -30,13 +30,13 @@
         color: @teal;
       }
 
-      #workspaces button .taskbar button {
+      #taskbar button {
         color: @text;
         padding: 0 4px;
         background: transparent;
         border: none;
       }
-      #workspaces button .taskbar button.active {
+      #taskbar button.active {
         color: @teal;
       }
 
@@ -55,13 +55,14 @@
         height = 30;
 
         modules-left = [
-          "hyprland/workspaces"
-          "hyprland/workspaces#windows"
+          "wlr/taskbar"
           "cpu"
           "memory"
         ];
 
-        modules-center = [ ];
+        modules-center = [
+          "hyprland/workspaces"
+        ];
 
         modules-right = [
           "bluetooth"
@@ -72,6 +73,14 @@
           "battery"
           "clock"
         ];
+
+        "wlr/taskbar" = {
+          format = "{icon} {name}";
+          icon-size = 16;
+          icon-theme = "breeze-dark";
+          on-click = "activate";
+          on-click-middle = "close";
+        };
 
         "hyprland/workspaces" = {
           format = "{icon}";
@@ -85,21 +94,6 @@
             "1" = [ ];
             "2" = [ ];
             "3" = [ ];
-          };
-        };
-
-        "hyprland/workspaces#windows" = {
-          active-only = true;
-          format = "{windows}";
-          workspace-taskbar = {
-            enable = true;
-            update-active-window = true;
-            format = "{icon}";
-            icon-size = 16;
-            icon-theme = "breeze-dark";
-            orientation = "horizontal";
-            on-click-window = "activate";
-            on-click-middle-window = "close";
           };
         };
 
@@ -175,5 +169,19 @@
         };
       };
     };
+  };
+
+  # HM defaults to graphical-session.target; Hyprland uses hyprland-session.target.
+  systemd.user.services.waybar = {
+    Unit = {
+      Description = "Waybar";
+      PartOf = [ "hyprland-session.target" ];
+      After = [ "hyprland-session.target" "desktop-prewarm.service" ];
+    };
+    Service = {
+      ExecStart = "${config.programs.waybar.package}/bin/waybar";
+      Restart = "on-failure";
+    };
+    Install.WantedBy = lib.mkForce [ "hyprland-session.target" ];
   };
 }

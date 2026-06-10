@@ -66,5 +66,6 @@ programs.qgroundcontrol.enable = true;
     ckan
     immich-go
     kubectl
+    signal-desktop
   ];
 }

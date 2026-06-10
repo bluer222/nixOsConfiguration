@@ -1,11 +1,6 @@
 { config, pkgs, ... }:
 
 {
-  environment.variables = {
-    # Use KDE file picker instead of GTK
-    GTK_USE_PORTAL = 1;
-  };
-
   # Bluetooth support
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
@@ -37,10 +32,6 @@
           enable = true;
           control = "sufficient";
         };
-      };
-      kde.howdy = {
-        enable = true;
-        control = "sufficient";
       };
       sudo.howdy = {
         enable = true;

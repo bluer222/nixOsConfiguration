@@ -10,15 +10,15 @@
       general = {
         lock_cmd = "pidof hyprlock || hyprlock";       # avoid starting multiple hyprlock instances.
         before_sleep_cmd = "loginctl lock-session";    # lock before suspend.
-        after_sleep_cmd = "hyprctl dispatch dpms on";  # to avoid having to press a key twice to turn on the display.
+        after_sleep_cmd = "hyprctl dispatch \"dpms on\"";  # quoted for lua config parser
       };
 
       # 45s: Dim screen (Battery only)
       listener = [
         {
           timeout = 45;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || brightnessctl -s set 10";
-          on-resume = "brightnessctl -r";
+          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || ~/.config/hypr/scripts/brightness-dim.sh";
+          on-resume = "~/.config/hypr/scripts/brightness-restore.sh";
         }
         
         # 60s: Screen off (Battery), Lock/Dim (AC)
@@ -28,13 +28,13 @@
             if cat /sys/class/power_supply/*/online | grep -q 1; then
               # AC: Lock and Dim
               loginctl lock-session
-              brightnessctl -s set 10
+              ~/.config/hypr/scripts/brightness-dim.sh
             else
               # Battery: Screen off
-              hyprctl dispatch dpms off
+              hyprctl dispatch "dpms off"
             fi
           '';
-          on-resume = "brightnessctl -r; hyprctl dispatch dpms on";
+          on-resume = "~/.config/hypr/scripts/brightness-restore.sh; hyprctl dispatch \"dpms on\"";
         }
 
         # 120s: Suspend (Battery)
@@ -46,8 +46,8 @@
         # 180s: Screen off (AC)
         {
           timeout = 180;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl dispatch dpms off";
-          on-resume = "hyprctl dispatch dpms on";
+          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl dispatch \"dpms off\"";
+          on-resume = "hyprctl dispatch \"dpms on\"";
         }
 
         # 240s: Suspend (AC)
@@ -68,7 +68,7 @@
       general = {
         disable_loading_bar = true;
         hide_cursor = true;
-        ignore_empty_input = false;
+        ignore_empty_input = true;
       };
 
       background = [
@@ -90,7 +90,7 @@
           inner_color = "rgb(30, 30, 46)";
           outer_color = "rgb(148, 226, 213)";
           outline_thickness = 2;
-          placeholder_text = "Enter for face unlock, or type password...";
+          placeholder_text = "Face unlock or type password...";
           shadow_passes = 2;
         }
       ];

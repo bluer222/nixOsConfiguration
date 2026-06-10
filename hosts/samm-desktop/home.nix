@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   imports = [
@@ -18,8 +18,26 @@
       QT_QPA_PLATFORM = "wayland;xcb";
       GDK_BACKEND = "wayland,x11";
       BROWSER = "brave-browser";
+      ELECTRON_OZONE_PLATFORM_HINT = "auto";
+      XDG_MENU_PREFIX = "plasma-";
     };
   };
+
+  # Reset stale kwallet/broken portal encryption so apps use gnome-keyring.
+  home.activation.migrateKeyringStorage = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    for safe in \
+      "$HOME/.config/Signal/safeStorage.json" \
+      "$HOME/.config/BraveSoftware/Brave-Browser/Local State" \
+      "$HOME/.config/chromium/Local State"
+    do
+      if [ ! -f "$safe" ]; then
+        continue
+      fi
+      if grep -qiE 'kwallet|basic_text|prev_init_success.:false' "$safe" 2>/dev/null; then
+        $DRY_RUN_CMD mv "$safe" "$safe.hm-backup-keyring-$(date +%s)"
+      fi
+    done
+  '';
 
   xdg.mimeApps = {
     enable = true;

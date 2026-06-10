@@ -49,6 +49,9 @@
           rounding = 0,
           active_opacity = 1.0,
           inactive_opacity = 1.0,
+          shadow = {
+            enabled = false,
+          },
           blur = {
             enabled = true,
             size = 6,
@@ -61,6 +64,7 @@
         cursor = {
           no_warps = true,
           no_hardware_cursors = 1,
+          zoom_detached_camera = false,
         },
         animations = {
           enabled = true,
@@ -69,6 +73,7 @@
           kb_layout = "us",
           follow_mouse = 1,
           accel_profile = "flat",
+          focus_on_close = 1,
           sensitivity = 0.7,
           touchpad = {
             natural_scroll = true,
@@ -161,14 +166,15 @@
       -- Autostart
       -- -----------------------------------------------------
       hl.on("hyprland.start", function()
-        hl.exec_cmd("waybar")
-        hl.exec_cmd("hypridle")
         hl.exec_cmd("albert")
-        hl.exec_cmd("kwalletd6")
-        hl.exec_cmd("mcontrolcenter")
         hl.exec_cmd("wl-paste --type text --watch cliphist store")
         hl.exec_cmd("wl-paste --type image --watch cliphist store")
         hl.exec_cmd("~/.config/hypr/scripts/wallpaper_init.sh")
+        hl.exec_cmd("bash -lc '~/.config/hypr/scripts/session-restore.sh &'")
+      end)
+
+      hl.on("hyprland.shutdown", function()
+        hl.exec_cmd("~/.config/hypr/scripts/session-save.sh")
       end)
 
       -- -----------------------------------------------------
@@ -205,16 +211,23 @@
       hl.bind(mainMod .. " + mouse:272", hl.dsp.window.resize(), { mouse = true })
       hl.bind(mainMod .. " + mouse:273", hl.dsp.window.drag(), { mouse = true })
 
-      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("volumectl -d toggle-mute; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
-      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("volumectl -d down; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
-      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("volumectl -d up; ~/.config/hypr/scripts/media-feedback.sh"), { locked = true, repeating = true })
+      hl.bind("XF86AudioMute", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume-key.sh mute"), { locked = true, repeating = true })
+      hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume-key.sh down"), { locked = true, repeating = true })
+      hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("~/.config/hypr/scripts/volume-key.sh up"), { locked = true, repeating = true })
       hl.bind("XF86AudioMicMute", hl.dsp.exec_cmd("volumectl -d -m toggle-mute"), { locked = true, repeating = true })
 
-      hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh up"), { locked = true, repeating = true })
-      hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh down"), { locked = true, repeating = true })
+      local brightnessUp = hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh up")
+      local brightnessDown = hl.dsp.exec_cmd("~/.config/hypr/scripts/brightness-key.sh down")
+      local brightnessOpts = { locked = true, repeating = true }
+
+      hl.bind("XF86MonBrightnessUp", brightnessUp, brightnessOpts)
+      hl.bind("XF86MonBrightnessDown", brightnessDown, brightnessOpts)
+      -- Linux KEY_BRIGHTNESSUP/DOWN (224/225) when Fn keys skip XF86* symlinks
+      hl.bind("code:224", brightnessDown, brightnessOpts)
+      hl.bind("code:225", brightnessUp, brightnessOpts)
 
       hl.bind("XF86PowerOff", hl.dsp.exec_cmd("/etc/power_menu.sh"), { locked = true })
-      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("wdisplays"), { locked = true })
+      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("kcmshell6 kcm_kscreen"), { locked = true })
     '';
   };
 }

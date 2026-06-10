@@ -3,25 +3,35 @@
 {
   qt = {
     enable = true;
+    platformTheme.name = "qt6ct";
     style = {
       name = "kvantum";
       package = pkgs.catppuccin-kvantum;
     };
-    platformTheme.name = "qtct";
   };
 
   home.packages = with pkgs; [
-    catppuccin-kvantum
-    libsForQt5.qt5ct
-    kdePackages.qt6ct
-    kdePackages.qtwayland
     hyprland-qt-support
+    catppuccin-kvantum
+    kdePackages.qtwayland
+    kdePackages.qt6ct
+    kdePackages.breeze-icons
   ];
+
+  xdg.configFile."hypr/application-style.conf".text = ''
+    roundness = 0
+    border_width = 2
+    reduce_motion = false
+  '';
 
   xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
     [General]
     theme=catppuccin-frappe-blue
   '';
+
+  # Kvantum only reads themes from ~/.config/Kvantum/<name>/ — symlink from nix store.
+  xdg.configFile."Kvantum/catppuccin-frappe-blue".source =
+    "${pkgs.catppuccin-kvantum}/share/Kvantum/catppuccin-frappe-blue";
 
   xdg.configFile."qt6ct/qt6ct.conf".text = ''
     [Appearance]
@@ -31,19 +41,7 @@
     palette=${pkgs.kdePackages.qt6ct}/share/qt6ct/colors/darker.conf
   '';
 
-  xdg.configFile."qt5ct/qt5ct.conf".text = ''
-    [Appearance]
-    style=kvantum
-    icon_theme=breeze-dark
-    standard_dialogs=default
-    palette=${pkgs.libsForQt5.qt5ct}/share/qt5ct/colors/darker.conf
-  '';
-
   xdg.configFile."kdeglobals".text = ''
-    [General]
-    ColorScheme=BreezeDark
-    AccentColor=94,226,213
-
     [Icons]
     Theme=breeze-dark
 
@@ -51,39 +49,10 @@
     widgetStyle=Kvantum
     colorScheme=BreezeDark
 
-    [UiSettings]
-    ColorScheme=qt6ct
+    [General]
+    ColorScheme=BreezeDark
+    AccentColor=94,226,213
   '';
-
-  gtk = {
-    enable = true;
-    theme = {
-      name = "Catppuccin-Mocha-Standard-Teal-Dark";
-      package = pkgs.catppuccin-gtk.override {
-        accents = [ "teal" ];
-        size = "standard";
-        tweaks = [ "rimless" "black" ];
-        variant = "mocha";
-      };
-    };
-    iconTheme = {
-      name = "breeze-dark";
-      package = pkgs.kdePackages.breeze-icons;
-    };
-    gtk3.extraConfig = {
-      gtk-application-prefer-dark-theme = true;
-    };
-    gtk4.theme = config.gtk.theme;
-    gtk4.extraConfig = {
-      gtk-application-prefer-dark-theme = true;
-    };
-  };
-
-  dconf.settings."org/gnome/desktop/interface" = {
-    color-scheme = "prefer-dark";
-    gtk-theme = "Catppuccin-Mocha-Standard-Teal-Dark";
-    icon-theme = "breeze-dark";
-  };
 
   xdg.configFile."rofi/spotlight.rasi".text = ''
     * {

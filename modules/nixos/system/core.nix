@@ -9,9 +9,8 @@
 
     # Minimize password verification delay
     pam.services = {
-      plasmalogin.nodelay = true;
       login.nodelay = true;
-      kde.nodelay = true;
+      greetd.nodelay = true;
       sudo.nodelay = true;
       polkit-1.nodelay = true;
       su.nodelay = true;

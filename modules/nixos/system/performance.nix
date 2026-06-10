@@ -6,11 +6,8 @@
     enable = true;
     package = pkgs.ananicy-cpp;
     rulesProvider = pkgs.ananicy-rules-cachyos;
-    # Ensure KWin and Plasma are prioritized
     extraRules = [
-      { name = "kwin_wayland"; type = "Realtime"; }
-      { name = "kwin_x11"; type = "Realtime"; }
-      { name = "plasmashell"; type = "Realtime"; }
+      { name = "Hyprland"; type = "Realtime"; }
       { name = "Xorg"; type = "Realtime"; }
     ];
   };

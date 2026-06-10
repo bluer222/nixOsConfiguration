@@ -1,9 +1,11 @@
 { config, pkgs, lib, ... }:
 
 let
-  volumeSound = "${pkgs.sound-theme-freedesktop}/share/sounds/freedesktop/stereo/audio-volume-change.oga";
+  # oxygen-sounds no longer ships audio-volume-change; message-lowpriority is a short UI tick
+  volumeSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/message-lowpriority.ogg";
   oxygenPowerSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/power-plug.ogg";
   oxygenUnplugSound = "${pkgs.kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo/power-unplug.ogg";
+  sessionStateDir = "${config.xdg.dataHome}/hyprland";
 in {
   home.packages = with pkgs; [
     swaybg
@@ -65,18 +67,128 @@ in {
       STATE_FILE="$XDG_RUNTIME_DIR/hyprland-show-desktop"
 
       if [ -f "$STATE_FILE" ]; then
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = true } } })"
-        while read -r addr; do
-          [ -n "''${addr}" ] && hyprctl dispatch setprop "address:''${addr}" alpha 1
-        done < <(hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[] | select(.mapped == true) | .address')
+        SAVED=$(cat "$STATE_FILE")
+        hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${SAVED} }))"
         rm "$STATE_FILE"
       else
-        hyprctl eval "hl.config({ decoration = { blur = { enabled = false } } })"
-        while read -r addr; do
-          [ -n "''${addr}" ] && hyprctl dispatch setprop "address:''${addr}" alpha 0.15
-        done < <(hyprctl clients -j | ${pkgs.jq}/bin/jq -r '.[] | select(.mapped == true) | .address')
-        touch "$STATE_FILE"
+        hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id' > "$STATE_FILE"
+        hyprctl eval 'hl.dispatch(hl.dsp.focus({ workspace = "empty" }))'
       fi
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/volume-key.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -uo pipefail
+      case "$1" in
+        up) volumectl -d up ;;
+        down) volumectl -d down ;;
+        mute) volumectl -d toggle-mute ;;
+        *) exit 2 ;;
+      esac
+      ${pkgs.wireplumber}/bin/pw-play "${volumeSound}" >/dev/null 2>&1 &
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/brightness-dim.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      STATE_FILE="$XDG_RUNTIME_DIR/hypr-brightness-saved"
+      if [ ! -f "$STATE_FILE" ]; then
+        ${pkgs.brightnessctl}/bin/brightnessctl -m | ${pkgs.coreutils}/bin/cut -d, -f4 > "$STATE_FILE"
+        lightctl -d set =10%
+      fi
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/brightness-restore.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      STATE_FILE="$XDG_RUNTIME_DIR/hypr-brightness-saved"
+      if [ -f "$STATE_FILE" ]; then
+        lightctl -d set "=$(cat "$STATE_FILE")%"
+        rm "$STATE_FILE"
+      fi
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/session-save.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      mkdir -p "${sessionStateDir}"
+      hyprctl clients -j | ${pkgs.jq}/bin/jq -c '
+        [ .[]
+          | select(.mapped == true and .class != "org.kde.plasmawindowed")
+          | { class, title, workspace: .workspace.id, floating, at, size }
+        ]
+      ' > "${sessionStateDir}/session.json"
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/session-restore.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -uo pipefail
+
+      SESSION_FILE="${sessionStateDir}/session.json"
+      [ -f "$SESSION_FILE" ] || exit 0
+
+      declare -A CLASS_CMD=(
+        [brave-browser]="brave-browser"
+        [Brave-browser]="brave-browser"
+        [code]="code"
+        [Code]="code"
+        [cursor]="cursor"
+        [Cursor]="cursor"
+        [org.signal.Signal]="signal-desktop"
+        [org.kde.dolphin]="dolphin"
+        [Alacritty]="alacritty"
+        [kitty]="kitty"
+        [foot]="foot"
+      )
+
+      sleep 2
+
+      while IFS= read -r entry; do
+        class=$(echo "$entry" | ${pkgs.jq}/bin/jq -r '.class')
+        ws=$(echo "$entry" | ${pkgs.jq}/bin/jq -r '.workspace')
+        cmd="''${CLASS_CMD[$class]:-}"
+
+        if [ -z "$cmd" ]; then
+          continue
+        fi
+
+        if ! hyprctl clients -j | ${pkgs.jq}/bin/jq -e --arg c "$class" '.[] | select(.class == $c)' >/dev/null; then
+          hyprctl dispatch exec "[workspace $ws silent] $cmd"
+        fi
+      done < <(${pkgs.jq}/bin/jq -c '.[]' "$SESSION_FILE")
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/gtk-apps-report.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      echo "GTK-dependent packages in current system closure:"
+      echo "=================================================="
+
+      nix-store -qR /run/current-system 2>/dev/null | while read -r storepath; do
+        if nix-store -qR "$storepath" 2>/dev/null | grep -qE '/gtk[34]?-'; then
+          pkgname=$(basename "$storepath" | sed 's/-[^-]*-[^-]*$//')
+          echo "$pkgname"
+        fi
+      done | sort -u
     '';
   };
 
@@ -151,8 +263,7 @@ in {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      set -euo pipefail
-      ${pkgs.pipewire}/bin/paplay "${volumeSound}" &
+      ${pkgs.wireplumber}/bin/pw-play "${volumeSound}" >/dev/null 2>&1 &
     '';
   };
 
@@ -221,7 +332,7 @@ in {
       }
 
       play_sound() {
-        ${pkgs.pipewire}/bin/paplay "''${1}" &
+        ${pkgs.wireplumber}/bin/pw-play "''${1}" >/dev/null 2>&1 &
       }
 
       CURRENT="''$(get_online)"

@@ -1,5 +1,9 @@
 { config, pkgs, fetchurl, lib, inputs, ... }:
 
+let
+  inherit (lib) mkAfter;
+in
+
 {
   #video accell
   nixpkgs.config.packageOverrides = pkgs: {
@@ -27,8 +31,19 @@
   # Enable switcheroo-control for hybrid GPU switching
   services.switcherooControl.enable = true;
 
-  # GPU kernel modules for CUDA and similar
-  boot.kernelModules = [ "nvidia_uvm" ];
+  # hardware.nvidia.open adds nvidia_uvm to early modules-load; defer it.
+  boot.blacklistedKernelModules = mkAfter [ "nvidia_uvm" ];
+
+  systemd.services.nvidia-uvm = {
+    description = "Load NVIDIA UVM module (CUDA)";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "systemd-modules-load.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.kmod}/bin/modprobe nvidia_uvm";
+    };
+  };
 
   # Load nvidia
   services.xserver.videoDrivers = [ "nvidia" ];

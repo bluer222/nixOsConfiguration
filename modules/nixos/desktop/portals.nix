@@ -1,17 +1,12 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  xdg.portal = {
-    enable = true;
-    xdgOpenUsePortal = false;
-    extraPortals = [ pkgs.kdePackages.xdg-desktop-portal-kde ];
-    config = {
-      # Desktop name is case-folded to lowercase by xdg-desktop-portal.
-      hyprland = {
-        default = [ "hyprland" "kde" ];
-        "org.freedesktop.impl.portal.FileChooser" = [ "kde" ];
-        "org.freedesktop.impl.portal.OpenURI" = [ "kde" ];
-      };
-    };
-  };
+  # Dolphin "Open with" needs applications.menu; KDE ships plasma-applications.menu.
+  environment.etc."xdg/menus/applications.menu".source =
+    "${pkgs.kdePackages.plasma-workspace}/etc/xdg/menus/plasma-applications.menu";
+
+  environment.sessionVariables.XDG_MENU_PREFIX = "plasma-";
+
+  # Portals are configured in home-manager (xdg.portal) to avoid duplicate
+  # dbus service registrations for xdg-desktop-portal-hyprland.
 }

@@ -1,21 +1,20 @@
 { config, pkgs, ... }:
 
 {
+  environment.systemPackages = [
+    pkgs.hyprshutdown
+    pkgs.jq
+    pkgs.libnotify
+  ];
+
   environment.etc."hypr-logout.sh".text = ''
     #!/usr/bin/env bash
-    set -euo pipefail
+    set -uo pipefail
 
-    # Browsers block session end waiting for "close tabs?" dialogs.
-    pkill -TERM -f '(^|/)brave($|[[:space:]])|brave-browser|chromium|google-chrome' 2>/dev/null || true
-    sleep 0.5
-    pkill -KILL -f '(^|/)brave($|[[:space:]])|brave-browser|chromium|google-chrome' 2>/dev/null || true
-
-    # Exit hyprland cleanly; plasma-login-manager returns to greeter.
-    if command -v hyprctl >/dev/null 2>&1; then
-      hyprctl dispatch exit
-    elif [ -n "''${XDG_SESSION_ID:-}" ]; then
-      loginctl terminate-session "''${XDG_SESSION_ID}" --force
-    fi
+    # hyprshutdown sends proper close requests to every app, waits, then exits
+    # Hyprland cleanly — greetd returns to the greeter.
+    # Do NOT use loginctl terminate-session; that kills the session and causes a black screen.
+    exec ${pkgs.hyprshutdown}/bin/hyprshutdown --no-fork
   '';
   environment.etc."hypr-logout.sh".mode = "0755";
 }

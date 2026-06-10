@@ -1,16 +1,18 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
-  # KDE Plasma Desktop Environment
-  services.displayManager.plasma-login-manager.enable = true;
-  services.desktopManager.plasma6.enable = true;
-
-  # KDE Connect
+  # KDE libraries and apps only — no Plasma session or login manager.
   programs.kdeconnect.enable = true;
 
-  # Ensure Wayland is used for Electron/Ozone apps (Brave, OBS, etc.)
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     OBS_USE_EGL = "1";
+    CHROMIUM_FLAGS =
+      "--enable-features=UsePortal,WaylandWpFilePicker --password-store=gnome-libsecret";
   };
+
+  security.pam.services.login.enableGnomeKeyring = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.login.kwallet.enable = lib.mkForce false;
+  security.pam.services.greetd.kwallet.enable = lib.mkForce false;
 }

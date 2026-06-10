@@ -23,6 +23,8 @@
     ../../modules/nixos/system/performance.nix
     ../../modules/nixos/desktop/kde.nix
     ../../modules/nixos/desktop/hyprland.nix
+    ../../modules/nixos/desktop/xfce-backup.nix
+    ../../modules/nixos/desktop/greetd.nix
     ../../modules/nixos/system/systemd.nix
 
     # Networking services

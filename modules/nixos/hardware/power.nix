@@ -63,9 +63,9 @@
       # Graphics (iGPU)
       # ========================================================================
       #100 is the minimum
-      INTEL_GPU_MIN_FREQ_ON_AC = 100;
-      INTEL_GPU_MIN_FREQ_ON_BAT = 100;
-      INTEL_GPU_MIN_FREQ_ON_SAV = 100;
+      INTEL_GPU_MIN_FREQ_ON_AC = 0;
+      INTEL_GPU_MIN_FREQ_ON_BAT = 0;
+      INTEL_GPU_MIN_FREQ_ON_SAV = 0;
 
       INTEL_GPU_MAX_FREQ_ON_AC = 0; # 0 means unlimited in this case
       INTEL_GPU_MAX_FREQ_ON_BAT = 1000; # Cap iGPU to 1GHz on battery

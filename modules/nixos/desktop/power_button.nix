@@ -5,14 +5,15 @@
 
   environment.etc."power_menu.sh".text = ''
     #!/usr/bin/env bash
-    choice=$(printf "Logout\nSuspend\nReboot\nShutdown\n" | /run/current-system/sw/bin/wofi \
+    choice=$(printf "Lock\nLogout\nSuspend\nReboot\nShutdown\n" | /run/current-system/sw/bin/wofi \
       --dmenu \
       --prompt "Power Menu" \
       --width 320 \
-      --height 240 \
+      --height 280 \
       --hide-scroll \
       --style /etc/wofi/style.css | tr -d '\n')
     case "$choice" in
+      Lock)     loginctl lock-session ;;
       Logout) /etc/hypr-logout.sh ;;
       Suspend)  systemctl suspend ;;
       Reboot)   systemctl reboot ;;
