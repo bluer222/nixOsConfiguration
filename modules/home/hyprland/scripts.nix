@@ -8,7 +8,6 @@ let
   sessionStateDir = "${config.xdg.dataHome}/hyprland";
 in {
   home.packages = with pkgs; [
-    swaybg
     avizo
   ];
 
@@ -25,25 +24,111 @@ in {
         1) WP="$WP_DIR/workspace-1.png" ;;
         2) WP="$WP_DIR/workspace-2.png" ;;
         3) WP="$WP_DIR/workspace-3.png" ;;
-        *) WP="$WP_DIR/workspace-1.png" ;;
       esac
 
       if [ ! -f "$WP" ]; then
-        WP="$WP_DIR/default.png"
+        exit 0
       fi
 
       if [ -f "$WP" ]; then
-        pkill -x swaybg || true
-        swaybg -i "$WP" -m fill &
+        ${pkgs.hyprland}/bin/hyprctl hyprpaper wallpaper ", $WP"
       fi
     '';
   };
 
-  xdg.configFile."hypr/scripts/wallpaper_init.sh" = {
+  # greetd sets PAM_KWALLET5_LOGIN on the Hyprland process only — not in systemd.
+  # Do not kill running kwallet/ksecretd: greetd PAM starts ksecretd --pam-login to unlock.
+  xdg.configFile."hypr/scripts/kwallet-unlock.sh" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      ~/.config/hypr/scripts/change_wallpaper.sh 1
+      set -euo pipefail
+
+      kwallet_open() {
+        ${pkgs.systemd}/bin/busctl --user call \
+          org.kde.kwalletd6 /modules/kwalletd5 org.kde.KWallet isOpen s kdewallet \
+          2>/dev/null | grep -q true
+      }
+
+      if kwallet_open; then
+        systemctl --user start ksecretd.service 2>/dev/null || true
+        exit 0
+      fi
+
+      systemctl --user reset-failed kwalletd6.service 2>/dev/null || true
+      if ! ${pkgs.systemd}/bin/busctl --user status org.kde.kwalletd6 &>/dev/null; then
+        systemctl --user start kwalletd6.service
+      fi
+
+      for _ in $(seq 1 50); do
+        ${pkgs.systemd}/bin/busctl --user status org.kde.kwalletd6 &>/dev/null && break
+        sleep 0.1
+      done
+
+      # PAM handoff while greetd's kwallet5.socket is still live.
+      if [[ -n "''${PAM_KWALLET5_LOGIN:-}" ]]; then
+        ${pkgs.kdePackages.kwallet-pam}/libexec/pam_kwallet_init || true
+      fi
+
+      # Wait for greetd's ksecretd --pam-login child to finish unlocking.
+      for _ in $(seq 1 50); do
+        kwallet_open && break
+        sleep 0.1
+      done
+
+      systemctl --user import-environment PAM_KWALLET5_LOGIN 2>/dev/null || true
+      systemctl --user start ksecretd.service 2>/dev/null || true
+    '';
+  };
+
+  # Needs WAYLAND_DISPLAY — cannot start from systemd at hyprland-session.target.
+  xdg.configFile."hypr/scripts/polkit-agent.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      agent="${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1"
+      force="''${1:-}"
+
+      if [ "$force" != "--force" ] && pgrep -f "$agent" >/dev/null; then
+        exit 0
+      fi
+
+      pkill -f "$agent" 2>/dev/null || true
+      sleep 0.2
+      exec "$agent"
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/session-resume.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -uo pipefail
+
+      for _ in $(seq 1 30); do
+        [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -n "''${WAYLAND_DISPLAY:-}" ] && break
+        sleep 0.2
+      done
+
+      hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "on" }))' 2>/dev/null || true
+
+      "$HOME/.config/hypr/scripts/kwallet-unlock.sh" 2>/dev/null || true
+
+      systemctl --user restart plasma-kded6.service 2>/dev/null || true
+      systemctl --user restart powerdevil.service 2>/dev/null || true
+      systemctl --user restart plasma-xdg-desktop-portal-kde.service 2>/dev/null || true
+      systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
+      systemctl --user restart hyprpaper.service 2>/dev/null || true
+
+      pkill -f "plasmawindowed" 2>/dev/null || true
+
+      (
+        ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
+      ) &
+
+      "$HOME/.config/hypr/scripts/polkit-agent.sh" --force &
     '';
   };
 
@@ -53,6 +138,7 @@ in {
       #!/usr/bin/env bash
       set -euo pipefail
 
+      rm -f "$XDG_RUNTIME_DIR/hyprland-show-desktop"
       WS="$1"
       hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${WS} }))"
     '';
@@ -62,17 +148,26 @@ in {
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      set -euo pipefail
+      # Show desktop by switching to workspace 4 (empty desk; windows stay put).
+      set -uo pipefail
 
       STATE_FILE="$XDG_RUNTIME_DIR/hyprland-show-desktop"
+      DESKTOP_WS=4
 
-      if [ -f "$STATE_FILE" ]; then
-        SAVED=$(cat "$STATE_FILE")
-        hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${SAVED} }))"
-        rm "$STATE_FILE"
+      current=$(hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id')
+
+      if [ -f "$STATE_FILE" ] || [ "$current" = "$DESKTOP_WS" ]; then
+        if [ -f "$STATE_FILE" ]; then
+          saved=$(cat "$STATE_FILE")
+          rm -f "$STATE_FILE"
+          hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${saved} }))"
+        elif [ "$current" = "$DESKTOP_WS" ]; then
+          rm -f "$STATE_FILE"
+          hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = 1 }))"
+        fi
       else
-        hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id' > "$STATE_FILE"
-        hyprctl eval 'hl.dispatch(hl.dsp.focus({ workspace = "empty" }))'
+        echo "$current" > "$STATE_FILE"
+        hyprctl eval "hl.dispatch(hl.dsp.focus({ workspace = ''${DESKTOP_WS} }))"
       fi
     '';
   };
@@ -99,8 +194,15 @@ in {
       set -euo pipefail
       STATE_FILE="$XDG_RUNTIME_DIR/hypr-brightness-saved"
       if [ ! -f "$STATE_FILE" ]; then
-        ${pkgs.brightnessctl}/bin/brightnessctl -m | ${pkgs.coreutils}/bin/cut -d, -f4 > "$STATE_FILE"
-        lightctl -d set =10%
+        bl="/sys/class/backlight/intel_backlight"
+        [ -d "$bl" ] || bl=$(echo /sys/class/backlight/* | awk '{print $1}')
+        if [ -r "$bl/brightness" ] && [ -r "$bl/max_brightness" ]; then
+          cur=$(cat "$bl/brightness")
+          max=$(cat "$bl/max_brightness")
+          pct=$((cur * 100 / max))
+          echo "$pct" > "$STATE_FILE"
+          lightctl -d set =10%
+        fi
       fi
     '';
   };
@@ -143,8 +245,8 @@ in {
       [ -f "$SESSION_FILE" ] || exit 0
 
       declare -A CLASS_CMD=(
-        [brave-browser]="brave-browser"
-        [Brave-browser]="brave-browser"
+        [brave-browser]="brave"
+        [Brave-browser]="brave"
         [code]="code"
         [Code]="code"
         [cursor]="cursor"
@@ -168,7 +270,7 @@ in {
         fi
 
         if ! hyprctl clients -j | ${pkgs.jq}/bin/jq -e --arg c "$class" '.[] | select(.class == $c)' >/dev/null; then
-          hyprctl dispatch exec "[workspace $ws silent] $cmd"
+          hyprctl eval "hl.dispatch(hl.dsp.exec_cmd(\"[workspace ''${ws} silent] ''${cmd}\"))"
         fi
       done < <(${pkgs.jq}/bin/jq -c '.[]' "$SESSION_FILE")
     '';
@@ -210,19 +312,27 @@ in {
         hyprctl eval 'hl.dispatch(hl.dsp.window.close({ window = "class:org.kde.plasmawindowed" }))' >/dev/null 2>&1 || true
       }
 
+      close_other_plasma_popups() {
+        active_addr=$(hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.address // empty')
+        hyprctl clients -j | ${pkgs.jq}/bin/jq -r --arg keep "$active_addr" '
+          .[]
+          | select(.class | startswith("org.kde.plasmawindowed"))
+          | select(.address != $keep)
+          | .address
+        ' | while read -r addr; do
+          [ -n "$addr" ] || continue
+          hyprctl eval "hl.dispatch(hl.dsp.window.close({ window = \"address:''${addr}\" }))" >/dev/null 2>&1 || true
+        done
+      }
+
       while true; do
         ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
           case "''${line}" in
-            activewindow\>\>*)
-              cls="''${line#activewindow>>}"
-              cls="''${cls%%,*}"
-              if [[ "''${cls}" != org.kde.plasmawindowed* ]]; then
-                close_plasma_popups
-              fi
-              ;;
-            activewindowv2\>\>*)
+            activewindow\>\>*|activewindowv2\>\>*)
               cls=$(hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.class // empty')
-              if [[ "''${cls}" != org.kde.plasmawindowed* ]]; then
+              if [[ "''${cls}" == org.kde.plasmawindowed* ]]; then
+                close_other_plasma_popups
+              else
                 close_plasma_popups
               fi
               ;;
@@ -230,6 +340,80 @@ in {
         done
         sleep 1
       done
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/avizo-start.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      if pgrep -x avizo-service >/dev/null; then
+        exit 0
+      fi
+
+      export DISPLAY="''${DISPLAY}"
+      [ -n "$DISPLAY" ] || export DISPLAY=:0
+      export WAYLAND_DISPLAY="''${WAYLAND_DISPLAY}"
+      [ -n "$WAYLAND_DISPLAY" ] || export WAYLAND_DISPLAY=wayland-1
+      exec ${pkgs.avizo}/bin/avizo-service
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/mako-copy.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      id="''${1:-}"
+      [ -n "$id" ] || exit 1
+
+      text=$(${pkgs.mako}/bin/makoctl list -n "$id" 2>/dev/null \
+        | ${pkgs.jq}/bin/jq -r '.data.body.data // .data.summary.data // empty' 2>/dev/null)
+      [ -n "$text" ] || exit 0
+      printf '%s' "$text" | ${pkgs.wl-clipboard}/bin/wl-copy
+      ${pkgs.libnotify}/bin/notify-send -a mako -t 1500 "Copied notification text"
+    '';
+  };
+
+  xdg.configFile."hypr/scripts/open-monitors.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      pick=$(${pkgs.hyprland}/bin/hyprctl monitors -j \
+        | ${pkgs.jq}/bin/jq -r '.[] | "\(.name)\t\(.description // .name)  \(.width)x\(.height)@\(.refreshRate)Hz  scale \(.scale)"' \
+        | ${pkgs.rofi}/bin/rofi -dmenu -i -p "Monitor" -theme ~/.config/rofi/spotlight.rasi \
+        | cut -f1)
+
+      [ -n "$pick" ] || exit 0
+
+      action=$(${pkgs.rofi}/bin/rofi -dmenu -i -p "''${pick}" -theme ~/.config/rofi/spotlight.rasi <<'EOF'
+      Scale 1.0
+      Scale 1.25
+      Scale 1.5
+      Scale 1.75
+      Scale 2.0
+      Preferred mode (auto)
+      Disable monitor
+      Enable monitor (preferred)
+      EOF
+      )
+
+      [ -n "$action" ] || exit 0
+
+      case "$action" in
+        "Scale 1.0")   ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1" ;;
+        "Scale 1.25")  ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1.25" ;;
+        "Scale 1.5")   ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1.5" ;;
+        "Scale 1.75")  ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1.75" ;;
+        "Scale 2.0")   ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,2" ;;
+        "Preferred mode (auto)") ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1" ;;
+        "Disable monitor") ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},disable" ;;
+        "Enable monitor (preferred)") ${pkgs.hyprland}/bin/hyprctl keyword monitor "''${pick},preferred,auto,1" ;;
+      esac
     '';
   };
 
@@ -250,12 +434,21 @@ in {
         *) exit 2 ;;
       esac
 
+      if [ "$APPLET" = "notifications" ]; then
+        exit 0
+      fi
+
+      if [ "$APPLET" = "battery" ]; then
+        systemctl --user start powerdevil.service 2>/dev/null || true
+        sleep 0.5
+      fi
+
       if pgrep -af "plasmawindowed.*''${PLASMOID}" >/dev/null 2>&1; then
         pkill -f "plasmawindowed.*''${PLASMOID}"
         exit 0
       fi
 
-      plasmawindowed "$PLASMOID" &
+      ${pkgs.kdePackages.plasma-workspace}/bin/plasmawindowed "$PLASMOID" &
     '';
   };
 
@@ -300,6 +493,9 @@ in {
           case "''${line}" in
             workspace\>\>*|workspacev2\>\>*|focusedmon\>\>*|focusedmonv2\>\>*)
               ws=$(hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id')
+              if [ -f "$XDG_RUNTIME_DIR/hyprland-show-desktop" ] && [ "''${ws}" != "4" ]; then
+                rm -f "$XDG_RUNTIME_DIR/hyprland-show-desktop"
+              fi
               if [ -n "''${ws}" ] && [ "''${ws}" != "''${last}" ]; then
                 last="''${ws}"
                 "$HOME/.config/hypr/scripts/change_wallpaper.sh" "''${ws}"

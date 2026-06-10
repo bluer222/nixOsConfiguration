@@ -8,9 +8,9 @@
     enable = true;
     settings = {
       general = {
-        lock_cmd = "pidof hyprlock || hyprlock";       # avoid starting multiple hyprlock instances.
-        before_sleep_cmd = "loginctl lock-session";    # lock before suspend.
-        after_sleep_cmd = "hyprctl dispatch \"dpms on\"";  # quoted for lua config parser
+        lock_cmd = "pidof hyprlock || hyprlock";
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = "~/.config/hypr/scripts/session-resume.sh";
       };
 
       # 45s: Dim screen (Battery only)
@@ -31,10 +31,10 @@
               ~/.config/hypr/scripts/brightness-dim.sh
             else
               # Battery: Screen off
-              hyprctl dispatch "dpms off"
+              hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "off" }))'
             fi
           '';
-          on-resume = "~/.config/hypr/scripts/brightness-restore.sh; hyprctl dispatch \"dpms on\"";
+          on-resume = "~/.config/hypr/scripts/brightness-restore.sh; ~/.config/hypr/scripts/session-resume.sh";
         }
 
         # 120s: Suspend (Battery)
@@ -46,8 +46,8 @@
         # 180s: Screen off (AC)
         {
           timeout = 180;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl dispatch \"dpms off\"";
-          on-resume = "hyprctl dispatch \"dpms on\"";
+          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = \"off\" }))'";
+          on-resume = "~/.config/hypr/scripts/session-resume.sh";
         }
 
         # 240s: Suspend (AC)
@@ -68,7 +68,7 @@
       general = {
         disable_loading_bar = true;
         hide_cursor = true;
-        ignore_empty_input = true;
+        ignore_empty_input = false;
       };
 
       background = [

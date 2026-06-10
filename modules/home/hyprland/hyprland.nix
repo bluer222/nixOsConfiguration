@@ -6,6 +6,7 @@
 
     plugins = [
       pkgs.hyprlandPlugins.hypr-dynamic-cursors
+      pkgs.hyprlandPlugins.hypr-darkwindow
     ];
 
     configType = "lua";
@@ -15,9 +16,7 @@
       -- -----------------------------------------------------
       -- Display & Environment
       -- -----------------------------------------------------
-      hl.env("XCURSOR_SIZE", "24")
-      hl.env("HYPRCURSOR_SIZE", "24")
-      hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+      -- Qt/GTK/cursor env comes from home.sessionVariables (theme.nix).
 
       hl.monitor({
         output = "",
@@ -47,18 +46,18 @@
         },
         decoration = {
           rounding = 0,
-          active_opacity = 1.0,
-          inactive_opacity = 1.0,
+          active_opacity = 0.92,
+          inactive_opacity = 0.88,
           shadow = {
             enabled = false,
           },
           blur = {
             enabled = true,
-            size = 6,
-            passes = 3,
+            size = 8,
+            passes = 4,
             new_optimizations = true,
             ignore_opacity = true,
-            xray = true,
+            xray = false,
           },
         },
         cursor = {
@@ -82,7 +81,9 @@
         },
         misc = {
           focus_on_activate = true,
-          middle_click_paste = false
+          middle_click_paste = false,
+          force_default_wallpaper = 0,
+          disable_hyprland_logo = true,
         },
       })
 
@@ -100,6 +101,22 @@
       hl.animation({ leaf = "borderangle", enabled = true, speed = 4, bezier = "default" })
       hl.animation({ leaf = "fade", enabled = true, speed = 3.5, bezier = "default" })
       hl.animation({ leaf = "workspaces", enabled = true, speed = 3, bezier = "default", style = "slidevert" })
+
+      -- Configure the dynamic-cursors plugin
+      -- hl.plugin {
+      --      ["dynamic-cursors"] = {
+      --        -- Set mode to 'tilt', 'rotate', or 'stretch'
+      --        mode = "tilt",
+      --        
+      --        -- Enable shake-to-find functionality (optional)
+      --        shake = {
+      --          enabled = true
+      --        }
+      --        
+      --        -- Optional tweak: adjust threshold for shake-to-find
+      --        -- shake_to_find_threshold = 4.0,
+      --     }
+      -- }
 
       -- -----------------------------------------------------
       -- Gestures
@@ -121,6 +138,7 @@
       hl.workspace_rule({ workspace = "1", default = true, persistent = true })
       hl.workspace_rule({ workspace = "2", persistent = true })
       hl.workspace_rule({ workspace = "3", persistent = true })
+      hl.workspace_rule({ workspace = "4", persistent = false, gaps_out = 0, gaps_in = 0 })
 
       -- -----------------------------------------------------
       -- Window Rules
@@ -131,7 +149,6 @@
         float = true,
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
-        opacity = "0.97 0.97",
       })
       hl.window_rule({
         name = "qt-bluetooth-popup",
@@ -139,7 +156,6 @@
         float = true,
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
-        opacity = "0.97 0.97",
       })
       hl.window_rule({
         name = "qt-plasmawindowed-popup",
@@ -147,12 +163,10 @@
         float = true,
         size = { 380, 460 },
         move = { "monitor_w-window_w-12", 32 },
-        opacity = "0.97 0.97",
       })
       hl.window_rule({
         name = "menu-opacity",
         match = { title = "^.*[Mm]enu.*$" },
-        opacity = "0.97 0.97",
       })
       hl.window_rule({
         name = "polkit-auth-dialogs",
@@ -162,14 +176,31 @@
         opacity = "1 1",
       })
 
+      -- Chromakey + subpixel antialiasing do not mix (RGB fringe pixels survive the key).
+      -- Subpixel is disabled in ~/.config/fontconfig/fonts.conf.
+      if hl.plugin.darkwindow ~= nil then
+        hl.plugin.darkwindow.load_shader("mochaChromakey", {
+          from = "chromakey",
+          args = "bkg=[0.118 0.118 0.180] similarity=0.14 amount=1.0 targetOpacity=0.80",
+          introduces_transparency = true,
+        })
+        hl.window_rule({
+          name = "darkwindow-mocha",
+          match = { class = ".*" },
+          ["darkwindow:shade"] = "mochaChromakey",
+        })
+      end
+
       -- -----------------------------------------------------
       -- Autostart
       -- -----------------------------------------------------
       hl.on("hyprland.start", function()
+        hl.exec_cmd("~/.config/hypr/scripts/kwallet-unlock.sh")
+        hl.exec_cmd("bash -lc '~/.config/hypr/scripts/polkit-agent.sh &'")
+        hl.exec_cmd("bash -lc '~/.config/hypr/scripts/avizo-start.sh &'")
         hl.exec_cmd("albert")
         hl.exec_cmd("wl-paste --type text --watch cliphist store")
         hl.exec_cmd("wl-paste --type image --watch cliphist store")
-        hl.exec_cmd("~/.config/hypr/scripts/wallpaper_init.sh")
         hl.exec_cmd("bash -lc '~/.config/hypr/scripts/session-restore.sh &'")
       end)
 
@@ -227,7 +258,9 @@
       hl.bind("code:225", brightnessUp, brightnessOpts)
 
       hl.bind("XF86PowerOff", hl.dsp.exec_cmd("/etc/power_menu.sh"), { locked = true })
-      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("kcmshell6 kcm_kscreen"), { locked = true })
+      hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("~/.config/hypr/scripts/open-monitors.sh"), { locked = true })
+      hl.bind("XF86Display", hl.dsp.exec_cmd("~/.config/hypr/scripts/open-monitors.sh"), { locked = true })
+      hl.bind("XF86Launch1", hl.dsp.exec_cmd("~/.config/hypr/scripts/open-monitors.sh"), { locked = true })
     '';
   };
 }

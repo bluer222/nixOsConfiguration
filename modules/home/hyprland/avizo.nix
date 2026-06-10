@@ -1,20 +1,13 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
+  # avizo-service needs a display — started from hyprland (avizo-start.sh).
   systemd.user.services.avizo = {
     Unit = {
-      Description = "Avizo volume/brightness notification service";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" ];
+      Description = "Avizo (disabled — started by Hyprland)";
+      ConditionPathExists = "/nonexistent";
     };
-
-    Service = {
-      ExecStart = "${pkgs.avizo}/bin/avizo-service";
-      Restart = "on-failure";
-    };
-
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
+    Service.ExecStart = "${pkgs.coreutils}/bin/false";
+    Install.WantedBy = lib.mkForce [ ];
   };
 }

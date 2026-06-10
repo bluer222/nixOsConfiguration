@@ -8,11 +8,7 @@
     NIXOS_OZONE_WL = "1";
     OBS_USE_EGL = "1";
     CHROMIUM_FLAGS =
-      "--enable-features=UsePortal,WaylandWpFilePicker --password-store=gnome-libsecret";
+      "--enable-features=UsePortal --disable-features=WaylandWpFilePicker,DbusSecretPortal --password-store=kwallet6 --ozone-platform=wayland";
   };
 
-  security.pam.services.login.enableGnomeKeyring = true;
-  security.pam.services.greetd.enableGnomeKeyring = true;
-  security.pam.services.login.kwallet.enable = lib.mkForce false;
-  security.pam.services.greetd.kwallet.enable = lib.mkForce false;
 }

@@ -14,6 +14,12 @@
       font = "Inter 12";
       default-timeout = 8000;
       ignore-timeout = false;
+      max-visible = 5;
+      layer = "overlay";
+
+      # Left click: default action. Middle click: copy body to clipboard.
+      "on-button-left" = "invoke-default-action";
+      "on-button-middle" = "exec ${config.home.homeDirectory}/.config/hypr/scripts/mako-copy.sh \"\$id\"";
     };
   };
 }

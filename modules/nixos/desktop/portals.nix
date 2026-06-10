@@ -5,8 +5,6 @@
   environment.etc."xdg/menus/applications.menu".source =
     "${pkgs.kdePackages.plasma-workspace}/etc/xdg/menus/plasma-applications.menu";
 
-  environment.sessionVariables.XDG_MENU_PREFIX = "plasma-";
-
   # Portals are configured in home-manager (xdg.portal) to avoid duplicate
   # dbus service registrations for xdg-desktop-portal-hyprland.
 }

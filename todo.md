@@ -1,23 +1,15 @@
 Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland native tools(generally qt, hyprland native if it is clearly better than the qt option)
 
  todo:
- - super+' should not trigger the wallpaper change. can you make it always go to the fourth desk(or get the highest existing desk number +1)
- - hyperlock still doesnt automatically start howdy, requireing text just makes it so that i have to put in some text, press enter, adn then howdy runs. if impossible, just revert to allowing empty input
- - can you make it so that i can click notifications to copy text 
- - the notofication menu on waybar says "emersion mako is providing notifications"
- - bluetooth menu says qrc:/qt/qml/plasma/applet/org/kde/plasma/bluetooth/main.qml:13:1: module "org.kde.bluezqt" is not installed
- - portmaster ui starts on startup not just tray( i want just tray)
-- replace plasma login with a hyprland native login. 
-- (future) style login to look like the bgrt screen with the password *'s where the loading spinner would be, and a nixos logo somewere(naybe a bit below the password). (you can read the image from /sys/firmware/acpi/bgrt/image), this will implictly fix the cursor issue.
--  remove plasma completly and switch to hyprland fully(keep kde libraries and applications that we are using, may need to explicitly install things like the plasma wifi settings etc which were installed via plasma before)
-- in the place of plasma, add a more "agreeable" DE like xfce which can act as backup without conflicting with hyprland(do a minimal install, i dont want the xfce file manager and stuff)
-- qt apps theme: switched to catppuccin-kvantum (matches hyprland mocha) — verify after rebuild: still inconsistant themed and light themed
-- brave file picker: session CHROMIUM_FLAGS + portals; verify save dialog opens: still broken
-- signal/brave kwallet: disabled plasma kwallet PAM, kill kwalletd6 on login, migrate stale storage — verify no kwallet prompt: no more brave prompt, same signal problem(lets try removing plama)
-- volume sounds: unified volume-key.sh (volumectl + pw-play oxygen sound): still no volume sounds
-- fn+f11 kscreen: added kscreen + libkscreen packages, kded restart on prewarm — verify kcm_kscreen: still says no kscreen
+ - (future) style inital login to look like the bgrt screen with the password *'s where the loading spinner would be, and a nixos logo somewere(naybe a bit below the password). (you can read the image from /sys/firmware/acpi/bgrt/image).
+- rather than moving windows, super+` should swich the monitor to a fourth desk(this way window positioning can be maintained)
 
 done:
+ - portmaster tray starts on startup
+- in the place of plasma, add a more "agreeable" DE like xfce which can act as backup without conflicting with hyprland(do a minimal install, i dont want the xfce file manager and stuff)
+-  remove plasma completly and switch to hyprland fully(keep kde libraries and applications that we are using, may need to explicitly install things like the plasma wifi settings etc which were installed via plasma before)
+ - bluetooth menu says qrc:/qt/qml/plasma/applet/org/kde/plasma/bluetooth/main.qml:13:1: module "org.kde.bluezqt" is not installe
+- replace plasma login with a hyprland native login. 
  - waybar starts
 - brightness keys work
 - portmaster tray: systemd user service starts portmaster UI at login
@@ -25,18 +17,15 @@ done:
 - volume/bluetooth/battery/network/clock waybar popups via plasmawindowed (Qt plasma applets)
 - rofi close on mouse movement (-unfocus-exit on SUPER+d launcher)
 - howdy for hyprlock (PAM)
-- super+` show desktop (workspace swap via empty+1, not transparency)
-- Hypr-DarkWindow for transparency with opaque text (mochaChromakey shader)
 - volume/brightness on-screen popups via avizo (lightctl + avizo-service)
 - oxygen sound on volume key press (message-lowpriority.ogg; audio-volume-change no longer in oxygen package)
 - oxygen plug/unplug sounds via power-sounds service
 - notifications via mako (home-manager)
-- power menu on power button (logind ignore + XF86PowerOff -> wofi menu)
-- fixed scripts: trackpad toggle uses hyprctl eval, show desktop uses workspace swap, qt-popup for all waybar menus
+- power menu on power button (logind ignore + XF86PowerOff -> wmenu menu)
+- fixed scripts: trackpad toggle uses hyprctl eval, qt-popup for all waybar menus
 - mamba shell init fixed (MAMBA_EXE)
 - polkit kde agent wired in
 - super+e/r/f workspace switching with wallpaper script
-- super+P -> kcmshell6 kcm_kscreen (Qt KDE display settings, not wdisplays/GTK)
 - plasma login: howdy for unlock, password for login
 - waybar icon positioning fixed
 - migrated to ppd (power-profiles-daemon)
@@ -57,19 +46,17 @@ done:
 - waybar icons for volume, battery, network, bluetooth (nerd font icons)
 - screen recording portals simplified to hyprland-only defaults
 - hyprland/plasma coexistence: nixpkgs hyprland, simplified portals (no duplicate dbus registrations), removed global XDG_CURRENT_DESKTOP=KDE override
-- darkwindow plugin version mismatch fixed by switching hyprland from flake input to nixpkgs (plugins now match)
-- notification history in waybar
+- hyprland plugins: switched from flake input to nixpkgs so plugin versions match
 - plasmawindowed applets open fine now
 - power menu styled and no more notifications
 - clock shows day name and number as well as month name and number(e.g. Tus 09/Jun 06 14:30)
 - waybar plasmawindowed popups close when focus is lost
-- wallpaper changes on workspace swipe
+- wallpaper changes on workspace swipe (hyprpaper)
 - howdy sufficient for unlock after sleep
-- super+p monitor settings switched from GTK wdisplays to Qt kcmshell6 kcm_kscreen
-- qt/gtk theming reset: removed gtk module, kvantum/qt5ct/qt6ct/kdeglobals/dconf overrides; kept hyprland-qt-support only
+- qt/gtk theming: kvantum/qt6ct/BreezeDark session env + hyprland env; KDE portal dark env
 - brightnessctl removed from packages; lightctl used everywhere with brightness-dim/restore scripts for hypridle
-- gnome-keyring for org.freedesktop.secrets (no per-app password-store flags)
-- global xdg portals: kde FileChooser/AppChooser/MimeResolver, gnome-keyring Secret
+- kwallet for org.freedesktop.secrets via ksecretd
+- global xdg portals: kde FileChooser/AppChooser/MimeResolver, kwallet Secret
 - dolphin open-with fix: applications.menu symlink + XDG_MENU_PREFIX + kbuildsycoca prewarm
 - logout: WM close all windows, 10s wait, notify, then TERM/KILL stubborn apps (KDE-style)
 - logout power menu fixed (brave --quit, loginctl terminate-session, no set -e abort)
@@ -79,9 +66,31 @@ done:
 - howdy triggers on wake (hyprlock ignore_empty_input = true)
 - window shadows disabled (drop_shadow = false)
 - startup deduped: kwalletd6/mcontrolcenter via systemd only, avizo on hyprland-session.target
-- redundant configs cleaned: removed wdisplays, brightnessctl package, GTK_USE_PORTAL, gtk theming
+- redundant configs cleaned: removed wdisplays, brightnessctl package, gtk theming module
 - session restore: save on hyprland.exit, restore on start with class-to-command map
 - gtk apps report script: ~/.config/hypr/scripts/gtk-apps-report.sh
 - .gtkrc-2.0 home-manager conflict resolved by removing gtk.enable
-- signal/keyring migration: switched to gnome-keyring; if apps still error on old kwallet data, delete ~/.config/Signal/safeStorage.json and re-login
-- super+`: fixed — workspace empty+1 invalid in 0.55, now uses hl.dsp.focus workspace empty
+- signal/keyring migration: switched to kwallet; if apps still error on old data, delete safeStorage.json and re-login
+- kwallet silent unlock + polkit kde agent via hyprland startup scripts
+- hyprlock: allow empty input so Enter triggers howdy on wake
+- mako: middle-click copies notification text
+- plasma battery popup: upower + powerdevil user service
+- hyprcursor: bibata-modern-classic theme configured
+- brightness keys + avizo OSD: avizo-service started from hyprland with display env
+- waybar taskbar: truncated titles with ellipsis, plasmawindowed excluded
+- plasma popup focus: switching between waybar popups closes the previous one
+- super+`: show desktop via workspace 4 toggle (windows stay put); manual desk switch clears state
+- session-resume.sh: restarts kded, portals, polkit, hyprpaper after sleep/hibernate
+- Qt/Plasma styling via home.sessionVariables in theme.nix (kvantum/qt6ct) — no per-app env wrappers
+- qt theming: kvantum for plasma popups + other Qt apps; subpixel off for chromakey
+- super+P: Hyprland rofi monitor menu via hyprctl
+- brave file picker: desktop entry override + disable WaylandWpFilePicker; use KDE portal via GTK_USE_PORTAL
+- Hypr-DarkWindow: less transparent (targetOpacity 0.85), opaque rofi theme for chromakey
+- services inventory: see services.md
+- removed switcheroo-control (needs KWin)
+- power menu: wmenu (no search box)
+- removed gnome-keyring blocking stubs
+- waybar starts immediately (kbuildsycoca runs in background)
+- systemsettings reinstalled for plasma applet configure buttons
+- notification history removed from waybar
+- wallpapers via hyprpaper (replaced swaybg)

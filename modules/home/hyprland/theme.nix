@@ -1,13 +1,32 @@
 { config, pkgs, ... }:
 
-{
+let
+  bibataHyprcursor = pkgs.runCommand "bibata-modern-classic-hyprcursor"
+    {
+      inherit (pkgs.bibata-cursors) version;
+      nativeBuildInputs = [ pkgs.hyprcursor pkgs.xcur2png ];
+    }
+    ''
+      work=$(mktemp -d)
+      hyprcursor-util -x ${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Classic -o "$work"
+      extracted="$work/extracted_Bibata-Modern-Classic"
+      sed -i 's/name = Extracted Theme/name = Bibata-Modern-Classic/' "$extracted/manifest.hl"
+      outdir=$(mktemp -d)
+      hyprcursor-util -c "$extracted" -o "$outdir"
+      mkdir -p $out/share/icons
+      mv "$outdir/theme_Bibata-Modern-Classic" "$out/share/icons/Bibata-Modern-Classic"
+      rm -rf "$work" "$outdir"
+    '';
+in {
   qt = {
     enable = true;
-    platformTheme.name = "qt6ct";
-    style = {
-      name = "kvantum";
-      package = pkgs.catppuccin-kvantum;
+    platformTheme = {
+      name = "qt6ct";
+      package = pkgs.kdePackages.qt6ct;
     };
+    # style.package must NOT be catppuccin-kvantum — that package is themes only.
+    # HM installs libsForQt5.qtstyleplugin-kvantum + qt6Packages.qtstyleplugin-kvantum.
+    style.name = "kvantum";
   };
 
   home.packages = with pkgs; [
@@ -15,8 +34,47 @@
     catppuccin-kvantum
     kdePackages.qtwayland
     kdePackages.qt6ct
+    kdePackages.breeze
     kdePackages.breeze-icons
+    bibata-cursors
+    bibataHyprcursor
+    hyprcursor
   ];
+
+  home.sessionVariables = {
+    QT_QPA_PLATFORM = "wayland;xcb";
+    QT_QPA_PLATFORMTHEME = "qt6ct";
+    QT_STYLE_OVERRIDE = "kvantum";
+    COLOR_SCHEME = "BreezeDark";
+    KDEHOME = "${config.home.homeDirectory}/.config";
+    KDE_SESSION_VERSION = "6";
+    XDG_CURRENT_DESKTOP = "Hyprland:KDE";
+    XDG_SESSION_DESKTOP = "Hyprland";
+    XDG_MENU_PREFIX = "plasma-";
+    GDK_BACKEND = "wayland,x11";
+    BROWSER = "brave";
+    ELECTRON_OZONE_PLATFORM_HINT = "auto";
+    GTK_USE_PORTAL = "1";
+    XCURSOR_THEME = "Bibata-Modern-Classic";
+    XCURSOR_SIZE = "24";
+    HYPRCURSOR_THEME = "Bibata-Modern-Classic";
+    HYPRCURSOR_SIZE = "24";
+  };
+
+  # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
+  xdg.configFile."fontconfig/fonts.conf".text = ''
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+    <fontconfig>
+      <match target="font">
+        <edit name="rgba" mode="assign"><const>none</const></edit>
+        <edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit>
+      </match>
+    </fontconfig>
+  '';
+
+  xdg.dataFile."color-schemes/BreezeDark.colors".source =
+    "${pkgs.kdePackages.breeze}/share/color-schemes/BreezeDark.colors";
 
   xdg.configFile."hypr/application-style.conf".text = ''
     roundness = 0
@@ -29,7 +87,6 @@
     theme=catppuccin-frappe-blue
   '';
 
-  # Kvantum only reads themes from ~/.config/Kvantum/<name>/ — symlink from nix store.
   xdg.configFile."Kvantum/catppuccin-frappe-blue".source =
     "${pkgs.catppuccin-kvantum}/share/Kvantum/catppuccin-frappe-blue";
 
@@ -46,7 +103,7 @@
     Theme=breeze-dark
 
     [KDE]
-    widgetStyle=Kvantum
+    widgetStyle=kvantum
     colorScheme=BreezeDark
 
     [General]
@@ -56,8 +113,8 @@
 
   xdg.configFile."rofi/spotlight.rasi".text = ''
     * {
-        bg: #1e1e2ee6;
-        bg-alt: #313244e6;
+        bg: #1e1e2e;
+        bg-alt: #313244;
         fg: #cdd6f4;
         fg-alt: #a6adc8;
         border: #94e2d5;

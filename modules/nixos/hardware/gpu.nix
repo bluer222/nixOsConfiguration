@@ -28,10 +28,7 @@ in
     LIBVA_DRIVER_NAME = "iHD";
   }; # Force intel-media-driver
 
-  # Enable switcheroo-control for hybrid GPU switching
-  services.switcherooControl.enable = true;
-
-  # hardware.nvidia.open adds nvidia_uvm to early modules-load; defer it.
+  # Hybrid GPU offload via nvidia.prime — switcheroo-control needs KWin/UPower GPU switching.
   boot.blacklistedKernelModules = mkAfter [ "nvidia_uvm" ];
 
   systemd.services.nvidia-uvm = {

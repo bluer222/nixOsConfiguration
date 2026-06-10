@@ -54,13 +54,6 @@ programs.qgroundcontrol.enable = true;
     noto-fonts-cjk-serif
     libreoffice-qt-fresh
     onlyoffice-desktopeditors
-    brave
-    konsave
-    caligula
-    ocs-url
-    digikam
-    ddrescue
-    ddcutil
     albert
     nss
     ckan

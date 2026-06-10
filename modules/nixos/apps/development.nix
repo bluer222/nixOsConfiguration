@@ -18,5 +18,6 @@
     gemini-cli
     cursor-cli
     antigravity
+    kdePackages.konsole
   ];
 }

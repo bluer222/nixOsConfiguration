@@ -3,13 +3,19 @@
 let
   nerdFont = pkgs."nerd-fonts".fira-code;
 
+  # kwalletd6 needs offscreen Qt — no Wayland display in early systemd context.
+  kwalletServiceEnv = [
+    "QT_QPA_PLATFORM=offscreen"
+    "QT_STYLE_OVERRIDE="
+  ];
+
   portalBackends = {
     default = [ "hyprland" "kde" ];
     "org.freedesktop.impl.portal.FileChooser" = [ "kde" ];
     "org.freedesktop.impl.portal.OpenURI" = [ "kde" ];
     "org.freedesktop.impl.portal.AppChooser" = [ "kde" ];
     "org.freedesktop.impl.portal.MimeResolver" = [ "kde" ];
-    "org.freedesktop.impl.portal.Secret" = [ "gnome-keyring" ];
+    "org.freedesktop.impl.portal.Secret" = [ "kwallet" ];
   };
 in {
   imports = [
@@ -22,9 +28,6 @@ in {
     ./notifications.nix
     ./avizo.nix
   ];
-
-  # org.freedesktop.secrets via dbus — apps discover it through libsecret, no per-app flags.
-  services.gnome-keyring.enable = true;
 
   home.packages = with pkgs; [
     wl-clipboard
@@ -43,18 +46,14 @@ in {
     kdePackages.plasma-workspace
     kdePackages.plasma-integration
     kdePackages.breeze
-    kdePackages.systemsettings
-    kdePackages.breeze-icons
     kdePackages.polkit-kde-agent-1
-    kdePackages.kdeconnect-kde
     kdePackages.kded
-    kdePackages.kscreen
-    kdePackages.libkscreen
     kdePackages.plasma-nm
 
-    kdePackages.oxygen-sounds
+    kdePackages.systemsettings
+    kdePackages.kwallet
+    kdePackages.kwallet-pam
     libsecret
-    gnome-keyring
     hyprshutdown
     avizo
     libnotify
@@ -63,6 +62,8 @@ in {
     hypridle
     hyprlock
     hyprshot
+    hyprpaper
+    kdePackages.powerdevil
   ];
 
   # HM overrides NIX_XDG_DESKTOP_PORTAL_DIR — must enable portals in the user profile.
@@ -71,7 +72,6 @@ in {
     xdgOpenUsePortal = true;
     extraPortals = lib.mkAfter [
       pkgs.kdePackages.xdg-desktop-portal-kde
-      pkgs.xdg-desktop-portal-gnome
     ];
     config = {
       hyprland = portalBackends;
@@ -80,61 +80,6 @@ in {
   };
 
   systemd.user.startServices = "sd-switch";
-
-  systemd.user.services.polkit-kde-agent = {
-    Unit = {
-      Description = "KDE Polkit Authentication Agent";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
-      Restart = "on-failure";
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
-  };
-
-  systemd.user.services.desktop-prewarm = {
-    Unit = {
-      Description = "Prebuild KDE cache and start portal/keyring daemons";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "dbus.service" "pipewire-pulse.service" ];
-      Before = [ "waybar.service" ];
-    };
-    Service = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = pkgs.writeShellScript "desktop-prewarm" ''
-        set -euo pipefail
-        ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
-        systemctl --user start gnome-keyring.service 2>/dev/null || true
-        systemctl --user start xdg-desktop-portal-gnome.service 2>/dev/null || true
-        systemctl --user start plasma-kded6.service 2>/dev/null || true
-        systemctl --user stop kwalletd6.service ksecretd.service 2>/dev/null || true
-        ${pkgs.coreutils}/bin/killall -q kwalletd6 ksecretd 2>/dev/null || true
-      '';
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
-  };
-
-  systemd.user.services.kdeconnectd = {
-    Unit = {
-      Description = "KDE Connect daemon";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "dbus.service" "desktop-prewarm.service" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kdeconnect-kde}/bin/kdeconnectd";
-      Restart = "on-failure";
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
-  };
 
   systemd.user.services.portmaster-tray = {
     Unit = {
@@ -153,7 +98,6 @@ in {
           [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -n "''${WAYLAND_DISPLAY:-}" ] && break
           sleep 1
         done
-        # Tray only — daemon runs via services.portmaster.
         exec ${pkgs.portmaster}/bin/portmaster --background
       '';
       Restart = "on-failure";
@@ -178,6 +122,29 @@ in {
       WantedBy = [ "hyprland-session.target" ];
     };
   };
+
+  services.hyprpaper= {
+    enable = true;
+    settings = {
+      ipc = "on"; # Required for your workspace script to send commands
+      
+      # Preloads are now handled as a simple array list
+      preload = [
+        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-1.png"
+        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-2.png"
+        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-3.png"
+      ];
+
+      # The wallpaper setting must now use the block array format
+      wallpaper = [
+        {
+          monitor = ""; # Leaving this empty acts as a fallback for all monitors
+          path = "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-1.png";
+        }
+      ];
+    };
+  };
+
 
   systemd.user.services.wallpaper-watcher = {
     Unit = {
@@ -211,48 +178,35 @@ in {
     };
   };
 
-  # Block kwallet/ksecretd — gnome-keyring owns org.freedesktop.secrets.
+  # kwalletd6 started by kwallet-unlock.sh after PAM handoff — not at hyprland-session.target
+  # (parallel start races greetd's ksecretd --pam-login unlock).
   systemd.user.services.kwalletd6 = {
     Unit = {
-      Description = "kwalletd6 disabled (using gnome-keyring)";
-      ConditionPathExists = "/nonexistent";
+      Description = "KWallet daemon";
+      After = [ "dbus.service" ];
     };
-    Service.ExecStart = "${pkgs.coreutils}/bin/false";
-    Install.WantedBy = lib.mkForce [ ];
+    Service = {
+      ExecStart = "${pkgs.kdePackages.kwallet}/bin/kwalletd6";
+      BusName = "org.kde.kwalletd6";
+      Restart = "on-failure";
+      RestartSec = 2;
+      Environment = kwalletServiceEnv;
+    };
   };
 
   systemd.user.services.ksecretd = {
     Unit = {
-      Description = "ksecretd disabled (using gnome-keyring)";
-      ConditionPathExists = "/nonexistent";
+      Description = "KWallet libsecret compatibility daemon";
+      After = [ "kwalletd6.service" "dbus.service" ];
+      Requires = [ "kwalletd6.service" ];
     };
-    Service.ExecStart = "${pkgs.coreutils}/bin/false";
-    Install.WantedBy = lib.mkForce [ ];
+    Service = {
+      ExecStart = "${pkgs.kdePackages.kwallet}/bin/ksecretd";
+      BusName = "org.kde.secretservicecompat";
+      Restart = "on-failure";
+      Environment = kwalletServiceEnv;
+    };
   };
-
-  xdg.dataFile."dbus-1/services/org.kde.kwalletd6.service".text = ''
-    [D-BUS Service]
-    Name=org.kde.kwalletd6
-    Exec=/bin/false
-  '';
-
-  xdg.dataFile."dbus-1/services/org.kde.kwalletd5.service".text = ''
-    [D-BUS Service]
-    Name=org.kde.kwalletd5
-    Exec=/bin/false
-  '';
-
-  xdg.dataFile."dbus-1/services/org.kde.secretservicecompat.service".text = ''
-    [D-BUS Service]
-    Name=org.kde.secretservicecompat
-    Exec=/bin/false
-  '';
-
-  xdg.dataFile."dbus-1/services/org.freedesktop.impl.portal.desktop.kwallet.service".text = ''
-    [D-BUS Service]
-    Name=org.freedesktop.impl.portal.desktop.kwallet
-    Exec=/bin/false
-  '';
 
   systemd.user.services.plasma-kded6 = {
     Unit = {
@@ -268,15 +222,14 @@ in {
     Install.WantedBy = [ "hyprland-session.target" ];
   };
 
-  systemd.user.services.xdg-desktop-portal-gnome = {
+  systemd.user.services.powerdevil = {
     Unit = {
-      Description = "Xdg Desktop Portal For GNOME (Secret/keyring backend)";
+      Description = "KDE PowerDevil (battery/upower backend for plasma battery applet)";
+      After = [ "dbus.service" "plasma-kded6.service" ];
       PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "gnome-keyring.service" "xdg-desktop-portal.service" ];
     };
     Service = {
-      ExecStart = "${pkgs.xdg-desktop-portal-gnome}/libexec/xdg-desktop-portal-gnome";
-      BusName = "org.freedesktop.impl.portal.desktop.gnome";
+      ExecStart = "${pkgs.kdePackages.powerdevil}/libexec/org_kde_powerdevil";
       Restart = "on-failure";
     };
     Install.WantedBy = [ "hyprland-session.target" ];
@@ -291,11 +244,7 @@ in {
     Service = {
       ExecStart = "${pkgs.kdePackages.xdg-desktop-portal-kde}/libexec/xdg-desktop-portal-kde";
       BusName = "org.freedesktop.impl.portal.desktop.kde";
-      Restart = "no";
-      Environment = [
-        "QT_STYLE_OVERRIDE="
-        "XDG_CURRENT_DESKTOP=KDE:Hyprland"
-      ];
+      Restart = "on-failure";
     };
     Install.WantedBy = [ "hyprland-session.target" ];
   };

@@ -1,23 +1,20 @@
 { config, pkgs, lib, ... }:
 
 {
-  # pass-backed org.freedesktop.secrets — dbus-activated, no GNOME/KWallet daemons.
-  services.passSecretService.enable = true;
-
-  programs.gnupg = {
-    agent.enable = true;
-    dirmngr.enable = true;
-  };
-
+  # KWallet unlocks at greetd login via PAM (same as SDDM + Plasma).
   security.pam.services.login = {
     enableGnomeKeyring = lib.mkForce false;
-    kwallet.enable = lib.mkForce false;
-    gnupg.enable = true;
+    kwallet = {
+      enable = true;
+      forceRun = true;
+    };
   };
 
   security.pam.services.greetd = {
     enableGnomeKeyring = lib.mkForce false;
-    kwallet.enable = lib.mkForce false;
-    gnupg.enable = true;
+    kwallet = {
+      enable = true;
+      forceRun = true;
+    };
   };
 }

@@ -30,11 +30,16 @@
         color: @teal;
       }
 
+      #taskbar {
+        min-width: 0;
+      }
+
       #taskbar button {
         color: @text;
         padding: 0 4px;
         background: transparent;
         border: none;
+        min-width: 0;
       }
       #taskbar button.active {
         color: @teal;
@@ -44,7 +49,7 @@
         padding: 0 10px;
       }
 
-      #clock, #battery, #pulseaudio, #network, #bluetooth, #cpu, #memory, #custom-notifications {
+      #clock, #battery, #pulseaudio, #network, #bluetooth, #cpu, #memory {
         padding: 0 10px;
       }
     '';
@@ -68,22 +73,27 @@
           "bluetooth"
           "network"
           "pulseaudio"
-          "custom/notifications"
-          "tray"
           "battery"
+          "tray"
           "clock"
         ];
 
         "wlr/taskbar" = {
-          format = "{icon} {name}";
+          format = "{icon} {title}";
+          tooltip-format = "{title}";
           icon-size = 16;
           icon-theme = "breeze-dark";
+          ignore-list = [ "org.kde.plasmawindowed" ];
           on-click = "activate";
           on-click-middle = "close";
+          rewrite = {
+            "^(.{16}).+$" = "$1...";
+          };
         };
 
         "hyprland/workspaces" = {
           format = "{icon}";
+          "show-special" = false;
           format-icons = {
             "1" = "1";
             "2" = "2";
@@ -130,12 +140,6 @@
           on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh volume";
         };
 
-        "custom/notifications" = {
-          format = "󰂚";
-          tooltip = "Notification history";
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh notifications";
-        };
-
         "bluetooth" = {
           format = "󰂯 {status}";
           format-off = "󰂲 off";
@@ -176,7 +180,7 @@
     Unit = {
       Description = "Waybar";
       PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "desktop-prewarm.service" ];
+      After = [ "hyprland-session.target" "dbus.service" ];
     };
     Service = {
       ExecStart = "${config.programs.waybar.package}/bin/waybar";

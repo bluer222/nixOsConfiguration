@@ -12,6 +12,8 @@
   # Power profiles daemon conflicts with TLP
   services.power-profiles-daemon.enable = false;
 
+  services.upower.enable = true;
+
   # Enable TLP with the Profile Daemon (tlp-pd)
   services.tlp = {
     enable = true;
