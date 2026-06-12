@@ -16,6 +16,18 @@
     kdePackages.karousel
     kdePackages.spectacle
     kdePackages.kitemmodels
+
+    # Core archive manager
+    kdePackages.ark
+
+    # Command-line tools required for extracting/compressing
+    p7zip        # For .7z and complex formats
+    unzip        # For .zip files
+    zip          # To allow zipping via Dolphin
+    unrar        # For .rar files
+    gnutar       # For .tar files
+    gzip         # For .tar.gz files
+
     #(pkgs.kdePackages.spectacle.override {
     #    tesseractLanguages = [ "eng" ];
     #})

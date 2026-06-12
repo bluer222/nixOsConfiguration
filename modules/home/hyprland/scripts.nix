@@ -77,37 +77,6 @@ in {
     '';
   };
 
-  xdg.configFile."hypr/scripts/session-resume.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -uo pipefail
-
-      for _ in $(seq 1 30); do
-        [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -n "''${WAYLAND_DISPLAY:-}" ] && break
-        sleep 0.2
-      done
-
-      hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "on" }))' 2>/dev/null || true
-
-      "$HOME/.config/hypr/scripts/kwallet-unlock.sh" 2>/dev/null || true
-
-      systemctl --user restart plasma-kded6.service 2>/dev/null || true
-      systemctl --user restart powerdevil.service 2>/dev/null || true
-      systemctl --user restart plasma-xdg-desktop-portal-kde.service 2>/dev/null || true
-      systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
-      systemctl --user restart hyprpaper.service 2>/dev/null || true
-
-      pkill -f "plasmawindowed" 2>/dev/null || true
-
-      (
-        ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental
-      ) &
-
-      systemctl --user restart hyprpolkitagent.service 2>/dev/null || true
-    '';
-  };
-
   xdg.configFile."hypr/scripts/focus_workspace.sh" = {
     executable = true;
     text = ''
@@ -177,7 +146,7 @@ in {
           max=$(cat "$bl/max_brightness")
           pct=$((cur * 100 / max))
           echo "$pct" > "$STATE_FILE"
-          lightctl -d set =10%
+          lightctl -d set 10
         fi
       fi
     '';
@@ -190,91 +159,21 @@ in {
       set -euo pipefail
       STATE_FILE="$XDG_RUNTIME_DIR/hypr-brightness-saved"
       if [ -f "$STATE_FILE" ]; then
-        lightctl -d set "=$(cat "$STATE_FILE")%"
+        lightctl -d set $(cat "$STATE_FILE")
         rm "$STATE_FILE"
       fi
     '';
   };
 
-  xdg.configFile."hypr/scripts/session-save.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-      mkdir -p "${sessionStateDir}"
-      hyprctl clients -j | ${pkgs.jq}/bin/jq -c '
-        [ .[]
-          | select(.mapped == true and .class != "org.kde.plasmawindowed")
-          | { class, title, workspace: .workspace.id, floating, at, size }
-        ]
-      ' > "${sessionStateDir}/session.json"
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/session-restore.sh" = {
+  xdg.configFile."hypr/scripts/hyprland-events.sh" = {
     executable = true;
     text = ''
       #!/usr/bin/env bash
       set -uo pipefail
 
-      SESSION_FILE="${sessionStateDir}/session.json"
-      [ -f "$SESSION_FILE" ] || exit 0
-
-      declare -A CLASS_CMD=(
-        [brave-browser]="brave"
-        [Brave-browser]="brave"
-        [code]="code"
-        [Code]="code"
-        [cursor]="cursor"
-        [Cursor]="cursor"
-        [org.signal.Signal]="signal-desktop"
-        [org.kde.dolphin]="dolphin"
-        [Alacritty]="alacritty"
-        [kitty]="kitty"
-        [foot]="foot"
-      )
-
-      sleep 2
-
-      while IFS= read -r entry; do
-        class=$(echo "$entry" | ${pkgs.jq}/bin/jq -r '.class')
-        ws=$(echo "$entry" | ${pkgs.jq}/bin/jq -r '.workspace')
-        cmd="''${CLASS_CMD[$class]:-}"
-
-        if [ -z "$cmd" ]; then
-          continue
-        fi
-
-        if ! hyprctl clients -j | ${pkgs.jq}/bin/jq -e --arg c "$class" '.[] | select(.class == $c)' >/dev/null; then
-          hyprctl eval "hl.dispatch(hl.dsp.exec_cmd(\"[workspace ''${ws} silent] ''${cmd}\"))"
-        fi
-      done < <(${pkgs.jq}/bin/jq -c '.[]' "$SESSION_FILE")
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/gtk-apps-report.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -euo pipefail
-
-      echo "GTK-dependent packages in current system closure:"
-      echo "=================================================="
-
-      nix-store -qR /run/current-system 2>/dev/null | while read -r storepath; do
-        if nix-store -qR "$storepath" 2>/dev/null | grep -qE '/gtk[34]?-'; then
-          pkgname=$(basename "$storepath" | sed 's/-[^-]*-[^-]*$//')
-          echo "$pkgname"
-        fi
-      done | sort -u
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/popup-closer.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -uo pipefail
+      scripts="$HOME/.config/hypr/scripts"
+      show_desktop_state="$XDG_RUNTIME_DIR/hyprland-show-desktop"
+      last_workspace=""
 
       socket_path() {
         printf '%s/hypr/%s/.socket2.sock' "''${XDG_RUNTIME_DIR:?}" "''${HYPRLAND_INSTANCE_SIGNATURE:?}"
@@ -301,21 +200,38 @@ in {
         done
       }
 
-      while true; do
-        ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
-          case "''${line}" in
-            activewindow\>\>*|activewindowv2\>\>*)
-              cls=$(hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.class // empty')
-              if [[ "''${cls}" == org.kde.plasmawindowed* ]]; then
-                close_other_plasma_popups
-              else
-                close_plasma_popups
-              fi
-              ;;
-          esac
-        done
-        sleep 1
+      handle_activewindow() {
+        cls=$(hyprctl activewindow -j | ${pkgs.jq}/bin/jq -r '.class // empty')
+        if [[ "''${cls}" == org.kde.plasmawindowed* ]]; then
+          close_other_plasma_popups
+        else
+          close_plasma_popups
+        fi
+      }
+
+      handle_workspace() {
+        ws=$(hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id')
+        if [ -f "$show_desktop_state" ] && [ "''${ws}" != "4" ]; then
+          rm -f "$show_desktop_state"
+        fi
+        if [ -n "''${ws}" ] && [ "''${ws}" != "''${last_workspace}" ]; then
+          last_workspace="''${ws}"
+          "$scripts/change_wallpaper.sh" "''${ws}"
+        fi
+      }
+
+      ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
+        case "''${line}" in
+          activewindow\>\>*|activewindowv2\>\>*)
+            handle_activewindow
+            ;;
+          workspace\>\>*|workspacev2\>\>*|focusedmon\>\>*|focusedmonv2\>\>*)
+            handle_workspace
+            ;;
+        esac
       done
+
+      exit 1
     '';
   };
 
@@ -428,41 +344,6 @@ in {
         down) lightctl -d down ;;
         *) exit 2 ;;
       esac
-    '';
-  };
-
-  xdg.configFile."hypr/scripts/wallpaper-watcher.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      set -uo pipefail
-
-      socket_path() {
-        printf '%s/hypr/%s/.socket2.sock' "''${XDG_RUNTIME_DIR:?}" "''${HYPRLAND_INSTANCE_SIGNATURE:?}"
-      }
-
-      until [ -n "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -S "$(socket_path)" ]; do
-        sleep 1
-      done
-
-      last=""
-      while true; do
-        ${pkgs.socat}/bin/socat -U - "UNIX-CONNECT:$(socket_path)" | while read -r line; do
-          case "''${line}" in
-            workspace\>\>*|workspacev2\>\>*|focusedmon\>\>*|focusedmonv2\>\>*)
-              ws=$(hyprctl activeworkspace -j | ${pkgs.jq}/bin/jq -r '.id')
-              if [ -f "$XDG_RUNTIME_DIR/hyprland-show-desktop" ] && [ "''${ws}" != "4" ]; then
-                rm -f "$XDG_RUNTIME_DIR/hyprland-show-desktop"
-              fi
-              if [ -n "''${ws}" ] && [ "''${ws}" != "''${last}" ]; then
-                last="''${ws}"
-                "$HOME/.config/hypr/scripts/change_wallpaper.sh" "''${ws}"
-              fi
-              ;;
-          esac
-        done
-        sleep 1
-      done
     '';
   };
 

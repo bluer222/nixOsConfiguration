@@ -11,8 +11,8 @@ in {
   };
 
   # Must be set before Hyprland starts (hyprland.lua env is too late).
-  # card1 = Intel iGPU, card0 = NVIDIA dGPU on this Prime offload laptop.
-  environment.sessionVariables.AQ_DRM_DEVICES = "/dev/dri/card1:/dev/dri/card0";
+  # intel-igpu and nvidia-dgpu are stable symlinks created by udev rules in gpu.nix.
+  environment.sessionVariables.AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/nvidia-dgpu";
 
   services.displayManager = {
     defaultSession = "hyprland";

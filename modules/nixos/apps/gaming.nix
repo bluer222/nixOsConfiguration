@@ -22,6 +22,12 @@
   };
   programs.steam.protontricks.enable = true;
 
+  security.wrappers.bwrap = {
+    owner = "root";
+    group = "root";
+    setuid = false;
+    source = "${pkgs.bubblewrap}/bin/bwrap";
+  };
   environment.systemPackages = with pkgs; [
     steam
     lutris

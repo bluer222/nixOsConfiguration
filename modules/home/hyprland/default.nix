@@ -6,7 +6,6 @@ let
   # kwalletd6 needs offscreen Qt — no Wayland display in early systemd context.
   kwalletServiceEnv = [
     "QT_QPA_PLATFORM=offscreen"
-    "QT_STYLE_OVERRIDE="
   ];
 
   portalBackends = {
@@ -32,10 +31,16 @@ in {
   wayland.systemd.target = lib.mkIf config.wayland.windowManager.hyprland.enable
     "hyprland-session.target";
 
+  wayland.windowManager.hyprland = {
+    enable = true;
+    package = pkgs.hyprland;
+  };
+
   services.hyprpolkitagent.enable = true;
   services.avizo.enable = true;
 
   home.packages = with pkgs; [
+    systemd # For systemctl during activation
     wl-clipboard
     jq
     xdg-utils
@@ -49,7 +54,6 @@ in {
     kdePackages.bluez-qt
     kdePackages.plasma-pa
     kdePackages.plasma-workspace
-    kdePackages.plasma-integration
     kdePackages.breeze
     kdePackages.kded
     kdePackages.plasma-nm
@@ -68,6 +72,13 @@ in {
     hyprpaper
     kdePackages.powerdevil
   ];
+
+  home.sessionVariables = {
+    XDG_CURRENT_DESKTOP = "Hyprland";
+    XDG_SESSION_TYPE = "wayland";
+    XDG_SESSION_DESKTOP = "Hyprland";
+    AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/nvidia-dgpu";
+  };
 
   # HM overrides NIX_XDG_DESKTOP_PORTAL_DIR — must enable portals in the user profile.
   xdg.portal = {
@@ -129,6 +140,7 @@ in {
   services.hyprpaper= {
     enable = true;
     settings = {
+      splash = false;
       ipc = "on"; # Required for your workspace script to send commands
       
       # Preloads are now handled as a simple array list
@@ -149,30 +161,14 @@ in {
   };
 
 
-  systemd.user.services.wallpaper-watcher = {
+  systemd.user.services.hyprland-events = {
     Unit = {
-      Description = "Change wallpaper on workspace switch (including swipes)";
+      Description = "Hyprland socket event dispatcher (wallpaper, popup closer)";
       PartOf = [ "hyprland-session.target" ];
       After = [ "hyprland-session.target" ];
     };
     Service = {
-      ExecStart = "${config.home.homeDirectory}/.config/hypr/scripts/wallpaper-watcher.sh";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
-  };
-
-  systemd.user.services.popup-closer = {
-    Unit = {
-      Description = "Close plasmawindowed popups when focus is lost";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" ];
-    };
-    Service = {
-      ExecStart = "${config.home.homeDirectory}/.config/hypr/scripts/popup-closer.sh";
+      ExecStart = "${config.home.homeDirectory}/.config/hypr/scripts/hyprland-events.sh";
       Restart = "on-failure";
       RestartSec = 3;
     };
@@ -250,22 +246,5 @@ in {
       Restart = "on-failure";
     };
     Install.WantedBy = [ "hyprland-session.target" ];
-  };
-
-  systemd.user.services.mcontrolcenter = {
-    Unit = {
-      Description = "MControlCenter (MSI EC / brightness keys)";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" ];
-    };
-    Service = {
-      Type = "simple";
-      ExecStart = "${pkgs.mcontrolcenter}/bin/mcontrolcenter --minimize";
-      Restart = "on-failure";
-      RestartSec = 10;
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
   };
 }

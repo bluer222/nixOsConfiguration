@@ -84,7 +84,7 @@
           tooltip-format = "{title}";
           icon-size = 16;
           icon-theme = "breeze-dark";
-          ignore-list = [ "org.kde.plasmawindowed" ];
+          ignore-list = [ "org.kde.plasmawindowed" "albert" ];
           on-click = "activate";
           on-click-middle = "close";
           rewrite = {

@@ -38,6 +38,7 @@
     ../../modules/nixos/services/printing.nix
     ../../modules/nixos/services/vr.nix
     ../../modules/nixos/services/uresourced.nix
+    ../../modules/nixos/services/lact.nix
 
     # User and App configurations
     ../../modules/nixos/user.nix

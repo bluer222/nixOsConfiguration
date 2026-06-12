@@ -19,5 +19,6 @@
     cursor-cli
     antigravity
     kdePackages.konsole
+    ntfs3g
   ];
 }

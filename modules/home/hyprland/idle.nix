@@ -10,7 +10,6 @@
       general = {
         lock_cmd = "pidof hyprlock || hyprlock";
         before_sleep_cmd = "loginctl lock-session";
-        after_sleep_cmd = "~/.config/hypr/scripts/session-resume.sh";
       };
 
       # 45s: Dim screen (Battery only)
@@ -34,7 +33,6 @@
               hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "off" }))'
             fi
           '';
-          on-resume = "~/.config/hypr/scripts/brightness-restore.sh; ~/.config/hypr/scripts/session-resume.sh";
         }
 
         # 120s: Suspend (Battery)
@@ -47,7 +45,6 @@
         {
           timeout = 180;
           on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = \"off\" }))'";
-          on-resume = "~/.config/hypr/scripts/session-resume.sh";
         }
 
         # 240s: Suspend (AC)

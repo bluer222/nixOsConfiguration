@@ -3,6 +3,7 @@
 final: prev: {
   portmaster = inputs.nixpkgs-portmaster.legacyPackages.${prev.stdenv.hostPlatform.system}.portmaster;
   glaumar_repo = inputs.glaumar_repo.packages."${prev.stdenv.hostPlatform.system}";
+
   llama-cpp-cuda = prev.llama-cpp.override {
     cudaSupport = true;
     rocmSupport = false;

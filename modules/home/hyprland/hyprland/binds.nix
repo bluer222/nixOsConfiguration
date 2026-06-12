@@ -30,6 +30,24 @@ in {
         (inline "hl.dsp.exec_cmd(\"hyprctl activewindow -j | jq -r '.pid' | xargs kill -9\")")
       ];
     }
+/*
+    {
+      _args = [
+        (inline ''mainMod .. " + T"'')
+        (inline "hl.plugin.darkwindow.dsp_shade({
+          shader = \"mochaChromakey\",
+          window = \"class:.*\",
+        })")
+      ];
+    }
+    {
+      _args = [
+        (inline ''mainMod .. " + G"'')
+        (inline "hl.plugin.darkwindow.dsp_shade({
+          shader = \"mochaChromakey\",
+        })")
+      ];
+    }*/
     {
       _args = [
         (inline ''mainMod .. " + W"'')

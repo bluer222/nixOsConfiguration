@@ -60,5 +60,8 @@ programs.qgroundcontrol.enable = true;
     immich-go
     kubectl
     signal-desktop
+    kdePackages.gwenview
+
   ];
+
 }

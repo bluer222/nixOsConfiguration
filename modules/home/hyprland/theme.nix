@@ -1,6 +1,42 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 let
+  catppuccinKde = pkgs.catppuccin-kde;
+  catppuccinGtk = pkgs.catppuccin-gtk;
+
+  colorSchemeName = "CatppuccinFrappeBlue";
+  colorSchemeHomePath = "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors";
+  gtkThemeName = "catppuccin-frappe-blue-standard";
+  iconThemeName = "breeze-dark";
+
+  themeEnv = [
+    "QT_QPA_PLATFORM=wayland"
+    "QT_QPA_PLATFORMTHEME=kde"
+    "COLOR_SCHEME=${colorSchemeName}"
+    "KDEHOME=${config.home.homeDirectory}/.config"
+    "KDE_SESSION_VERSION=6"
+    "XDG_MENU_PREFIX=plasma-"
+    "GTK_CSD=0"
+  ];
+
+  kdeglobalsText = ''
+    [Icons]
+    Theme=${iconThemeName}
+
+    [General]
+    widgetStyle=Breeze
+    ColorScheme=${colorSchemeName}
+    AccentColor=140,170,238
+
+    [KDE]
+    widgetStyle=Breeze
+    colorScheme=${colorSchemeName}
+    LookAndFeelPackage=Catppuccin-Frappe-Blue
+
+    [UiSettings]
+    ColorScheme=${colorSchemeName}
+  '';
+
   bibataHyprcursor = pkgs.runCommand "bibata-modern-classic-hyprcursor"
     {
       inherit (pkgs.bibata-cursors) version;
@@ -20,38 +56,34 @@ let
 in {
   qt = {
     enable = true;
-    platformTheme = {
-      name = "qt6ct";
-      package = pkgs.kdePackages.qt6ct;
-    };
-    # style.package must NOT be catppuccin-kvantum — that package is themes only.
-    # HM installs libsForQt5.qtstyleplugin-kvantum + qt6Packages.qtstyleplugin-kvantum.
-    style.name = "kvantum";
+    platformTheme.name = "kde";
   };
 
   home.packages = with pkgs; [
     hyprland-qt-support
-    catppuccin-kvantum
+    catppuccinKde
+    catppuccinGtk
     kdePackages.qtwayland
-    kdePackages.qt6ct
+    kdePackages.plasma-integration
     kdePackages.breeze
     kdePackages.breeze-icons
+    libsForQt5.qtwayland
     bibata-cursors
     bibataHyprcursor
     hyprcursor
   ];
 
   home.sessionVariables = {
-    QT_QPA_PLATFORM = "wayland;xcb";
-    QT_QPA_PLATFORMTHEME = "qt6ct";
-    QT_STYLE_OVERRIDE = "kvantum";
-    COLOR_SCHEME = "BreezeDark";
+    QT_QPA_PLATFORM = "wayland";
+    QT_QPA_PLATFORMTHEME = "kde";
+    COLOR_SCHEME = colorSchemeName;
     KDEHOME = "${config.home.homeDirectory}/.config";
     KDE_SESSION_VERSION = "6";
-    XDG_CURRENT_DESKTOP = "Hyprland:KDE";
     XDG_SESSION_DESKTOP = "Hyprland";
+    XDG_CURRENT_DESKTOP = "Hyprland";
     XDG_MENU_PREFIX = "plasma-";
     GDK_BACKEND = "wayland,x11";
+    GTK_CSD = "0";
     BROWSER = "brave";
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
     GTK_USE_PORTAL = "1";
@@ -60,6 +92,36 @@ in {
     HYPRCURSOR_THEME = "Bibata-Modern-Classic";
     HYPRCURSOR_SIZE = "24";
   };
+
+  systemd.user.services.hyprpolkitagent.serviceConfig.Environment = themeEnv;
+
+  xdg.configFile."hypr/scripts/apply-desktop-theme.sh" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      if [ -x ${pkgs.dconf}/bin/dconf ] && [ -n "''${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'" || true
+        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/gtk-theme "'${gtkThemeName}'" || true
+        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/icon-theme "'${iconThemeName}'" || true
+      fi
+    '';
+  };
+
+  home.activation.desktopThemePrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    $DRY_RUN_CMD ${config.home.homeDirectory}/.config/hypr/scripts/apply-desktop-theme.sh || true
+  '';
+
+  home.activation.importUserEnvironment = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    # Ensure systemd --user imports the environment so GUI services and autostarted
+    # apps see `QT_QPA_PLATFORMTHEME` and related variables.
+    $DRY_RUN_CMD systemctl --user import-environment || true
+  '';
+
+  xdg.dataFile."color-schemes/${colorSchemeName}.colors".source =
+    "${catppuccinKde}/share/color-schemes/${colorSchemeName}.colors";
+
+  xdg.configFile."environment.d/11-hyprland-theme.conf".text =
+    lib.concatStringsSep "\n" themeEnv;
 
   # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
   xdg.configFile."fontconfig/fonts.conf".text = ''
@@ -73,42 +135,32 @@ in {
     </fontconfig>
   '';
 
-  xdg.dataFile."color-schemes/BreezeDark.colors".source =
-    "${pkgs.kdePackages.breeze}/share/color-schemes/BreezeDark.colors";
-
   xdg.configFile."hypr/application-style.conf".text = ''
     roundness = 0
     border_width = 2
     reduce_motion = false
   '';
 
-  xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
-    [General]
-    theme=catppuccin-frappe-blue
+  xdg.configFile."kdeglobals".text = kdeglobalsText;
+
+  xdg.configFile."kdedefaults/kdeglobals".text = kdeglobalsText;
+
+  xdg.configFile."gtk-3.0/settings.ini".text = ''
+    [Settings]
+    gtk-application-prefer-dark-theme=1
+    gtk-theme-name=${gtkThemeName}
+    gtk-icon-theme-name=${iconThemeName}
+    gtk-cursor-theme-name=Bibata-Modern-Classic
+    gtk-cursor-theme-size=24
+    gtk-decoration-layout=
   '';
 
-  xdg.configFile."Kvantum/catppuccin-frappe-blue".source =
-    "${pkgs.catppuccin-kvantum}/share/Kvantum/catppuccin-frappe-blue";
-
-  xdg.configFile."qt6ct/qt6ct.conf".text = ''
-    [Appearance]
-    style=kvantum
-    icon_theme=breeze-dark
-    standard_dialogs=default
-    palette=${pkgs.kdePackages.qt6ct}/share/qt6ct/colors/darker.conf
-  '';
-
-  xdg.configFile."kdeglobals".text = ''
-    [Icons]
-    Theme=breeze-dark
-
-    [KDE]
-    widgetStyle=kvantum
-    colorScheme=BreezeDark
-
-    [General]
-    ColorScheme=BreezeDark
-    AccentColor=94,226,213
+  xdg.configFile."gtk-4.0/settings.ini".text = ''
+    [Settings]
+    gtk-application-prefer-dark-theme=1
+    gtk-theme-name=${gtkThemeName}
+    gtk-icon-theme-name=${iconThemeName}
+    gtk-decoration-layout=
   '';
 
   xdg.configFile."rofi/spotlight.rasi".text = ''

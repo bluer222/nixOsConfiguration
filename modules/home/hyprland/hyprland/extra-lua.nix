@@ -1,7 +1,22 @@
-{ ... }:
+{ config, ... }:
 
+let
+  scripts = "${config.home.homeDirectory}/.config/hypr/scripts";
+in
 {
   wayland.windowManager.hyprland.extraLuaFiles = {
+    "globals" = {
+      autoLoad = true;
+      content = ''
+        -- Startup logic
+        hl.on("hyprland.start", function()
+          hl.exec_cmd("${scripts}/apply-desktop-theme.sh")
+          hl.exec_cmd("${scripts}/kwallet-unlock.sh")
+          hl.exec_cmd("albert")
+        end)
+      '';
+    };
+
     "plugins/darkwindow" = {
       autoLoad = true;
       content = ''
@@ -10,12 +25,15 @@
         if hl.plugin.darkwindow ~= nil then
           hl.plugin.darkwindow.load_shader("mochaChromakey", {
             from = "chromakey",
-            args = "bkg=[0.118 0.118 0.180] similarity=0.14 amount=1.0 targetOpacity=0.80",
+            args = "bkg=[0.118 0.118 0.180] similarity=0.14 amount=1.0 targetOpacity=0.65",
             introduces_transparency = true,
           })
           hl.window_rule({
             name = "darkwindow-mocha",
-            match = { class = ".*" },
+            --  Don't apply to Steam or Steam game windows (steam, steam_app_<id>)
+             -- match = { class = ".*" },
+             --temp disable
+             match = { class = "none" },
             ["darkwindow:shade"] = "mochaChromakey",
           })
         end

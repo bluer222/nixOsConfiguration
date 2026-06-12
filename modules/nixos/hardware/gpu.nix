@@ -44,6 +44,7 @@ in
 
   # Load nvidia
   services.xserver.videoDrivers = [ "nvidia" ];
+  hardware.nvidia-container-toolkit.enable = true;
   # Load nvidia driver for Xorg and Wayland
   hardware.nvidia = {
     #midigates bottlenecks by transferig power from cpu to gpu when needed

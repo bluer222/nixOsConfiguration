@@ -27,6 +27,31 @@
     gamescope.enable = true;
     #add nix-ld for dynamic executables
     nix-ld.enable = true;
+    nix-ld.libraries = with pkgs; [
+        glib       # for libglib-2.0.so.0 and libgobject-2.0.so.0
+        gmp        # for libgmp.so.10
+        libGL      # for libGL.so.1
+        libGLU     # for libGLU.so.1
+        curl       # for libcurl.so.4
+        gcc.cc.lib # for libgomp.so.1 and libstdc++.so.6
+        zlib       # for libz.so.1
+        libkrb5    # for libgssapi_krb5.so.2
+        libxcb
+        libxcb-cursor
+        libxcb-image
+        libxcb-keysyms
+        libxcb-render-util
+        libxcb-util
+        libxcb-wm
+        fontconfig
+        freetype
+libsm
+libxext
+libxrender
+libice
+libxkbcommon
+libX11
+    ];
     direnv = {
       enable = true;
       enableZshIntegration = true;

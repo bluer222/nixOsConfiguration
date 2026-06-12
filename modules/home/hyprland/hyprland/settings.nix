@@ -16,9 +16,18 @@ in {
       scale = 1;
     };
 
+    env = [
+      {
+        _args = [
+          "GTK_CSD"
+          "0"
+        ];
+      }
+    ];
+
     config = {
       general = {
-        gaps_in = 4;
+        gaps_in = 2;
         gaps_out = 4;
         border_size = 2;
         col = {
@@ -34,8 +43,8 @@ in {
       };
       decoration = {
         rounding = 0;
-        active_opacity = 0.92;
-        inactive_opacity = 0.88;
+        active_opacity = 1;
+        inactive_opacity = 1;
         shadow = {
           enabled = false;
         };
@@ -72,7 +81,6 @@ in {
         middle_click_paste = false;
         force_default_wallpaper = 0;
         disable_hyprland_logo = true;
-        splash = false;
       };
     };
 
@@ -240,31 +248,6 @@ in {
         float = true;
         center = true;
         opacity = "1 1";
-      }
-    ];
-
-    on = [
-      {
-        _args = [
-          "hyprland.start"
-          (lib.generators.mkLuaInline ''
-            function()
-              hl.exec_cmd("${scripts}/kwallet-unlock.sh")
-              hl.exec_cmd("albert")
-              hl.exec_cmd("bash -lc '${scripts}/session-restore.sh &'")
-            end
-          '')
-        ];
-      }
-      {
-        _args = [
-          "hyprland.shutdown"
-          (lib.generators.mkLuaInline ''
-            function()
-              hl.exec_cmd("${scripts}/session-save.sh")
-            end
-          '')
-        ];
       }
     ];
   };
