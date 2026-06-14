@@ -122,7 +122,7 @@
           format-disconnected = "󰖪";
           tooltip-format = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
           interval = 1;
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh network";
+          on-click = "hyprctl eval 'spawn_plasma_popup(\"network\")'";
         };
 
         "pulseaudio" = {
@@ -138,7 +138,7 @@
             default = [ "󰕿" "󰖀" "󰕾" ];
           };
           tooltip-format = "{desc} · {volume}%";
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh volume";
+          on-click = "hyprctl eval 'spawn_plasma_popup(\"volume\")'";
         };
 
         "bluetooth" = {
@@ -146,7 +146,7 @@
           format-off = "󰂲 off";
           format-on = "󰂯 on";
           format-connected = "󰂱 {num_connections}";
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh bluetooth";
+          on-click = "hyprctl eval 'spawn_plasma_popup(\"bluetooth\")'";
         };
 
         "battery" = {
@@ -158,14 +158,14 @@
             warning = 30;
             critical = 15;
           };
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh battery";
+          on-click = "hyprctl eval 'spawn_plasma_popup(\"battery\")'";
         };
 
         "clock" = {
           format = "{:%a %d/%b %m  %H:%M}";
           interval = 1;
           tooltip-format = "{:%A, %d %B %Y  %H:%M:%S}";
-          on-click = "${config.home.homeDirectory}/.config/hypr/scripts/qt-popup.sh clock";
+          on-click = "hyprctl eval 'spawn_plasma_popup(\"clock\")'";
         };
 
         "tray" = {

@@ -30,24 +30,6 @@ in {
         (inline "hl.dsp.exec_cmd(\"hyprctl activewindow -j | jq -r '.pid' | xargs kill -9\")")
       ];
     }
-/*
-    {
-      _args = [
-        (inline ''mainMod .. " + T"'')
-        (inline "hl.plugin.darkwindow.dsp_shade({
-          shader = \"mochaChromakey\",
-          window = \"class:.*\",
-        })")
-      ];
-    }
-    {
-      _args = [
-        (inline ''mainMod .. " + G"'')
-        (inline "hl.plugin.darkwindow.dsp_shade({
-          shader = \"mochaChromakey\",
-        })")
-      ];
-    }*/
     {
       _args = [
         (inline ''mainMod .. " + W"'')
@@ -75,19 +57,19 @@ in {
     {
       _args = [
         (inline ''mainMod .. " + E"'')
-        (inline "hl.dsp.exec_cmd(\"${scripts}/focus_workspace.sh 1\")")
+        (inline "function() focus_workspace(1) end")
       ];
     }
     {
       _args = [
         (inline ''mainMod .. " + R"'')
-        (inline "hl.dsp.exec_cmd(\"${scripts}/focus_workspace.sh 2\")")
+        (inline "function() focus_workspace(2) end")
       ];
     }
     {
       _args = [
         (inline ''mainMod .. " + F"'')
-        (inline "hl.dsp.exec_cmd(\"${scripts}/focus_workspace.sh 3\")")
+        (inline "function() focus_workspace(3) end")
       ];
     }
     {
@@ -111,7 +93,7 @@ in {
     {
       _args = [
         (inline ''mainMod .. " + GRAVE"'')
-        (inline "hl.dsp.exec_cmd(\"${scripts}/show_desktop.sh\")")
+        (inline "function() toggle_show_desktop() end")
       ];
     }
     {
@@ -129,7 +111,7 @@ in {
     {
       _args = [
         "Print"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/screenshot-region.sh\")")
+        (inline "hl.dsp.exec_cmd(\"hyprshot -m region --output-folder '$HOME/Pictures/Screenshots'\")")
       ];
     }
     {
@@ -153,21 +135,21 @@ in {
     {
       _args = [
         "XF86AudioMute"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/volume-key.sh mute\")")
+        (inline "function() volume_toggle_mute() end")
         bindOpts
       ];
     }
     {
       _args = [
         "XF86AudioLowerVolume"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/volume-key.sh down\")")
+        (inline "function() volume_down() end")
         bindOpts
       ];
     }
     {
       _args = [
         "XF86AudioRaiseVolume"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/volume-key.sh up\")")
+        (inline "function() volume_up() end")
         bindOpts
       ];
     }
@@ -181,28 +163,28 @@ in {
     {
       _args = [
         "XF86MonBrightnessUp"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/brightness-key.sh up\")")
+        (inline "hl.dsp.exec_cmd(\"lightctl -d up\")")
         bindOpts
       ];
     }
     {
       _args = [
         "XF86MonBrightnessDown"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/brightness-key.sh down\")")
+        (inline "hl.dsp.exec_cmd(\"lightctl -d down\")")
         bindOpts
       ];
     }
     {
       _args = [
         "code:224"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/brightness-key.sh down\")")
+        (inline "hl.dsp.exec_cmd(\"lightctl -d down\")")
         bindOpts
       ];
     }
     {
       _args = [
         "code:225"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/brightness-key.sh up\")")
+        (inline "hl.dsp.exec_cmd(\"lightctl -d up\")")
         bindOpts
       ];
     }
@@ -218,25 +200,7 @@ in {
     {
       _args = [
         (inline ''mainMod .. " + P"'')
-        (inline "hl.dsp.exec_cmd(\"${scripts}/open-monitors.sh\")")
-        {
-          locked = true;
-        }
-      ];
-    }
-    {
-      _args = [
-        "XF86Display"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/open-monitors.sh\")")
-        {
-          locked = true;
-        }
-      ];
-    }
-    {
-      _args = [
-        "XF86Launch1"
-        (inline "hl.dsp.exec_cmd(\"${scripts}/open-monitors.sh\")")
+        (inline "hl.dsp.exec_cmd(\"hyprctl eval 'hl.get_active_monitor()'\")")
         {
           locked = true;
         }

@@ -24,16 +24,16 @@ in {
     ./waybar.nix
     ./idle.nix
     ./theme.nix
-    ./scripts.nix
     ./notifications.nix
   ];
 
   wayland.systemd.target = lib.mkIf config.wayland.windowManager.hyprland.enable
-    "hyprland-session.target";
+    "graphical-session.target";
 
   wayland.windowManager.hyprland = {
     enable = true;
     package = pkgs.hyprland;
+    systemd.enable = false;
   };
 
   services.hyprpolkitagent.enable = true;
@@ -98,9 +98,9 @@ in {
   systemd.user.services.portmaster-tray = {
     Unit = {
       Description = "Portmaster tray UI";
-      PartOf = [ "hyprland-session.target" ];
+      PartOf = [ "graphical-session.target" ];
       After = [
-        "hyprland-session.target"
+        "graphical-session.target"
         "network-online.target"
         "xdg-desktop-portal.service"
       ];
@@ -118,22 +118,30 @@ in {
       RestartSec = 30;
     };
     Install = {
-      WantedBy = [ "hyprland-session.target" ];
+      WantedBy = [ "graphical-session.target" ];
     };
   };
 
   systemd.user.services.power-sounds = {
     Unit = {
       Description = "Power plug/unplug sounds";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "pipewire-pulse.service" ];
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" "pipewire-pulse.service" ];
     };
     Service = {
-      ExecStart = "${config.home.homeDirectory}/.config/hypr/scripts/power-sounds.sh";
+      ExecStart = pkgs.writeShellScript "power-sounds-monitor" ''
+        ${pkgs.systemd}/bin/udevadm monitor --property --subsystem-match=power_supply | while read -r line; do
+          if echo "$line" | grep -q "POWER_SUPPLY_ONLINE=1"; then
+            ${pkgs.hyprland}/bin/hyprctl eval "power_plug()"
+          elif echo "$line" | grep -q "POWER_SUPPLY_ONLINE=0"; then
+            ${pkgs.hyprland}/bin/hyprctl eval "power_unplug()"
+          fi
+        done
+      '';
       Restart = "on-failure";
     };
     Install = {
-      WantedBy = [ "hyprland-session.target" ];
+      WantedBy = [ "graphical-session.target" ];
     };
   };
 
@@ -161,83 +169,37 @@ in {
   };
 
 
-  systemd.user.services.hyprland-events = {
-    Unit = {
-      Description = "Hyprland socket event dispatcher (wallpaper, popup closer)";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" ];
-    };
-    Service = {
-      ExecStart = "${config.home.homeDirectory}/.config/hypr/scripts/hyprland-events.sh";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install = {
-      WantedBy = [ "hyprland-session.target" ];
-    };
-  };
-
-  # kwalletd6 started by kwallet-unlock.sh after PAM handoff — not at hyprland-session.target
-  # (parallel start races greetd's ksecretd --pam-login unlock).
-  systemd.user.services.kwalletd6 = {
-    Unit = {
-      Description = "KWallet daemon";
-      After = [ "dbus.service" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kwallet}/bin/kwalletd6";
-      BusName = "org.kde.kwalletd6";
-      Restart = "on-failure";
-      RestartSec = 2;
-      Environment = kwalletServiceEnv;
-    };
-  };
-
-  systemd.user.services.ksecretd = {
-    Unit = {
-      Description = "KWallet libsecret compatibility daemon";
-      After = [ "kwalletd6.service" "dbus.service" ];
-      Requires = [ "kwalletd6.service" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kwallet}/bin/ksecretd";
-      BusName = "org.kde.secretservicecompat";
-      Restart = "on-failure";
-      Environment = kwalletServiceEnv;
-    };
-  };
-
   systemd.user.services.plasma-kded6 = {
     Unit = {
       Description = "KDE Daemon 6";
-      PartOf = [ "hyprland-session.target" ];
-      After = [ "hyprland-session.target" "dbus.service" ];
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" "dbus.service" ];
     };
     Service = {
       ExecStart = "${pkgs.kdePackages.kded}/bin/kded6";
       BusName = "org.kde.kded6";
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "hyprland-session.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   systemd.user.services.powerdevil = {
     Unit = {
       Description = "KDE PowerDevil (battery/upower backend for plasma battery applet)";
       After = [ "dbus.service" "plasma-kded6.service" ];
-      PartOf = [ "hyprland-session.target" ];
+      PartOf = [ "graphical-session.target" ];
     };
     Service = {
       ExecStart = "${pkgs.kdePackages.powerdevil}/libexec/org_kde_powerdevil";
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "hyprland-session.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   systemd.user.services.plasma-xdg-desktop-portal-kde = {
     Unit = {
       Description = "Xdg Desktop Portal For KDE";
-      PartOf = [ "hyprland-session.target" ];
+      PartOf = [ "graphical-session.target" ];
       After = [ "xdg-desktop-portal.service" "dbus.service" ];
     };
     Service = {
@@ -245,6 +207,6 @@ in {
       BusName = "org.freedesktop.impl.portal.desktop.kde";
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "hyprland-session.target" ];
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 }

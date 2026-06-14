@@ -9,7 +9,10 @@
     networkmanager = {
       enable = true;
       wifi.powersave = false;
-      dns = "none";
+      insertNameservers = [
+        "1.1.1.2"
+        "1.0.0.2"
+      ];
     };
 
     usePredictableInterfaceNames = true;
@@ -17,10 +20,6 @@
     # Firewall configuration
     #nftables breaks qemu maybe
     nftables.enable = true;
-    nameservers = [
-      "1.1.1.2"
-      "1.0.0.2"
-    ];
     search = [ ];
 
     firewall = {

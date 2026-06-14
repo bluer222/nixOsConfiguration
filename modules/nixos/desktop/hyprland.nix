@@ -7,6 +7,7 @@ let
 in {
   programs.hyprland = {
     enable = true;
+    withUWSM = true; # Enforces clean session management and drops leaked caps
     xwayland.enable = true;
   };
 
@@ -15,7 +16,7 @@ in {
   environment.sessionVariables.AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/nvidia-dgpu";
 
   services.displayManager = {
-    defaultSession = "hyprland";
+    defaultSession = "hyprland-uwsm";
     sessionPackages = with pkgs; [
       hyprland
       xfceSessionPackage

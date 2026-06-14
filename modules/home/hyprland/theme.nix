@@ -4,9 +4,9 @@ let
   catppuccinKde = pkgs.catppuccin-kde;
   catppuccinGtk = pkgs.catppuccin-gtk;
 
-  colorSchemeName = "CatppuccinFrappeBlue";
+  colorSchemeName = "CatppuccinMochaBlue";
   colorSchemeHomePath = "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors";
-  gtkThemeName = "catppuccin-frappe-blue-standard";
+  gtkThemeName = "catppuccin-mocha-blue-standard";
   iconThemeName = "breeze-dark";
 
   themeEnv = [
@@ -31,7 +31,7 @@ let
     [KDE]
     widgetStyle=Breeze
     colorScheme=${colorSchemeName}
-    LookAndFeelPackage=Catppuccin-Frappe-Blue
+    LookAndFeelPackage=Catppuccin-Mocha-Blue
 
     [UiSettings]
     ColorScheme=${colorSchemeName}
@@ -229,5 +229,21 @@ in {
     element-text {
         vertical-align: 0.5;
     }
+  '';
+
+  xdg.configFile."avizo/config.ini".text = ''
+    [default]
+    background = rgba(30, 30, 46, 0.95)
+    border-color = rgba(148, 226, 213, 0.9)
+    bar-fg-color = rgba(148, 226, 213, 0.95)
+    bar-bg-color = rgba(49, 50, 68, 0.9)
+    border-radius = 12
+    border-width = 2
+    padding = 20
+    y-offset = 0.12
+    x-offset = 0.5
+    time = 1.5
+    fade-in = 0.15
+    fade-out = 0.3
   '';
 }

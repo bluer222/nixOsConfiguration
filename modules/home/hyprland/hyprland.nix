@@ -5,6 +5,7 @@
     ./hyprland/settings.nix
     ./hyprland/binds.nix
     ./hyprland/extra-lua.nix
+    ./hyprland/sounds.nix
   ];
 
   wayland.windowManager.hyprland = {

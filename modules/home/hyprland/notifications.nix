@@ -19,7 +19,7 @@
 
       # Left click: default action. Middle click: copy body to clipboard.
       "on-button-left" = "invoke-default-action";
-      "on-button-middle" = "exec ${config.home.homeDirectory}/.config/hypr/scripts/mako-copy.sh \"\$id\"";
+      "on-button-middle" = "exec makoctl history | jq -r '.data[] | select(.id.data == '\$id') | .body.data' | wl-copy";
     };
   };
 }

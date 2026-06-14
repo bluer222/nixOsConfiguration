@@ -16,8 +16,8 @@
       listener = [
         {
           timeout = 45;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || ~/.config/hypr/scripts/brightness-dim.sh";
-          on-resume = "~/.config/hypr/scripts/brightness-restore.sh";
+          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || hyprctl eval 'dim_brightness()'";
+          on-resume = "hyprctl eval 'restore_brightness()'";
         }
         
         # 60s: Screen off (Battery), Lock/Dim (AC)
@@ -27,7 +27,7 @@
             if cat /sys/class/power_supply/*/online | grep -q 1; then
               # AC: Lock and Dim
               loginctl lock-session
-              ~/.config/hypr/scripts/brightness-dim.sh
+              hyprctl eval 'dim_brightness()'
             else
               # Battery: Screen off
               hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "off" }))'
