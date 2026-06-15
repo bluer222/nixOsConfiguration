@@ -25,6 +25,7 @@ in {
     ./idle.nix
     ./theme.nix
     ./notifications.nix
+    ./wleave.nix
   ];
 
   wayland.systemd.target = lib.mkIf config.wayland.windowManager.hyprland.enable
@@ -70,7 +71,6 @@ in {
     hyprlock
     hyprshot
     hyprpaper
-    kdePackages.powerdevil
   ];
 
   home.sessionVariables = {
@@ -122,29 +122,6 @@ in {
     };
   };
 
-  systemd.user.services.power-sounds = {
-    Unit = {
-      Description = "Power plug/unplug sounds";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" "pipewire-pulse.service" ];
-    };
-    Service = {
-      ExecStart = pkgs.writeShellScript "power-sounds-monitor" ''
-        ${pkgs.systemd}/bin/udevadm monitor --property --subsystem-match=power_supply | while read -r line; do
-          if echo "$line" | grep -q "POWER_SUPPLY_ONLINE=1"; then
-            ${pkgs.hyprland}/bin/hyprctl eval "power_plug()"
-          elif echo "$line" | grep -q "POWER_SUPPLY_ONLINE=0"; then
-            ${pkgs.hyprland}/bin/hyprctl eval "power_unplug()"
-          fi
-        done
-      '';
-      Restart = "on-failure";
-    };
-    Install = {
-      WantedBy = [ "graphical-session.target" ];
-    };
-  };
-
   services.hyprpaper= {
     enable = true;
     settings = {
@@ -152,11 +129,11 @@ in {
       ipc = "on"; # Required for your workspace script to send commands
       
       # Preloads are now handled as a simple array list
-      preload = [
-        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-1.png"
-        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-2.png"
-        "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-3.png"
-      ];
+      #preload = [
+      #  "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-1.png"
+      #  "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-2.png"
+      #  "${config.home.homeDirectory}/Pictures/Wallpapers/workspace-3.png"
+      #];
 
       # The wallpaper setting must now use the block array format
       wallpaper = [
@@ -168,7 +145,6 @@ in {
     };
   };
 
-
   systemd.user.services.plasma-kded6 = {
     Unit = {
       Description = "KDE Daemon 6";
@@ -178,19 +154,6 @@ in {
     Service = {
       ExecStart = "${pkgs.kdePackages.kded}/bin/kded6";
       BusName = "org.kde.kded6";
-      Restart = "on-failure";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  systemd.user.services.powerdevil = {
-    Unit = {
-      Description = "KDE PowerDevil (battery/upower backend for plasma battery applet)";
-      After = [ "dbus.service" "plasma-kded6.service" ];
-      PartOf = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.powerdevil}/libexec/org_kde_powerdevil";
       Restart = "on-failure";
     };
     Install.WantedBy = [ "graphical-session.target" ];

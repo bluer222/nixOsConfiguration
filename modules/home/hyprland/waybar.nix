@@ -75,6 +75,7 @@
           "network"
           "pulseaudio"
           "battery"
+          "power-profiles-daemon"
           "tray"
           "clock"
         ];
@@ -159,6 +160,18 @@
             critical = 15;
           };
           on-click = "hyprctl eval 'spawn_plasma_popup(\"battery\")'";
+        };
+
+        "power-profiles-daemon" = {
+          format = "{icon}";
+          tooltip-format = "Power profile: {profile}\\nDriver: {driver}";
+          tooltip = true;
+          format-icons = {
+            default = "";
+            performance = "";
+            balanced = "";
+            power-saver = "";
+          };
         };
 
         "clock" = {

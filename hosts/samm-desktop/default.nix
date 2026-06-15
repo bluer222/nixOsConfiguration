@@ -18,7 +18,6 @@
     ../../modules/nixos/desktop/core.nix
     ../../modules/nixos/desktop/portals.nix
     ../../modules/nixos/desktop/polkit.nix
-    ../../modules/nixos/desktop/power_button.nix
     ../../modules/nixos/desktop/logout.nix
     ../../modules/nixos/system/performance.nix
     ../../modules/nixos/desktop/kde.nix

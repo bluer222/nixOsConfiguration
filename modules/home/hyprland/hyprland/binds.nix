@@ -135,7 +135,7 @@ in {
     {
       _args = [
         "XF86AudioMute"
-        (inline "function() volume_toggle_mute() end")
+        (inline "function() volume_toggle_mute(false) end")
         bindOpts
       ];
     }
@@ -156,7 +156,7 @@ in {
     {
       _args = [
         "XF86AudioMicMute"
-        (inline "hl.dsp.exec_cmd(\"volumectl -d -m toggle-mute\")")
+        (inline "function() volume_toggle_mute(true) end")
         bindOpts
       ];
     }
@@ -191,7 +191,7 @@ in {
     {
       _args = [
         "XF86PowerOff"
-        (inline "hl.dsp.exec_cmd(\"/etc/power_menu.sh\")")
+        (inline "hl.dsp.exec_cmd(\"wleave\")")
         {
           locked = true;
         }

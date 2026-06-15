@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, pkgs, ... }:
 
 {
   wayland.windowManager.hyprland.extraLuaFiles = {
@@ -23,7 +23,7 @@
         local utils = {}
         
         function utils.run(cmd)
-          os.execute(cmd .. " &")
+          os.execute(cmd .. " >/dev/null 2>&1 &")
         end
         
         function utils.play_sound(sound_path)
@@ -54,6 +54,36 @@
           f:close()
           return true
         end
+
+        function utils.get_mute_status(target)
+          local handle = io.popen("wpctl get-volume " .. target)
+          if not handle then return false end
+          local result = handle:read("*a")
+          handle:close()
+          return result and result:find("%[MUTED%]")
+        end
+
+        function utils.set_led_status(target)
+          local led_val 
+          if utils.get_mute_status(target) then
+            led_val = 1
+          else
+            led_val = 0
+          end
+
+          local led_path
+          if target == "@DEFAULT_AUDIO_SINK@" then
+            led_path = "/sys/class/leds/platform::micmute/brightness"
+          else
+            led_path = "/sys/class/leds/platform::mute/brightness"
+          end
+
+          local led_file = io.open(led_path, "w")
+          if led_file then
+              led_file:write(led_val)
+              led_file:close()
+          end
+        end
         
         return utils
       '';
@@ -76,7 +106,7 @@
             return
           end
           
-          hl.dispatch(hl.dsp.exec_cmd("hyprpaper wallpaper ', " .. wp_file .. "'"))
+          hl.dispatch(hl.dsp.exec_cmd("hyprctl hyprpaper wallpaper ', " .. wp_file .. "'"))
         end
         
         return wallpaper
@@ -92,20 +122,10 @@
         
         function window_mgmt.manage_plasma_popups()
           local active = hl.get_active_window()
-          if not active then return end
-          
-          local windows = hl.get_windows()
-          if not windows then return end
-          
-          local is_plasma = (active.class or ""):match("^org%.kde%.plasmawindowed")
-          
-          for _, win in ipairs(windows) do
-            local is_win_plasma = (win.class or ""):match("^org%.kde%.plasmawindowed")
-            
-            -- Close other plasma popups if this one is plasma, or close all if this isn't
-            if is_win_plasma and (not is_plasma or win.address ~= active.address) then
-              hl.dispatch(hl.dsp.window.close("address:" .. win.address))
-            end
+
+          -- If there's an active window, and it is NOT the plasma popup, close all plasma popups
+          if active and active.class ~= "org.kde.plasmawindowed" then
+              hl.dispatch(hl.dsp.window.close({ window = "class:org.kde.plasmawindowed" }))
           end
         end
         
@@ -159,6 +179,68 @@
       '';
     };
 
+    "power" = {
+      autoLoad = false;
+      content = ''
+        local utils = require("utils")
+        local sounds = require("sounds")
+
+        local state = {
+          plugged = nil,
+          percentage = nil
+        }
+        
+        local function handle_power_event(event)
+          if event == "plugged" then
+            utils.play_sound(sounds.powerPlug)
+          elseif event == "unplugged" then
+            utils.play_sound(sounds.powerUnplug)
+          elseif event == "percentage" then
+            if state.percentage < 20 then
+              utils.play_sound(sounds.batteryLow)
+            elseif state.percentage == 100 then
+              utils.play_sound(sounds.batteryFull)
+            end
+          end
+        end
+
+        local function monitor_battery()
+          -- Use upower to stream power device changes cleanly
+          local cmd = "upower --monitor-detail | grep --line-buffered -E 'state:|percentage:'"
+          local handle = io.popen(cmd, "r")
+          if not handle then return end
+
+          while true do
+              local line = handle:read("*l")
+              if not line then break end
+              
+              -- Parse the raw upower stream lines
+              if string.find(line, "state:%s+charging") or string.find(line, "state:%s+pending-charge") or string.find(line, "state:%s+fully-charged")then
+                if not state.plugged then
+                    state.plugged = true
+                    handle_power_event("plugged")
+                end
+              elseif string.find(line, "state:%s+discharging") then
+                if state.plugged then
+                    state.plugged = false
+                    handle_power_event("unplugged")
+                end
+              elseif string.find(line, "percentage:%s+(%d+)%%") then
+                new_percent = tonumber(string.match(line, "percentage:%s+(%d+)%%"))
+                if state.percentage ~= new_percent then
+                    state.percentage = new_percent
+                    handle_power_event("percentage")
+                end
+              end
+          end
+
+          handle:close()
+        end
+
+        monitor_battery()
+      '';
+    };
+
     "kwallet" = {
       autoLoad = true;
       content = ''
@@ -195,48 +277,45 @@
         local window_mgmt = require("window_mgmt")
         local brightness = require("brightness")
         local kwallet = require("kwallet")
+        local sounds = require("sounds")
         
         -- Initialize state
         local show_desktop_active = false
+        local active_workspace = nil
         
         -- ========================================================================
         -- Workspace and Wallpaper Management
         -- ========================================================================
         
         function on_workspace_change(workspace_id)
-          print("Raw workspace ID:", workspace_id)
+          hl.notification.create({
+            text = "Switched to workspace " .. workspace_id,
+            timeout = 3000
+          })
           workspace_id = tonumber(workspace_id)
-          print("Workspace changed to:", workspace_id)
           if not workspace_id then return end
 
           -- if we switched off of desk 4, deactivate show desktop
-          if show_desktop_active and workspace_id ~= 4 then
-            show_desktop_active = false
-          end
+          show_desktop_active = workspace_id == 4
           
           wallpaper.change_for_workspace(workspace_id)
         end
         
         function toggle_show_desktop()
-          local active_ws = hl.get_active_workspace()
-          if not active_ws then return end
-          local current_ws = tonumber(active_ws.id)
+          local active_workspace = hl.get_active_workspace()
           local desktop_ws = 4
           
-          if show_desktop_active or current_ws == desktop_ws then
-            local target = tonumber(show_desktop_active) or 1
-            hl.dispatch(hl.dsp.focus({ workspace = target }))
+          if show_desktop_active then
+            hl.dispatch(hl.dsp.focus({ workspace = active_workspace }))
             show_desktop_active = false
           else
-            show_desktop_active = current_ws
+            show_desktop_active = true
             hl.dispatch(hl.dsp.focus({ workspace = desktop_ws }))
           end
         end
         
         function focus_workspace(ws_id)
-          ws_id = tonumber(ws_id)
-          show_desktop_active = false
-          hl.dispatch(hl.dsp.focus({ workspace = ws_id }))
+          hl.dispatch(hl.dsp.focus({ workspace = tonumber(ws_id) }))
         end
         
         function spawn_plasma_popup(name)
@@ -259,38 +338,40 @@
         end
         
         -- ========================================================================
-        -- Window Management: Close duplicate plasma popups
-        -- ========================================================================
-        
-        function on_window_focus()
-          window_mgmt.manage_plasma_popups()
-        end
-        
-        -- ========================================================================
         -- Volume feedback
         -- ========================================================================
         
         function volume_up()
           utils.run("volumectl -d up")
-          utils.play_sound(sounds.dialogue-information)
+          utils.play_sound(sounds.dialogInformation)
         end
         
         function volume_down()
           utils.run("volumectl -d down")
-          utils.play_sound(sounds.dialogue-information)
+          utils.play_sound(sounds.dialogInformation)
         end
         
-        function volume_toggle_mute()
-          utils.run("volumectl -d toggle-mute")
-          utils.play_sound(sounds.dialogue-information)
+        function volume_toggle_mute(mic)
+          local target
+          if mic then
+           target = "@DEFAULT_AUDIO_SINK@"
+          else
+           target = "@DEFAULT_AUDIO_SOURCE@"
+          end
+
+          utils.run("volumectl -d -m toggle-mute " .. target)
+
+          utils.set_led_status(target)
+
+          utils.play_sound(sounds.dialogInformation)
         end
         
         function power_plug()
-          utils.play_sound(sounds.power-plug)
+          utils.play_sound(sounds.powerPlug)
         end
         
         function power_unplug()
-          utils.play_sound(sounds.power-unplug)
+          utils.play_sound(sounds.powerUnplug)
         end
         
         -- ========================================================================
@@ -325,19 +406,25 @@
           if active_ws then
             on_workspace_change(active_ws.id)
           end
+
+          -- set audio leds
+          utils.set_led_status("@DEFAULT_AUDIO_SINK@")
+          utils.set_led_status("@DEFAULT_AUDIO_SOURCE@")
+
+          -- run battery monitor
+          utils.run("${pkgs.lua}/bin/lua power.lua")
         end)
         
         -- ========================================================================
         -- Event listeners
         -- ========================================================================
         
-        hl.on("workspace.active", function(workspace_id)
-          print("Workspace changed to:", workspace_id)
-          on_workspace_change(workspace_id)
+        hl.on("workspace.active", function(workspace)
+          on_workspace_change(workspace.id)
         end)
         
         hl.on("window.active", function()
-          on_window_focus()
+          window_mgmt.manage_plasma_popups()
         end)
       '';
     };
