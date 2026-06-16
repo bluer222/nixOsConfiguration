@@ -14,7 +14,7 @@
       brave
     ];
   };
-
+  /*
   xdg.desktopEntries = {
     "brave-browser" = {
       name = "Brave Web Browser";
@@ -66,7 +66,7 @@
       icon = "brave-browser";
       startupNotify = true;
     };
-  };
+  };*/
 
   home.file.".local/bin/signal-desktop" = {
     executable = true;
@@ -95,6 +95,7 @@
     fi
   '';
 
+  /*
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {
@@ -104,31 +105,7 @@
       "inode/directory" = [ "org.kde.dolphin.desktop" ];
       "x-scheme-handler/file" = [ "org.kde.dolphin.desktop" ];
     };
-  };
-
-  home.file.".local/bin/kfmclient" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      case "$1" in
-        exec)
-          shift
-          exec ${pkgs.kdePackages.dolphin}/bin/dolphin "$@"
-          ;;
-        openURL|openProfile)
-          shift
-          exec ${pkgs.kdePackages.kde-cli-tools}/bin/kde-open "$@"
-          ;;
-        *)
-          exec ${pkgs.kdePackages.kde-cli-tools}/bin/kioclient "$@"
-          ;;
-      esac
-    '';
-  };
-
-  home.activation.refreshDesktopDB = lib.hm.dag.entryAfter [ "xdg.desktopEntries" ] ''
-    $DRY_RUN_CMD ${pkgs.kdePackages.kservice}/bin/kbuildsycoca6 --noincremental 2>/dev/null || true
-  '';
+  };*/
 
   programs.home-manager.enable = true;
 }

@@ -18,6 +18,7 @@
     gemini-cli
     cursor-cli
     antigravity
+    antigravity-cli
     kdePackages.konsole
     ntfs3g
   ];

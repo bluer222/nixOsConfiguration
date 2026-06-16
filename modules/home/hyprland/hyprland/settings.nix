@@ -16,15 +16,6 @@ in {
       scale = 1;
     };
 
-    env = [
-      {
-        _args = [
-          "GTK_CSD"
-          "0"
-        ];
-      }
-    ];
-
     config = {
       general = {
         gaps_in = 2;
@@ -74,6 +65,7 @@ in {
         touchpad = {
           natural_scroll = true;
           tap_to_click = false;
+          disable_while_typing = false;
         };
       };
       misc = {
@@ -84,31 +76,12 @@ in {
       };
     };
 
-    curve = {
-      _args = [
-        "myBezier"
-        {
-          type = "bezier";
-          points = [
-            [
-              0.05
-              0.9
-            ]
-            [
-              0.1
-              1.05
-            ]
-          ];
-        }
-      ];
-    };
-
     animation = [
       {
         leaf = "windows";
         enabled = true;
         speed = 3.5;
-        bezier = "myBezier";
+        bezier = "default";
       }
       {
         leaf = "windowsOut";
@@ -187,59 +160,8 @@ in {
         gaps_in = 0;
       }
     ];
-
+    
     window_rule = [
-      {
-        name = "qt-volume-popup";
-        match = {
-          title = ".*Volume.*";
-        };
-        float = true;
-        size = [
-          380
-          460
-        ];
-        move = [
-          "monitor_w-window_w-12"
-          32
-        ];
-      }
-      {
-        name = "qt-bluetooth-popup";
-        match = {
-          title = ".*Bluetooth.*";
-        };
-        float = true;
-        size = [
-          380
-          460
-        ];
-        move = [
-          "monitor_w-window_w-12"
-          32
-        ];
-      }
-      {
-        name = "qt-plasmawindowed-popup";
-        match = {
-          class = "^org\\.kde\\.plasmawindowed.*$";
-        };
-        float = true;
-        size = [
-          380
-          460
-        ];
-        move = [
-          "monitor_w-window_w-12"
-          32
-        ];
-      }
-      {
-        name = "menu-opacity";
-        match = {
-          title = "^.*[Mm]enu.*$";
-        };
-      }
       {
         name = "polkit-auth-dialogs";
         match = {
@@ -247,7 +169,6 @@ in {
         };
         float = true;
         center = true;
-        opacity = "1 1";
       }
     ];
   };

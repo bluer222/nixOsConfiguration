@@ -14,7 +14,6 @@
     kdePackages.oxygen-sounds
     kdePackages.kde-gtk-config
     kdePackages.karousel
-    kdePackages.spectacle
     kdePackages.kitemmodels
 
     # Core archive manager
@@ -35,4 +34,5 @@
 
   programs.kde-pim.kmail = true;
   programs.partition-manager.enable = true;
+  programs.kdeconnect.enable = true;
 }

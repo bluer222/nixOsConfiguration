@@ -10,47 +10,23 @@
       general = {
         lock_cmd = "pidof hyprlock || hyprlock";
         before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = "hyprctl dispatch dpms on";
       };
 
-      # 45s: Dim screen (Battery only)
       listener = [
         {
           timeout = 45;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || hyprctl eval 'dim_brightness()'";
+          on-timeout = "hyprctl eval 'dim_brightness()'";
           on-resume = "hyprctl eval 'restore_brightness()'";
         }
-        
-        # 60s: Screen off (Battery), Lock/Dim (AC)
         {
           timeout = 60;
-          on-timeout = ''
-            if cat /sys/class/power_supply/*/online | grep -q 1; then
-              # AC: Lock and Dim
-              loginctl lock-session
-              hyprctl eval 'dim_brightness()'
-            else
-              # Battery: Screen off
-              hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "off" }))'
-            fi
-          '';
+          on-timeout = "loginctl lock-session && hyprctl dispatch dpms off";
+          on-resume = "hyprctl dispatch dpms on";
         }
-
-        # 120s: Suspend (Battery)
         {
-          timeout = 120;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 || systemctl suspend-then-hibernate";
-        }
-
-        # 180s: Screen off (AC)
-        {
-          timeout = 180;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = \"off\" }))'";
-        }
-
-        # 240s: Suspend (AC)
-        {
-          timeout = 240;
-          on-timeout = "cat /sys/class/power_supply/*/online | grep -q 1 && systemctl suspend-then-hibernate";
+          timeout = 90;
+          on-timeout = "systemctl suspend-then-hibernate";
         }
       ];
     };

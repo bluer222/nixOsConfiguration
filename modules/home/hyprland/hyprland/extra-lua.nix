@@ -288,25 +288,6 @@
           hl.dispatch(hl.dsp.focus({ workspace = tonumber(ws_id) }))
         end
         
-        function spawn_plasma_popup(name)
-          local cmd = ""
-          if name == "volume" then
-            cmd = "plasmawindowed org.kde.plasma.volume"
-          elseif name == "network" then
-            cmd = "plasmawindowed org.kde.plasma.networkmanagement"
-          elseif name == "bluetooth" then
-            cmd = "plasmawindowed org.kde.plasma.bluetooth"
-          elseif name == "battery" then
-            cmd = "plasmawindowed org.kde.plasma.battery"
-          elseif name == "clock" then
-            cmd = "plasmawindowed org.kde.plasma.calendar"
-          end
-          
-          if cmd ~= "" then
-            utils.run(cmd)
-          end
-        end
-        
         -- ========================================================================
         -- Volume feedback
         -- ========================================================================
@@ -360,10 +341,7 @@
         -- Startup event handling
         -- ========================================================================
         
-        hl.on("hyprland.start", function()
-          -- Use utils.run for non-blocking theme application
-          utils.run("${config.home.homeDirectory}/.config/hypr/scripts/apply-desktop-theme.sh")
-          
+        hl.on("hyprland.start", function()          
           -- Finalize UWSM session (syncs env and starts graphical-session.target)
           -- This is the correct way to trigger autostart when using programs.hyprland.withUWSM
           utils.run("uwsm finalize")

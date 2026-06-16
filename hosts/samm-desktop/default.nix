@@ -20,7 +20,6 @@
     ../../modules/nixos/desktop/polkit.nix
     ../../modules/nixos/desktop/logout.nix
     ../../modules/nixos/system/performance.nix
-    ../../modules/nixos/desktop/kde.nix
     ../../modules/nixos/desktop/hyprland.nix
     ../../modules/nixos/desktop/kwallet.nix
     ../../modules/nixos/desktop/xfce-backup.nix

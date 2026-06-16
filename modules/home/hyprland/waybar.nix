@@ -85,7 +85,7 @@
           tooltip-format = "{title}";
           icon-size = 16;
           icon-theme = "breeze-dark";
-          ignore-list = [ "org.kde.plasmawindowed" "albert" ];
+          ignore-list = [ "albert" ];
           on-click = "activate";
           on-click-middle = "close";
           rewrite = {
@@ -123,7 +123,7 @@
           format-disconnected = "󰖪";
           tooltip-format = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
           interval = 1;
-          on-click = "hyprctl eval 'spawn_plasma_popup(\"network\")'";
+          on-click = "konsole -e nmtui";
         };
 
         "pulseaudio" = {
@@ -139,7 +139,7 @@
             default = [ "󰕿" "󰖀" "󰕾" ];
           };
           tooltip-format = "{desc} · {volume}%";
-          on-click = "hyprctl eval 'spawn_plasma_popup(\"volume\")'";
+          on-click = "hyprpwcenter";
         };
 
         "bluetooth" = {
@@ -147,7 +147,7 @@
           format-off = "󰂲 off";
           format-on = "󰂯 on";
           format-connected = "󰂱 {num_connections}";
-          on-click = "hyprctl eval 'spawn_plasma_popup(\"bluetooth\")'";
+          on-click = "";
         };
 
         "battery" = {
@@ -177,7 +177,7 @@
           format = "{:%a %d/%b %m  %H:%M}";
           interval = 1;
           tooltip-format = "{:%A, %d %B %Y  %H:%M:%S}";
-          on-click = "hyprctl eval 'spawn_plasma_popup(\"clock\")'";
+          on-click = "";
         };
 
         "tray" = {

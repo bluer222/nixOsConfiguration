@@ -27,6 +27,11 @@ in {
     catppuccinGtk
     kdePackages.qtwayland
     kdePackages.qtstyleplugin-kvantum
+    libsForQt5.qtstyleplugin-kvantum
+    libsForQt5.qt5ct
+    kdePackages.qt6ct
+
+
     (catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })
     kdePackages.breeze
     kdePackages.breeze-icons
@@ -37,13 +42,12 @@ in {
 
   home.sessionVariables = {
     QT_QPA_PLATFORM = "wayland";
-    QT_STYLE_OVERRIDE = "kvantum";
+    QT_QPA_PLATFORMTHEME = "qt6ct";
     QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
+    GTK_CSD = "0";
     XDG_SESSION_DESKTOP = "Hyprland";
     XDG_CURRENT_DESKTOP = "Hyprland";
     GDK_BACKEND = "wayland,x11";
-    GTK_CSD = "0";
-    BROWSER = "brave";
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
     GTK_USE_PORTAL = "1";
     XCURSOR_THEME = "Bibata-Modern-Classic";
@@ -53,22 +57,6 @@ in {
   };
 
   systemd.user.sessionVariables = config.home.sessionVariables;
-
-  xdg.configFile."hypr/scripts/apply-desktop-theme.sh" = {
-    executable = true;
-    text = ''
-      #!/usr/bin/env bash
-      if [ -x ${pkgs.dconf}/bin/dconf ] && [ -n "''${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'" || true
-        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/gtk-theme "'${gtkThemeName}'" || true
-        ${pkgs.dconf}/bin/dconf write /org/gnome/desktop/interface/icon-theme "'${iconThemeName}'" || true
-      fi
-    '';
-  };
-
-  home.activation.desktopThemePrefs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD ${config.home.homeDirectory}/.config/hypr/scripts/apply-desktop-theme.sh || true
-  '';
 
   home.activation.importUserEnvironment = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     $DRY_RUN_CMD systemctl --user import-environment || true
@@ -198,12 +186,12 @@ in {
   xdg.configFile."kdeglobals" = {
     force = true;
     text = ''
-      [General]
-      ColorScheme=BreezeDark
-      Name=Breeze Dark
-
       [KDE]
-      widgetStyle=kvantum
+      # Set to true if you like single-click; false for normal double-click to open
+      SingleClick=false
+      
+      # Crucial fallback to make sure Qt apps don't drop text contrast on text-fields
+      WidgetStyle=kvantum
     '';
   };
 }
