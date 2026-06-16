@@ -12,7 +12,9 @@ Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland n
    - some are themed rn but its bad, maybe switched from kvantium to qt5ct/qt6ct. also why do electron apps think the system is set to a light mode?
  - waybar takes a while to start
  - xfce session doest work because it cant find xstart or somthing
- - addy hyprpicker, trigger with super+c
+ - add hyprpicker, trigger with super+c
+ - why does uwsm only work the second time it is run. the first login its jsut black. after that is killed, the second login works. if the second login is killed, the thrd and onward are super laggy(but only for a while, then they become normal)
+ - kwallet still not auto unlocked
  - strip out plasma-windowed
     - hyprpwcenter for audio(in nixpkgs, uses pipewire)
     - gazelle-tui for network(has a flake in https://github.com/Zeus-Deus/gazelle-tui, uses networkmanager)
