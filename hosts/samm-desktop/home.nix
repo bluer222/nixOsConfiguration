@@ -72,7 +72,7 @@
     executable = true;
     text = ''
       #!/usr/bin/env bash
-      exec ${pkgs.signal-desktop}/bin/signal-desktop --password-store=kwallet6 "$@"
+      exec ${pkgs.signal-desktop}/bin/signal-desktop "$@"
     '';
   };
 

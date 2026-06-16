@@ -22,8 +22,9 @@
     settings = {
       # Basic Operation
       TLP_ENABLE = 1;
-      TLP_DEFAULT_MODE = "AC";
-      TLP_PERSISTENT_DEFAULT = 0;
+
+      #this means to auto switch unless the user sets a profile manually
+      TLP_AUTO_SWITCH = 2;
 
       # ========================================================================
       # CPU Scaling & Performance (Intel Raptor Lake i7-13620H)

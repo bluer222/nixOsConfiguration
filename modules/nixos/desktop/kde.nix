@@ -8,7 +8,7 @@
     NIXOS_OZONE_WL = "1";
     OBS_USE_EGL = "1";
     CHROMIUM_FLAGS =
-      "--enable-features=UsePortal --disable-features=WaylandWpFilePicker,DbusSecretPortal --password-store=kwallet6 --ozone-platform=wayland";
+      "--enable-features=UsePortal --disable-features=WaylandWpFilePicker,DbusSecretPortal --ozone-platform=wayland";
   };
 
 }

@@ -1,41 +1,10 @@
 { config, pkgs, lib, ... }:
 
 let
-  catppuccinKde = pkgs.catppuccin-kde;
   catppuccinGtk = pkgs.catppuccin-gtk;
 
-  colorSchemeName = "CatppuccinMochaBlue";
-  colorSchemeHomePath = "${config.xdg.dataHome}/color-schemes/${colorSchemeName}.colors";
   gtkThemeName = "catppuccin-mocha-blue-standard";
   iconThemeName = "breeze-dark";
-
-  themeEnv = [
-    "QT_QPA_PLATFORM=wayland"
-    "QT_QPA_PLATFORMTHEME=kde"
-    "COLOR_SCHEME=${colorSchemeName}"
-    "KDEHOME=${config.home.homeDirectory}/.config"
-    "KDE_SESSION_VERSION=6"
-    "XDG_MENU_PREFIX=plasma-"
-    "GTK_CSD=0"
-  ];
-
-  kdeglobalsText = ''
-    [Icons]
-    Theme=${iconThemeName}
-
-    [General]
-    widgetStyle=Breeze
-    ColorScheme=${colorSchemeName}
-    AccentColor=140,170,238
-
-    [KDE]
-    widgetStyle=Breeze
-    colorScheme=${colorSchemeName}
-    LookAndFeelPackage=Catppuccin-Mocha-Blue
-
-    [UiSettings]
-    ColorScheme=${colorSchemeName}
-  '';
 
   bibataHyprcursor = pkgs.runCommand "bibata-modern-classic-hyprcursor"
     {
@@ -54,20 +23,13 @@ let
       rm -rf "$work" "$outdir"
     '';
 in {
-  qt = {
-    enable = true;
-    platformTheme.name = "kde";
-  };
-
   home.packages = with pkgs; [
-    hyprland-qt-support
-    catppuccinKde
     catppuccinGtk
     kdePackages.qtwayland
-    kdePackages.plasma-integration
+    kdePackages.qtstyleplugin-kvantum
+    (catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })
     kdePackages.breeze
     kdePackages.breeze-icons
-    libsForQt5.qtwayland
     bibata-cursors
     bibataHyprcursor
     hyprcursor
@@ -75,13 +37,10 @@ in {
 
   home.sessionVariables = {
     QT_QPA_PLATFORM = "wayland";
-    QT_QPA_PLATFORMTHEME = "kde";
-    COLOR_SCHEME = colorSchemeName;
-    KDEHOME = "${config.home.homeDirectory}/.config";
-    KDE_SESSION_VERSION = "6";
+    QT_STYLE_OVERRIDE = "kvantum";
+    QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
     XDG_SESSION_DESKTOP = "Hyprland";
     XDG_CURRENT_DESKTOP = "Hyprland";
-    XDG_MENU_PREFIX = "plasma-";
     GDK_BACKEND = "wayland,x11";
     GTK_CSD = "0";
     BROWSER = "brave";
@@ -93,7 +52,7 @@ in {
     HYPRCURSOR_SIZE = "24";
   };
 
-  systemd.user.services.hyprpolkitagent.serviceConfig.Environment = themeEnv;
+  systemd.user.sessionVariables = config.home.sessionVariables;
 
   xdg.configFile."hypr/scripts/apply-desktop-theme.sh" = {
     executable = true;
@@ -112,16 +71,8 @@ in {
   '';
 
   home.activation.importUserEnvironment = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    # Ensure systemd --user imports the environment so GUI services and autostarted
-    # apps see `QT_QPA_PLATFORMTHEME` and related variables.
     $DRY_RUN_CMD systemctl --user import-environment || true
   '';
-
-  xdg.dataFile."color-schemes/${colorSchemeName}.colors".source =
-    "${catppuccinKde}/share/color-schemes/${colorSchemeName}.colors";
-
-  xdg.configFile."environment.d/11-hyprland-theme.conf".text =
-    lib.concatStringsSep "\n" themeEnv;
 
   # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
   xdg.configFile."fontconfig/fonts.conf".text = ''
@@ -134,16 +85,6 @@ in {
       </match>
     </fontconfig>
   '';
-
-  xdg.configFile."hypr/application-style.conf".text = ''
-    roundness = 0
-    border_width = 2
-    reduce_motion = false
-  '';
-
-  xdg.configFile."kdeglobals".text = kdeglobalsText;
-
-  xdg.configFile."kdedefaults/kdeglobals".text = kdeglobalsText;
 
   xdg.configFile."gtk-3.0/settings.ini".text = ''
     [Settings]
@@ -246,4 +187,23 @@ in {
     fade-in = 0.15
     fade-out = 0.3
   '';
+
+  xdg.configFile."Kvantum/catppuccin-macchiato-blue".source = "${(pkgs.catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })}/share/Kvantum/catppuccin-macchiato-blue";
+
+  xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
+    [General]
+    theme=catppuccin-macchiato-blue
+  '';
+
+  xdg.configFile."kdeglobals" = {
+    force = true;
+    text = ''
+      [General]
+      ColorScheme=BreezeDark
+      Name=Breeze Dark
+
+      [KDE]
+      widgetStyle=kvantum
+    '';
+  };
 }

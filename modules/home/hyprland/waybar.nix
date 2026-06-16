@@ -159,12 +159,11 @@
             warning = 30;
             critical = 15;
           };
-          on-click = "hyprctl eval 'spawn_plasma_popup(\"battery\")'";
         };
 
         "power-profiles-daemon" = {
           format = "{icon}";
-          tooltip-format = "Power profile: {profile}\\nDriver: {driver}";
+          tooltip-format = "Power profile: {profile}";
           tooltip = true;
           format-icons = {
             default = "";

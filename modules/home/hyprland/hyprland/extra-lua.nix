@@ -2,19 +2,6 @@
 
 {
   wayland.windowManager.hyprland.extraLuaFiles = {
-    "debug" = {
-      autoLoad = true;
-      content = ''
-      hl.notification.create({ text = "LUA CONFIG IS RUNNING!", timeout = 3000 })
-        hl.config({
-            debug = {
-                disable_logs = false,    -- Enbles standard debug logging
-                watchdog_timeout = 0,    -- Optional: Prevents crashes during active debugging
-            }
-        })
-      '';
-    };
-
     "utils" = {
       autoLoad = true;
       content = ''
@@ -105,6 +92,12 @@
           if not utils.file_exists(wp_file) then
             return
           end
+          
+          -- put this here so it doesnt trigger on show desktop
+          hl.notification.create({
+            text = "Switched to workspace " .. ws_id,
+            timeout = 3000
+          })
           
           hl.dispatch(hl.dsp.exec_cmd("hyprctl hyprpaper wallpaper ', " .. wp_file .. "'"))
         end
@@ -241,32 +234,6 @@
       '';
     };
 
-    "kwallet" = {
-      autoLoad = true;
-      content = ''
-        -- KWallet initialization
-        
-        local utils = require("utils")
-        local kwallet = { initialized = false }
-        
-        function kwallet.init()
-          if kwallet.initialized then return end
-          
-          -- Start services
-          utils.run("systemctl --user start kwalletd6.service ksecretsd.service")
-          
-          -- Initialize PAM kwallet if available
-          if os.getenv("PAM_KWALLET5_LOGIN") then
-            utils.run("pam_kwallet_init")
-          end
-          
-          kwallet.initialized = true
-        end
-        
-        return kwallet
-      '';
-    };
-
     "globals" = {
       autoLoad = true;
       content = ''
@@ -276,7 +243,6 @@
         local wallpaper = require("wallpaper")
         local window_mgmt = require("window_mgmt")
         local brightness = require("brightness")
-        local kwallet = require("kwallet")
         local sounds = require("sounds")
         
         -- Initialize state
@@ -288,10 +254,6 @@
         -- ========================================================================
         
         function on_workspace_change(workspace_id)
-          hl.notification.create({
-            text = "Switched to workspace " .. workspace_id,
-            timeout = 3000
-          })
           workspace_id = tonumber(workspace_id)
           if not workspace_id then return end
 
@@ -302,15 +264,23 @@
         end
         
         function toggle_show_desktop()
-          local active_workspace = hl.get_active_workspace()
           local desktop_ws = 4
           
           if show_desktop_active then
             hl.dispatch(hl.dsp.focus({ workspace = active_workspace }))
             show_desktop_active = false
+            hl.notification.create({
+              text = "Windows restored",
+              timeout = 3000
+            })
           else
+            active_workspace = hl.get_active_workspace()
             show_desktop_active = true
             hl.dispatch(hl.dsp.focus({ workspace = desktop_ws }))
+            hl.notification.create({
+              text = "Showing desktop",
+              timeout = 3000
+            })
           end
         end
         
@@ -342,13 +312,13 @@
         -- ========================================================================
         
         function volume_up()
-          utils.run("volumectl -d up")
           utils.play_sound(sounds.dialogInformation)
+          utils.run("volumectl -d up")
         end
         
         function volume_down()
-          utils.run("volumectl -d down")
           utils.play_sound(sounds.dialogInformation)
+          utils.run("volumectl -d down")
         end
         
         function volume_toggle_mute(mic)
@@ -398,7 +368,6 @@
           -- This is the correct way to trigger autostart when using programs.hyprland.withUWSM
           utils.run("uwsm finalize")
           
-          kwallet.init()
           utils.run("albert")
           
           -- Set initial wallpaper
@@ -412,7 +381,7 @@
           utils.set_led_status("@DEFAULT_AUDIO_SOURCE@")
 
           -- run battery monitor
-          utils.run("${pkgs.lua}/bin/lua power.lua")
+          utils.run("${pkgs.lua}/bin/lua ${config.home.homeDirectory}/.config/hypr/power.lua")
         end)
         
         -- ========================================================================

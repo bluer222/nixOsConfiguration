@@ -3,10 +3,6 @@
 let
   nerdFont = pkgs."nerd-fonts".fira-code;
 
-  # kwalletd6 needs offscreen Qt — no Wayland display in early systemd context.
-  kwalletServiceEnv = [
-    "QT_QPA_PLATFORM=offscreen"
-  ];
 
   portalBackends = {
     default = [ "hyprland" "kde" ];
@@ -14,8 +10,8 @@ let
     "org.freedesktop.impl.portal.OpenURI" = [ "kde" ];
     "org.freedesktop.impl.portal.AppChooser" = [ "kde" ];
     "org.freedesktop.impl.portal.MimeResolver" = [ "kde" ];
-    "org.freedesktop.impl.portal.Secret" = [ "kwallet" ];
   };
+  
 in {
   imports = [
     inputs.hyprland.homeManagerModules.default
@@ -58,10 +54,9 @@ in {
     kdePackages.breeze
     kdePackages.kded
     kdePackages.plasma-nm
+    kdePackages.kwallet
 
     kdePackages.systemsettings
-    kdePackages.kwallet
-    kdePackages.kwallet-pam
     libsecret
     hyprshutdown
     libnotify
@@ -143,6 +138,23 @@ in {
         }
       ];
     };
+  };
+
+  # ksecretd is the KF6 KWallet daemon that provides the Secret Service D-Bus API.
+  # PAM (via kwallet-pam) unlocks the wallet at login; this service keeps the daemon
+  # running for the duration of the graphical session so apps can query secrets.
+  systemd.user.services.plasma-kwallet-pam = {
+    Unit = {
+      Description = "KDE Wallet (ksecretd) Secret Service daemon";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" "dbus.service" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.kdePackages.kwallet}/bin/ksecretd";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
 
   systemd.user.services.plasma-kded6 = {
