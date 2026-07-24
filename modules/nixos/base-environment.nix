@@ -21,8 +21,8 @@
       SUBSYSTEM=="usb", ATTRS{idVendor}=="2b03", MODE="0666"
       KERNEL=="video*", ATTRS{idVendor}=="2b03", MODE="0666"
       # mute and micmute leds
-      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", GROUP="audio", MODE="0664"
-      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::mute", GROUP="audio", MODE="0664"
+      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp audio /sys%p/brightness", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys%p/brightness"
+      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::mute", RUN+="${pkgs.coreutils}/bin/chgrp audio /sys%p/brightness", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys%p/brightness"
     '';
   };
 

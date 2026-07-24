@@ -5,8 +5,8 @@
   systemd.services.nginx.serviceConfig.ProtectHome = "read-only";
   systemd.services.nginx.serviceConfig.ReadOnlyPaths = [ "/home/samm" ];
   users.users."samm".homeMode = "744";
-  #to find this config comment it off then after rebuilding run systemctl cat nginx | grep conf
-  #this is the default nginx config but with autoindex on the end
+
+  #file browser and styling
   services.nginx.appendHttpConfig = "
   autoindex on;
   add_before_body /.config/nginx/header.html;

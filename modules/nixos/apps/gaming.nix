@@ -36,5 +36,6 @@
     mangohud
     winetricks
     wayvr
+    eden
   ];
 }

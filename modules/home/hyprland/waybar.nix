@@ -85,7 +85,7 @@
           tooltip-format = "{title}";
           icon-size = 16;
           icon-theme = "breeze-dark";
-          ignore-list = [ "albert" ];
+          ignore-list = [ "Albert" ];
           on-click = "activate";
           on-click-middle = "close";
           rewrite = {
@@ -118,10 +118,10 @@
         };
 
         "network" = {
-          format-wifi = "󰖩";
-          format-ethernet = "󰈀";
+          format-wifi = "󰖩  <span color='#289b45'>{bandwidthUpBytes}</span> <span color='#9b1c1c'>{bandwidthDownBytes}</span>";
+          format-ethernet = "󰈀  <span color='#289b45'>{bandwidthUpBytes}</span> <span color='#9b1c1c'>{bandwidthDownBytes}</span>";
           format-disconnected = "󰖪";
-          tooltip-format = "⇡{bandwidthUpBytes} ⇣{bandwidthDownBytes}";
+          tooltip-format = "{ifname} via {gwaddr}";
           interval = 1;
           on-click = "konsole -e nmtui";
         };
@@ -166,10 +166,10 @@
           tooltip-format = "Power profile: {profile}";
           tooltip = true;
           format-icons = {
-            default = "";
-            performance = "";
-            balanced = "";
-            power-saver = "";
+            default = " ";
+            performance = " ";
+            balanced = " ";
+            power-saver = " ";
           };
         };
 

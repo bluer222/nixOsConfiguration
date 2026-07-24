@@ -20,7 +20,6 @@ programs.qgroundcontrol.enable = true;
     virtiofsd
     inkscape
     btop
-    mamba-cpp
     unrar
     wayland-utils
     xclicker
@@ -61,7 +60,7 @@ programs.qgroundcontrol.enable = true;
     kubectl
     signal-desktop
     kdePackages.gwenview
-
+    kdePackages.discover
   ];
 
 }

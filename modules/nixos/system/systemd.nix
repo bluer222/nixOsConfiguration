@@ -8,13 +8,18 @@
     settings.Manager = {
       DefaultTimeoutStopSec = "10s";
     };
-    user.extraConfig = ''DefaultTimeoutStopSec=10s'';
 
-    #fix polkit howdy
+    # Howdy runs inside polkit-agent-helper via PAM. Upstream unit sandboxes
+    # block the IR camera and Python (MDWE), so facial auth never reaches the
+    # agent and privilege prompts in Dolphin / Partition Manager fail closed.
     services."polkit-agent-helper@" = {
       serviceConfig = {
-        DeviceAllow = "char-video4linux rw";
+        DeviceAllow = [ "char-video4linux rw" ];
         PrivateDevices = "no";
+        MemoryDenyWriteExecute = "no";
+        # Single assignment — a Nix list becomes multiple keys and systemd
+        # keeps only the last (breaking the helper's AF_UNIX sockets).
+        RestrictAddressFamilies = "AF_UNIX AF_NETLINK";
       };
     };
 

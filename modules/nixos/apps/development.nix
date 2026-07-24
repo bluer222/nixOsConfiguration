@@ -17,9 +17,11 @@
     gnumake
     gemini-cli
     cursor-cli
-    antigravity
+    python3
+    #antigravity
     antigravity-cli
     kdePackages.konsole
     ntfs3g
+    gpsd
   ];
 }

@@ -8,14 +8,13 @@ Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland n
  - keybind to toggle darkwindow effect
  - open games on desk 2(lutris, steam etc)
  - fix bwrap for lutris and steam(i thought using uwsm would fix this but clearly not)
- - theme qt apps(either kvantium or qt5ct+qt6ct) using catppuccin Macchiato
-   - some are themed rn but its bad, maybe switched from kvantium to qt5ct/qt6ct. also why do electron apps think the system is set to a light mode?
- - waybar takes a while to start
  - xfce session doest work because it cant find xstart or somthing
  - add hyprpicker, trigger with super+c
  - why does uwsm only work the second time it is run. the first login its jsut black. after that is killed, the second login works. if the second login is killed, the thrd and onward are super laggy(but only for a while, then they become normal)
+   - WIP fix: disable seatd (VT fight with logind), retry uwsm finalize until wayland-wm@/graphical-session is active, logout via `uwsm stop` (hyprshutdown was GPF'ing)
+   - 2026-07-18: AQ_DRM_DEVICES was intel+nvidia; nvidia has no CRTCs here and can hard-hang Aquamarine (black screen, ignores SIGTERM → hard reset). Now intel-igpu only + DRM wait ExecStartPre + FinalKillSignal=SIGKILL
  - kwallet still not auto unlocked
- - strip out plasma-windowed
-    - hyprpwcenter for audio(in nixpkgs, uses pipewire)
-    - gazelle-tui for network(has a flake in https://github.com/Zeus-Deus/gazelle-tui, uses networkmanager)
-    - maybe just remove bluetooth applet and just use albert(depends on BlueZ)
+ - pixelate closing effect
+ - super + space to float a window
+ - not all apps have the cursor applied(steam)
+ 

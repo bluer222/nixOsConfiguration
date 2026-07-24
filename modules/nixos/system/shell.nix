@@ -35,8 +35,5 @@
     };
 
     histSize = 10000;
-
-    # mamba-cpp's shell hook breaks on Nix (sets MAMBA_EXE to .mamba-wrapped).
-    # Run `mamba` directly when needed instead of auto-initializing every shell.
   };
 }

@@ -1,6 +1,15 @@
 { config, pkgs, ... }:
 
 {
+  # gpsd
+  services.gpsd = {
+    enable = true;
+    devices = [ "/dev/rfcomm0" ];
+  };
+
+  services.blueman.enable = true;
+
+
   # Networking configuration
   networking = {
     hostName = "Sam-Computer";
@@ -9,10 +18,6 @@
     networkmanager = {
       enable = true;
       wifi.powersave = false;
-      insertNameservers = [
-        "1.1.1.2"
-        "1.0.0.2"
-      ];
     };
 
     usePredictableInterfaceNames = true;
@@ -44,11 +49,6 @@
   boot = {
     blacklistedKernelModules = [ "cdc_ncm" ];
     kernelModules = [ "tcp_bbr" "ax88179_178a" "r8152" ];
-
-    #removed softdep cdc_ncm pre: ax88179_178a becayse we have that blacklisted anyway
-    extraModprobeConfig = ''
-
-    '';
 
     # TCP BBR congestion control
     kernel.sysctl = {

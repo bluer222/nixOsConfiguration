@@ -1,6 +1,34 @@
 { config, pkgs, ... }:
 
-{
+let
+  # MUST NOT run on Hyprland's main thread — blocking os.execute() freezes the
+  # compositor (black screen, dead IPC) for the whole retry window.
+  uwsmFinalize = pkgs.writeShellScript "hyprland-uwsm-finalize" ''
+    set -euo pipefail
+    uwsm=${pkgs.uwsm}/bin/uwsm
+    systemctl=${pkgs.systemd}/bin/systemctl
+    log=/tmp/hyprland-uwsm.log
+    ts() { date '+%Y-%m-%d %H:%M:%S'; }
+    # Not under UWSM (e.g. manual test) — nothing to finalize.
+    if ! $systemctl --user cat wayland-wm@hyprland.desktop.service >/dev/null 2>&1; then
+      echo "$(ts) finalize skip: wayland-wm@ unit not present" >>"$log"
+      exit 0
+    fi
+    for attempt in $(seq 1 100); do
+      $uwsm finalize >>"$log" 2>&1 || true
+      wm=$($systemctl --user is-active wayland-wm@hyprland.desktop.service 2>/dev/null || true)
+      gs=$($systemctl --user is-active graphical-session.target 2>/dev/null || true)
+      if [ "$wm" = active ] || [ "$gs" = active ]; then
+        echo "$(ts) finalize ok (attempt $attempt, wm=$wm gs=$gs)" >>"$log"
+        exit 0
+      fi
+      echo "$(ts) finalize not ready (attempt $attempt, wm=$wm gs=$gs)" >>"$log"
+      sleep 0.2
+    done
+    echo "$(ts) finalize FAILED after retries" >>"$log"
+    exit 1
+  '';
+in {
   wayland.windowManager.hyprland.extraLuaFiles = {
     "utils" = {
       autoLoad = true;
@@ -11,6 +39,21 @@
         
         function utils.run(cmd)
           os.execute(cmd .. " >/dev/null 2>&1 &")
+        end
+
+        function utils.log_uwsm(msg)
+          local log = io.open("/tmp/hyprland-uwsm.log", "a")
+          if log then
+            log:write(os.date("%Y-%m-%d %H:%M:%S") .. " " .. msg .. "\n")
+            log:close()
+          end
+        end
+
+        -- Fire-and-forget: retries live in a shell script so the compositor
+        -- keeps compositing / answering IPC during cold-login races.
+        function utils.uwsm_finalize()
+          utils.log_uwsm("finalize spawned (async)")
+          utils.run("${uwsmFinalize}")
         end
         
         function utils.play_sound(sound_path)
@@ -42,7 +85,8 @@
           return true
         end
 
-        function utils.get_mute_status(target)
+        function utils.get_mute_status(mic)
+          local target = mic and "@DEFAULT_AUDIO_SOURCE@" or "@DEFAULT_AUDIO_SINK@"
           local handle = io.popen("wpctl get-volume " .. target)
           if not handle then return false end
           local result = handle:read("*a")
@@ -50,16 +94,16 @@
           return result and result:find("%[MUTED%]")
         end
 
-        function utils.set_led_status(target)
+        function utils.set_led_status(mic)
           local led_val 
-          if utils.get_mute_status(target) then
-            led_val = 1
-          else
+          if utils.get_mute_status(mic) then
             led_val = 0
+          else
+            led_val = 1
           end
 
           local led_path
-          if target == "@DEFAULT_AUDIO_SINK@" then
+          if mic then
             led_path = "/sys/class/leds/platform::micmute/brightness"
           else
             led_path = "/sys/class/leds/platform::mute/brightness"
@@ -303,16 +347,13 @@
         end
         
         function volume_toggle_mute(mic)
-          local target
           if mic then
-           target = "@DEFAULT_AUDIO_SINK@"
+            utils.run("volumectl -d -m toggle-mute")
           else
-           target = "@DEFAULT_AUDIO_SOURCE@"
+            utils.run("volumectl -d toggle-mute")
           end
 
-          utils.run("volumectl -d -m toggle-mute " .. target)
-
-          utils.set_led_status(target)
+          utils.set_led_status(mic)
 
           utils.play_sound(sounds.dialogInformation)
         end
@@ -342,11 +383,14 @@
         -- ========================================================================
         
         hl.on("hyprland.start", function()          
-          -- Finalize UWSM session (syncs env and starts graphical-session.target)
-          -- This is the correct way to trigger autostart when using programs.hyprland.withUWSM
-          utils.run("uwsm finalize")
-          
-          utils.run("albert")
+          -- Finalize UWSM session (syncs env and starts graphical-session.target).
+          -- Required with programs.hyprland.withUWSM; retries cover cold-login races.
+          utils.uwsm_finalize()
+
+          -- Must use uwsm app so Albert (and apps it launches) land in a tracked
+          -- user scope. Bare forks end up in cgroup `/` with no unit; polkit then
+          -- cannot build a subject and GUI privilege prompts say "not available".
+          utils.run("${pkgs.uwsm}/bin/uwsm app -- albert")
           
           -- Set initial wallpaper
           local active_ws = hl.get_active_workspace()
@@ -355,11 +399,11 @@
           end
 
           -- set audio leds
-          utils.set_led_status("@DEFAULT_AUDIO_SINK@")
-          utils.set_led_status("@DEFAULT_AUDIO_SOURCE@")
+          utils.set_led_status(true)
+          utils.set_led_status(false)
 
           -- run battery monitor
-          utils.run("${pkgs.lua}/bin/lua ${config.home.homeDirectory}/.config/hypr/power.lua")
+          --utils.run("${pkgs.lua}/bin/lua ${config.home.homeDirectory}/.config/hypr/power.lua")
         end)
         
         -- ========================================================================
@@ -384,15 +428,13 @@
         if hl.plugin.darkwindow ~= nil then
           hl.plugin.darkwindow.load_shader("mochaChromakey", {
             from = "chromakey",
-            args = "bkg=[0.118 0.118 0.180] similarity=0.14 amount=1.0 targetOpacity=0.65",
+            args = "bkg=[0.141 0.153 0.227] similarity=0.2 amount=1.0 targetOpacity=0.70",
             introduces_transparency = true,
           })
           hl.window_rule({
             name = "darkwindow-mocha",
-            --  Don't apply to Steam or Steam game windows (steam, steam_app_<id>)
-             -- match = { class = ".*" },
-             --temp disable
-             match = { class = "none" },
+            -- Disabled until session is stable (no match ⇒ too broad / risky on login).
+            match = { class = "none" },
             ["darkwindow:shade"] = "mochaChromakey",
           })
         end

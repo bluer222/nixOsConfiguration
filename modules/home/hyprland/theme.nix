@@ -1,11 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  catppuccinGtk = pkgs.catppuccin-gtk;
-
-  gtkThemeName = "catppuccin-mocha-blue-standard";
-  iconThemeName = "breeze-dark";
-
   bibataHyprcursor = pkgs.runCommand "bibata-modern-classic-hyprcursor"
     {
       inherit (pkgs.bibata-cursors) version;
@@ -24,30 +19,22 @@ let
     '';
 in {
   home.packages = with pkgs; [
-    catppuccinGtk
-    kdePackages.qtwayland
-    kdePackages.qtstyleplugin-kvantum
+    qt6Packages.qtwayland
+    libsForQt5.qtwayland
+    qt6Packages.qtstyleplugin-kvantum
     libsForQt5.qtstyleplugin-kvantum
     libsForQt5.qt5ct
-    kdePackages.qt6ct
+    qt6Packages.qt6ct
+    pkgs.kdePackages.breeze-icons
 
-
-    (catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })
-    kdePackages.breeze
-    kdePackages.breeze-icons
-    bibata-cursors
     bibataHyprcursor
     hyprcursor
   ];
 
   home.sessionVariables = {
-    QT_QPA_PLATFORM = "wayland";
-    QT_QPA_PLATFORMTHEME = "qt6ct";
+    QT_QPA_PLATFORM = "wayland;xcb";
     QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
     GTK_CSD = "0";
-    XDG_SESSION_DESKTOP = "Hyprland";
-    XDG_CURRENT_DESKTOP = "Hyprland";
-    GDK_BACKEND = "wayland,x11";
     ELECTRON_OZONE_PLATFORM_HINT = "auto";
     GTK_USE_PORTAL = "1";
     XCURSOR_THEME = "Bibata-Modern-Classic";
@@ -56,41 +43,72 @@ in {
     HYPRCURSOR_SIZE = "24";
   };
 
+  qt = {
+    enable = true;
+    platformTheme.name = "qtct";
+    qt5ctSettings = {
+      Appearance = {
+        style = "kvantum";
+        icon_theme = "breeze-dark";
+        #color_scheme_path = "${config.home.homeDirectory}/.config/qt5ct/style-colors.conf";
+      };
+      Fonts = {
+        fixed = "\"Monospace,10,-1,5,50,0,0,0,0,0\"";
+        general = "\"Sans Serif,10,-1,5,50,0,0,0,0,0\"";
+      };
+    };
+    qt6ctSettings = config.qt.qt5ctSettings;
+    #style.name = "kvantum"; <-- this forces the style, better to do it through qtct
+    kvantum = {
+      enable = true;
+      settings = {
+        General = {
+          theme = "catppuccin-macchiato-blue";
+        };
+      };
+      themes = [
+        (pkgs.catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })
+      ];
+    };
+  };
+
   systemd.user.sessionVariables = config.home.sessionVariables;
 
-  home.activation.importUserEnvironment = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    $DRY_RUN_CMD systemctl --user import-environment || true
-  '';
-
   # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
-  xdg.configFile."fontconfig/fonts.conf".text = ''
-    <?xml version="1.0"?>
-    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-    <fontconfig>
-      <match target="font">
-        <edit name="rgba" mode="assign"><const>none</const></edit>
-        <edit name="lcdfilter" mode="assign"><const>lcdnone</const></edit>
-      </match>
-    </fontconfig>
+  fonts.fontconfig = {
+    enable = true;
+    subpixelRendering = "none";
+  };
+
+  gtk = {
+    enable = true;
+    iconTheme = {
+      name = "breeze-dark";
+      package = pkgs.kdePackages.breeze-icons;
+    };
+    colorScheme = "dark";
+    cursorTheme = {
+      name = "Bibata-Modern-Classic";
+      package = pkgs.bibata-cursors;
+      size = 24;
+    };
+    theme.name = "catppuccin-mocha-blue-standard";
+    theme.package = pkgs.catppuccin-gtk;
+    #for some reason .theme only sets gtk2-3 by default
+    gtk4.theme = config.gtk.theme;
+    #this is needed because .gtkrc-2.0 breaks somehow
+    gtk2.force = true;
+  };
+
+  #home.file.".gtkrc-2.0".force = lib.mkForce true;
+
+  xdg.configFile."kdeglobals".text = ''
+    [KDE]
+    SingleClick=false
+    [Icons]
+    Theme=breeze-dark
   '';
 
-  xdg.configFile."gtk-3.0/settings.ini".text = ''
-    [Settings]
-    gtk-application-prefer-dark-theme=1
-    gtk-theme-name=${gtkThemeName}
-    gtk-icon-theme-name=${iconThemeName}
-    gtk-cursor-theme-name=Bibata-Modern-Classic
-    gtk-cursor-theme-size=24
-    gtk-decoration-layout=
-  '';
-
-  xdg.configFile."gtk-4.0/settings.ini".text = ''
-    [Settings]
-    gtk-application-prefer-dark-theme=1
-    gtk-theme-name=${gtkThemeName}
-    gtk-icon-theme-name=${iconThemeName}
-    gtk-decoration-layout=
-  '';
 
   xdg.configFile."rofi/spotlight.rasi".text = ''
     * {
@@ -176,22 +194,4 @@ in {
     fade-out = 0.3
   '';
 
-  xdg.configFile."Kvantum/catppuccin-macchiato-blue".source = "${(pkgs.catppuccin-kvantum.override { variant = "macchiato"; accent = "blue"; })}/share/Kvantum/catppuccin-macchiato-blue";
-
-  xdg.configFile."Kvantum/kvantum.kvconfig".text = ''
-    [General]
-    theme=catppuccin-macchiato-blue
-  '';
-
-  xdg.configFile."kdeglobals" = {
-    force = true;
-    text = ''
-      [KDE]
-      # Set to true if you like single-click; false for normal double-click to open
-      SingleClick=false
-      
-      # Crucial fallback to make sure Qt apps don't drop text contrast on text-fields
-      WidgetStyle=kvantum
-    '';
-  };
 }

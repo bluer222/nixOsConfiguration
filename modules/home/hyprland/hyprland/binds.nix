@@ -56,6 +56,12 @@ in {
     }
     {
       _args = [
+        (inline ''mainMod .. " + M"'')
+        (inline ''hl.dsp.window.fullscreen({ mode = 0, action = "toggle" })'')
+      ];
+    }
+    {
+      _args = [
         (inline ''mainMod .. " + E"'')
         (inline "function() focus_workspace(1) end")
       ];
@@ -111,7 +117,7 @@ in {
     {
       _args = [
         "Print"
-        (inline "hl.dsp.exec_cmd(\"hyprshot -m region --output-folder '$HOME/Pictures/Screenshots'\")")
+        (inline "hl.dsp.exec_cmd(\"hyprshot -m region --output-folder '${config.home.homeDirectory}/Pictures/Screenshots'\")")
       ];
     }
     {

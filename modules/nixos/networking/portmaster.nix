@@ -1,12 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  cfg = config.services.portmaster;
-  settingsFormat = pkgs.formats.json { };
-  inherit (lib) escapeShellArg escapeShellArgs mapAttrsToList mkIf mkForce;
-  inherit (lib.strings) sanitizeDerivationName;
-
-  # Helper to generate robust regex fingerprints matching any executable in a package store path prefix
   pkgRegex = pkg: [
     {
       type = "path";
@@ -15,53 +9,91 @@ let
     }
   ];
 
-  allowInternet = {
-    "filter/blockInternet" = false;
-    "filter/blockP2P" = false;
+  mkPathRegex = value: {
+    type = "path";
+    operation = "regex";
+    value = value;
   };
-  allowLAN = {
-    "filter/blockLAN" = false;
-    "filter/blockP2P" = false;
-  };
-  allowInbound = {
-    "filter/blockInbound" = false;
-    "filter/blockP2P" = false;
-  };
-  allowLANInbound = allowLAN // allowInbound;
-  allowInternetLAN = allowInternet // allowLAN;
-  allowInternetInbound = allowInternet // allowInbound;
-  allowInternetLANInbound = allowInternet // allowLANInbound;
 
-  managedProfileExports = mapAttrsToList (
-    logicalName: profileCfg:
-    settingsFormat.generate "portmaster-profile-${sanitizeDerivationName logicalName}.json" {
-      type = "profile";
-      source = "local";
-      inherit (profileCfg) name;
-      fingerprints = profileCfg.identity.fingerprints;
-      config = profileCfg.settings;
-    }
-  ) cfg.managedProfiles;
+  mkPathEquals = path: {
+    type = "path";
+    operation = "equals";
+    value = path;
+  };
+
+  # Per-profile rule constructor.
+  # Always set all filter flags explicitly so profile behavior does not depend on
+  # global defaults.
+  # Profile imports require nested config keys (filter.blockInbound), not the flat
+  # slash keys used by global runtime config.json (filter/blockInbound).
+  mkRule = {
+    internet ? false,
+    lan ? false,
+    inbound ? false,
+    p2p ? false,
+  }: {
+    filter = {
+      blockInternet = !internet;
+      blockLAN = !lan;
+      blockInbound = !inbound;
+      blockP2P = !p2p;
+    };
+  };
+
+  # Baseline for most apps: outbound internet only.
+  allowInternet = mkRule { internet = true; };
+  allowLAN = mkRule { lan = true; };
+  allowInbound = mkRule { inbound = true; };
+  allowLANInbound = mkRule {
+    lan = true;
+    inbound = true;
+  };
+  allowInternetLAN = mkRule {
+    internet = true;
+    lan = true;
+  };
+  allowInternetP2P = mkRule {
+    internet = true;
+    p2p = true;
+  };
+  # Internet + LAN + P2P, no inbound (browsers, general outbound apps).
+  allowInternetLANP2P = mkRule {
+    internet = true;
+    lan = true;
+    p2p = true;
+  };
+  # Inbound + P2P for peer connectivity (SSH, video calls, torrents).
+  allowInternetInbound = mkRule {
+    internet = true;
+    inbound = true;
+    p2p = true;
+  };
+  allowInternetLANInbound = mkRule {
+    internet = true;
+    lan = true;
+    inbound = true;
+  };
 in
 {
   services.portmaster = {
     enable = true;
     settings = {
       devmode = true; # UI at 127.0.0.1:817
-      "filter/blockInternet" = false;  # Allow by default; profiles will restrict specific apps
-      "filter/blockLAN" = false;       # Allow LAN by default
-      "filter/blockInbound" = true;   # Block inbound by default
-      "filter/blockP2P" = false;        # Block P2P by default for security
+      # Block everything by default; managedProfiles grant explicit per-app access.
+      "filter/blockInternet" = true;
+      "filter/blockLAN" = true;
+      "filter/blockInbound" = true;
+      "filter/blockP2P" = true;
     };
 
-    managedProfiles = {
+    managedProfiles = { #python needs to be added with iternet and p2p
       # --- System Core ---
       nix = {
         name = "Nix";
         identity.fingerprints = pkgRegex pkgs.nix;
         settings = allowInternet;
       };
-      
+
       systemd = {
         name = "systemd";
         identity.fingerprints = pkgRegex pkgs.systemd;
@@ -71,8 +103,11 @@ in
       # --- System Services ---
       geoclue = {
         name = "Geoclue";
-        identity.fingerprints = pkgRegex pkgs.geoclue2;
-        settings = allowInternet;
+        # Service may run from an older store path until restarted; match any geoclue build.
+        identity.fingerprints = pkgRegex pkgs.geoclue2 ++ [
+          (mkPathRegex "^/nix/store/[^/]+-geoclue-[^/]+/libexec/\\.geoclue-wrapped$")
+        ];
+        settings = allowInternetP2P;
       };
 
       nsncd = {
@@ -84,7 +119,7 @@ in
       fwupd = {
         name = "fwupd";
         identity.fingerprints = pkgRegex pkgs.fwupd;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       flatpak = {
@@ -99,10 +134,16 @@ in
         settings = allowInternetLANInbound;
       };
 
+      cups-browsed = {
+        name = "CUPS Browsed";
+        identity.fingerprints = pkgRegex pkgs.cups-browsed;
+        settings = allowLAN;
+      };
+
       ssh = {
         name = "SSH";
         identity.fingerprints = pkgRegex pkgs.openssh;
-        settings = allowInternet;
+        settings = allowInternetLAN;
       };
 
       # --- Essential Interactive Tools ---
@@ -112,10 +153,26 @@ in
         settings = allowInternet;
       };
 
+      cursor-agent = {
+        name = "Cursor Agent";
+        identity.fingerprints = pkgRegex pkgs.cursor-cli ++ [
+          (mkPathRegex "^/nix/store/[^/]+-cursor-cli-[^/]+/share/cursor-agent/node$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      codex = {
+        name = "Codex";
+        identity.fingerprints = pkgRegex pkgs.codex ++ [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.vscode/extensions/openai.chatgpt.*")
+        ];
+        settings = allowInternetP2P;
+      };
+
       git = {
         name = "Git";
         identity.fingerprints = pkgRegex pkgs.git;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       curl = {
@@ -127,20 +184,20 @@ in
       wget = {
         name = "wget";
         identity.fingerprints = pkgRegex pkgs.wget;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       # --- Browsers & Communication ---
       brave = {
         name = "Brave Browser";
         identity.fingerprints = pkgRegex pkgs.brave;
-        settings = allowInternet;
+        settings = allowInternetLANP2P;
       };
 
       zoom = {
         name = "Zoom";
         identity.fingerprints = pkgRegex pkgs.zoom-us;
-        settings = allowInternet;
+        settings = allowInternetInbound;
       };
 
       postman = {
@@ -152,7 +209,9 @@ in
       # --- Gaming & Streaming ---
       steam = {
         name = "Steam";
-        identity.fingerprints = pkgRegex pkgs.steam;
+        identity.fingerprints = pkgRegex pkgs.steam ++ [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/Steam/.*")
+        ];
         settings = allowInternetLANInbound;
       };
 
@@ -183,7 +242,7 @@ in
       vlc = {
         name = "VLC Media Player";
         identity.fingerprints = pkgRegex pkgs.vlc;
-        settings = allowInternet;
+        settings = allowInternetLAN;
       };
 
       wivrn = {
@@ -240,13 +299,13 @@ in
       vscode = {
         name = "VS Code";
         identity.fingerprints = pkgRegex pkgs.vscode;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       android-studio = {
         name = "Android Studio";
         identity.fingerprints = pkgRegex pkgs.android-studio;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       arduino-ide = {
@@ -382,88 +441,49 @@ in
         identity.fingerprints = pkgRegex pkgs.waydroid-nftables;
         settings = allowInternetLANInbound;
       };
+
+      # --- External / non-Nix paths ---
+      twintaillauncher = {
+        name = "Twintail Launcher";
+        identity.fingerprints = [
+          (mkPathEquals "/app/bin/twintaillauncher")
+          (mkPathRegex "^/home/samm/.var/app/app.twintaillauncher.ttl/.*")
+        ];
+        settings = allowInternet;
+      };
+
+      android-java = {
+        name = "Java for android studio";
+        identity.fingerprints = [
+          (mkPathRegex "^/home/samm/.jdks/.*")
+        ];
+        settings = allowInternet;
+      };
+
+      webkit-network-process = {
+        name = "WebKit Network Process";
+        identity.fingerprints = [
+          (mkPathEquals "/usr/libexec/webkit2gtk-4.1/WebKitNetworkProcess")
+        ];
+        settings = allowInternet;
+      };
     };
   };
 
-  systemd.services.portmaster-managed-profiles = mkIf (cfg.enable && cfg.managedProfiles != { }) {
-    after = [ "portmaster.service" ];
-    wants = [ "portmaster.service" ];
-    wantedBy = [ "multi-user.target" ];
-    
+  # Re-import managed profiles periodically so UI deletions get repaired.
+  systemd.timers.portmaster-managed-profiles-resync = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "2min";
+      OnUnitActiveSec = "15min";
+    };
+  };
+
+  systemd.services.portmaster-managed-profiles-resync = {
+    description = "Re-sync Portmaster managed profiles";
     serviceConfig = {
       Type = "oneshot";
-      RemainAfterExit = true;
-      Restart = "on-failure";
-      RestartSec = 10;
-      LoadCredential = "managed-profiles-api-key:${pkgs.writeText "portmaster-api-key" ""}";
+      ExecStart = "${pkgs.systemd}/bin/systemctl restart portmaster-managed-profiles.service";
     };
-    
-    script = mkForce ''
-      set -euo pipefail
-
-      curl_config="$(${pkgs.coreutils}/bin/mktemp --tmpdir portmaster-managed-profiles-curl.XXXXXX)"
-      trap '${pkgs.coreutils}/bin/rm -f "$curl_config"' EXIT
-      ${pkgs.coreutils}/bin/chmod 0600 "$curl_config"
-      printf '%s' 'header = "Authorization: Bearer ' > "$curl_config"
-      ${pkgs.coreutils}/bin/tr -d '\r\n' < "$CREDENTIALS_DIRECTORY/managed-profiles-api-key" >> "$curl_config"
-      printf '%s\n' '"' >> "$curl_config"
-
-      # Give portmaster daemon time to fully start before attempting API calls
-      ${pkgs.coreutils}/bin/sleep 2
-
-      ready=0
-      for _ in $(${pkgs.coreutils}/bin/seq 1 180); do
-        if ${pkgs.curl}/bin/curl --silent --show-error --fail --noproxy '*' --max-time 2 http://127.0.0.1:817/api/v1/ping > /dev/null 2>&1; then
-          ready=1
-          break
-        fi
-        ${pkgs.coreutils}/bin/sleep 1
-      done
-
-      if [ "$ready" -ne 1 ]; then
-        printf >&2 '%s\n' "Portmaster API at http://127.0.0.1:817/api/v1/ping did not become ready in time"
-        exit 1
-      fi
-
-      for profile in ${escapeShellArgs managedProfileExports}; do
-        ${pkgs.jq}/bin/jq -e '
-          .type == "profile"
-          and (.source == "local")
-          and (.name | type == "string" and length > 0)
-          and (.config | type == "object")
-          and (.fingerprints | type == "array")
-          and (.fingerprints | length > 0)
-          and all(
-            .fingerprints[];
-            (.type == "path" or .type == "cmdline")
-            and (.operation == "equals" or .operation == "regex")
-            and (.value | type == "string" and length > 0)
-          )
-        ' "$profile" > /dev/null
-
-        response="$(${pkgs.curl}/bin/curl \
-          --config "$curl_config" \
-          --silent \
-          --show-error \
-          --fail \
-          --noproxy '*' \
-          --max-time 30 \
-          --header "Content-Type: application/json" \
-          --data-binary "$(${pkgs.jq}/bin/jq -n --rawfile rawExport "$profile" '{
-            rawExport: $rawExport,
-            rawMime: "application/json",
-            validateOnly: false,
-            reset: false,
-            allowUnknown: false,
-            allowReplaceProfiles: true
-          }')" \
-          ${escapeShellArg "http://127.0.0.1:817/api/v1/sync/profile/import"})"
-
-        printf '%s' "$response" | ${pkgs.jq}/bin/jq -e '
-          (.restartRequired | type == "boolean")
-          and (.replacesExisting | type == "boolean")
-        ' > /dev/null
-      done
-    '';
   };
 }

@@ -10,7 +10,6 @@
     # Minimize password verification delay
     pam.services = {
       login.nodelay = true;
-      greetd.nodelay = true;
       sudo.nodelay = true;
       polkit-1.nodelay = true;
       su.nodelay = true;

@@ -60,7 +60,11 @@
       CPU_MAX_PERF_ON_AC = 100;
       CPU_MIN_PERF_ON_BAT = 0;
       CPU_MAX_PERF_ON_BAT = 80; # Cap P-cores slightly on battery to avoid heat
-      CPU_MAX_PERF_ON_SAV = 50; # Aggressive cap for power saving
+      # CPU_MAX_PERF_ON_SAV = 50; # previous
+      CPU_MAX_PERF_ON_SAV = 20; # crippled — maximize battery in Power Saver
+
+      # Platform profile (firmware) — only SAV is forced low-power
+      PLATFORM_PROFILE_ON_SAV = "low-power";
 
       # ========================================================================
       # Graphics (iGPU)
@@ -72,14 +76,16 @@
 
       INTEL_GPU_MAX_FREQ_ON_AC = 0; # 0 means unlimited in this case
       INTEL_GPU_MAX_FREQ_ON_BAT = 1000; # Cap iGPU to 1GHz on battery
-      INTEL_GPU_MAX_FREQ_ON_SAV = 600;
+      # INTEL_GPU_MAX_FREQ_ON_SAV = 600; # previous
+      INTEL_GPU_MAX_FREQ_ON_SAV = 100; # crippled — Intel floor
+      INTEL_GPU_BOOST_FREQ_ON_SAV = 100;
 
       # ========================================================================
       # Networking & Radio
       # ========================================================================
       WIFI_PWR_ON_AC = "off";
       WIFI_PWR_ON_BAT = "on";
-      WIFI_PWR_ON_SAV = "on";
+      WIFI_PWR_ON_SAV = "on"; # power-save only; WiFi stays enabled
       WOL_DISABLE = "Y";
 
       # ========================================================================
@@ -94,8 +100,14 @@
       RUNTIME_PM_ON_AC = "on";   # 'on' means PM is disabled (safer for AC)
       RUNTIME_PM_ON_BAT = "auto";
       RUNTIME_PM_ON_SAV = "auto";
-      # Exclude Nvidia as it handles its own PM via the driver
+      # Exclude Nvidia as it handles its own PM via the driver (HDMI / PRIME)
       RUNTIME_PM_DENYLIST = "nvidia nouveau";
+
+      # USB autosuspend — SAV only via defaults; keep global gentle
+      # (TLP has no USB_AUTOSUSPEND_ON_SAV; leave unset so AC/BAT unchanged)
+
+      # AHCI link power — SAV only
+      SATA_LINKPWR_ON_SAV = "min_power";
 
       # ========================================================================
       # Suspend & Sleep

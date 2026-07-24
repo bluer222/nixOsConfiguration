@@ -27,7 +27,7 @@
         #hide it(esc to show it)
         #timeoutStyle = "menu";
         timeoutStyle = "hidden";
-        #no ugily nixos spash
+        #no ugily nixos spash(this jpg is just the bgrt image)
         splashImage = "/home/samm/boot.jpg";
         #splashImage = null;
       };

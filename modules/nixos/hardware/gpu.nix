@@ -28,23 +28,11 @@ in
     LIBVA_DRIVER_NAME = "iHD";
   }; # Force intel-media-driver
 
-  # Hybrid GPU offload via nvidia.prime — switcheroo-control needs KWin/UPower GPU switching.
-  boot.blacklistedKernelModules = mkAfter [ "nvidia_uvm" ];
-
-  systemd.services.nvidia-uvm = {
-    description = "Load NVIDIA UVM module (CUDA)";
-    wantedBy = [ "multi-user.target" ];
-    after = [ "systemd-modules-load.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${pkgs.kmod}/bin/modprobe nvidia_uvm";
-    };
-  };
-
   # Load nvidia
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.nvidia-container-toolkit.enable = true;
+  #use cuda
+  #nixpkgs.config.cudaSupport = true;
   # Load nvidia driver for Xorg and Wayland
   hardware.nvidia = {
     #midigates bottlenecks by transferig power from cpu to gpu when needed
@@ -89,7 +77,7 @@ in
       enableOffloadCmd = true;
     };
     # Make sure to use the correct Bus ID values for your system!
-    intelBusId = "PCI:0:2:0";
-    nvidiaBusId = "PCI:1:0:0";
+    intelBusId = "PCI:0@0:2:0";
+    nvidiaBusId = "PCI:1@0:0:0";
   };
 }

@@ -20,14 +20,14 @@
         },
         {
           "label": "logout",
-          "action": "hyprshutdown -t 'Logging out...' --post-cmd 'hyprctl dispatch exit'",
+          "action": "${pkgs.uwsm}/bin/uwsm stop",
           "text": "Logout",
           "keybind": "e",
           "icon": "${pkgs.wleave}/share/wleave/icons/logout.svg"
         },
         {
           "label": "shutdown",
-          "action": "hyprshutdown -t 'Shutting down...' --post-cmd 'systemctl poweroff'",
+          "action": "systemctl poweroff",
           "text": "Shutdown",
           "keybind": "s",
           "icon": "${pkgs.wleave}/share/wleave/icons/shutdown.svg"
@@ -41,7 +41,7 @@
         },
         {
           "label": "reboot",
-          "action": "hyprshutdown -t 'Restarting...' --post-cmd 'systemctl reboot'",
+          "action": "systemctl reboot",
           "text": "Reboot",
           "keybind": "r",
           "icon": "${pkgs.wleave}/share/wleave/icons/reboot.svg"

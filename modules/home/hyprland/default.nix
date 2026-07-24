@@ -21,14 +21,20 @@ in {
   wayland.windowManager.hyprland = {
     enable = true;
     package = pkgs.hyprland;
-    systemd.enable = false;
+    # With UWSM, graphical-session.target is started by `uwsm finalize` in
+    # globals.lua — not hyprland-session.target (that conflicts with uwsm).
+    # Keep HM systemd enabled only for dbus-update-activation-environment.
+    # https://wiki.hypr.land/Useful-Utilities/Systemd-start/#uwsm
+    systemd = {
+      enable = true;
+      extraCommands = [ ];
+    };
   };
 
   services.hyprpolkitagent.enable = true;
   services.avizo.enable = true;
 
   home.packages = with pkgs; [
-    systemd # For systemctl during activation
     wl-clipboard
     jq
     xdg-utils
@@ -45,6 +51,7 @@ in {
 
     kdePackages.kded
     kdePackages.kwallet
+    kdePackages.kwallet-pam
     kdePackages.kwalletmanager
 
     libsecret
@@ -63,7 +70,13 @@ in {
     XDG_CURRENT_DESKTOP = "Hyprland";
     XDG_SESSION_TYPE = "wayland";
     XDG_SESSION_DESKTOP = "Hyprland";
-    AQ_DRM_DEVICES = "/dev/dri/intel-igpu:/dev/dri/nvidia-dgpu";
+    # iGPU only — see modules/nixos/desktop/hyprland.nix (nvidia AQ hang).
+    AQ_DRM_DEVICES = "/dev/dri/intel-igpu";
+    # Prefer logind even if a seatd socket is present from another package.
+    LIBSEAT_BACKEND = "logind";
+    # Albert splits on `;` — wrap every launched app in a UWSM scope so polkit
+    # can see a valid subject (see uwsm README launcher table).
+    ALBERT_APPLICATIONS_COMMAND_PREFIX = "uwsm;app;--";
   };
 
   systemd.user.startServices = "sd-switch";
@@ -108,36 +121,5 @@ in {
         }
       ];
     };
-  };
-
-  # ksecretd is the KF6 KWallet daemon that provides the Secret Service D-Bus API.
-  # PAM (via kwallet-pam) unlocks the wallet at login; this service keeps the daemon
-  # running for the duration of the graphical session so apps can query secrets.
-  systemd.user.services.plasma-kwallet-pam = {
-    Unit = {
-      Description = "KDE Wallet (ksecretd) Secret Service daemon";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" "dbus.service" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kwallet}/bin/ksecretd";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
-  };
-
-  systemd.user.services.plasma-kded6 = {
-    Unit = {
-      Description = "KDE Daemon 6";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" "dbus.service" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kded}/bin/kded6";
-      BusName = "org.kde.kded6";
-      Restart = "on-failure";
-    };
-    Install.WantedBy = [ "graphical-session.target" ];
   };
 }
