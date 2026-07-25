@@ -21,7 +21,6 @@
     ../../modules/nixos/desktop/logout.nix
     ../../modules/nixos/system/performance.nix
     ../../modules/nixos/desktop/hyprland.nix
-    ../../modules/nixos/desktop/xfce-backup.nix
     ../../modules/nixos/system/systemd.nix
 
     # Networking services

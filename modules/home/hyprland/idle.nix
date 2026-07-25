@@ -15,12 +15,12 @@
 
       listener = [
         {
-          timeout = 45;
+          timeout = 60;
           on-timeout = "hyprctl eval 'dim_brightness()'";
           on-resume = "hyprctl eval 'restore_brightness()'";
         }
         {
-          timeout = 60;
+          timeout = 80;
           on-timeout = "loginctl lock-session && hyprctl dispatch dpms off";
           on-resume = "hyprctl dispatch dpms on";
         }
@@ -71,10 +71,7 @@
   };
 
   # -----------------------------------------------------
-  # Ensure suspend-then-hibernate and deep sleep
-  # (Note: Some of these need to be in configuration.nix, 
-  # added here for completeness, though systemd settings 
-  # via home-manager might not cover the full logind scope)
+  # suspend-then-hibernate
   # -----------------------------------------------------
   home.file.".config/systemd/sleep.conf".text = ''
     [Sleep]

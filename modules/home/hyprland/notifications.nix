@@ -1,25 +1,35 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
-  services.mako = {
-    enable = true;
-    settings = {
-      background-color = "#1e1e2e";
-      text-color = "#cdd6f4";
-      border-color = "#94e2d5";
-      border-size = 2;
-      border-radius = 8;
-      padding = "8";
-      margin = "10";
-      font = "Inter 12";
-      default-timeout = 8000;
-      ignore-timeout = false;
-      max-visible = 5;
-      layer = "overlay";
+  # Qt notification daemon with working action buttons (replaces mako).
+  # Appearance largely follows the LXQt/Qt theme; placement/timeout tuned here.
+  xdg.configFile."lxqt/notifications.conf".text = ''
+    [General]
+    placement=top-right
+    width=360
+    spacing=10
+    server_decides=8
+    unattendedMaxNum=5
+    doNotDisturb=false
+    screenWithMouse=false
+  '';
 
-      # Left click: default action. Middle click: copy body to clipboard.
-      "on-button-left" = "invoke-default-action";
-      "on-button-middle" = "exec makoctl history | jq -r '.data[] | select(.id.data == '\$id') | .body.data' | wl-copy";
+  systemd.user.services.lxqt-notificationd = {
+    Unit = {
+      Description = "LXQt notification daemon";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
     };
+    Service = {
+      ExecStart = "${pkgs.lxqt.lxqt-notificationd}/bin/lxqt-notificationd";
+      Restart = "on-failure";
+      RestartSec = 2;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
   };
+
+  home.packages = [
+    pkgs.lxqt.lxqt-notificationd
+    pkgs.libnotify
+  ];
 }

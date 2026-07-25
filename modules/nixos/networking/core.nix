@@ -44,16 +44,4 @@
       '';
     };
   };
-
-  # Kernel modules for networking
-  boot = {
-    blacklistedKernelModules = [ "cdc_ncm" ];
-    kernelModules = [ "tcp_bbr" "ax88179_178a" "r8152" ];
-
-    # TCP BBR congestion control
-    kernel.sysctl = {
-      "net.core.default_qdisc" = "fq";
-      "net.ipv4.tcp_congestion_control" = "bbr";
-    };
-  };
 }

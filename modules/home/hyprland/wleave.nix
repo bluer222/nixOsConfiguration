@@ -13,35 +13,35 @@
         },
         {
           "label": "hibernate",
-          "action": "systemctl hibernate",
+          "action": "hyprshutdown --post-cmd 'systemctl hibernate'",
           "text": "Hibernate",
           "keybind": "h",
           "icon": "${pkgs.wleave}/share/wleave/icons/hibernate.svg"
         },
         {
           "label": "logout",
-          "action": "${pkgs.uwsm}/bin/uwsm stop",
+          "action": "hyprshutdown --post-cmd '${pkgs.uwsm}/bin/uwsm stop'",
           "text": "Logout",
           "keybind": "e",
           "icon": "${pkgs.wleave}/share/wleave/icons/logout.svg"
         },
         {
           "label": "shutdown",
-          "action": "systemctl poweroff",
+          "action": "hyprshutdown --post-cmd 'systemctl poweroff'",
           "text": "Shutdown",
           "keybind": "s",
           "icon": "${pkgs.wleave}/share/wleave/icons/shutdown.svg"
         },
         {
           "label": "suspend",
-          "action": "systemctl suspend",
+          "action": "hyprshutdown --post-cmd 'systemctl suspend'",
           "text": "Suspend",
           "keybind": "u",
           "icon": "${pkgs.wleave}/share/wleave/icons/suspend.svg"
         },
         {
           "label": "reboot",
-          "action": "systemctl reboot",
+          "action": "hyprshutdown --post-cmd 'systemctl reboot'",
           "text": "Reboot",
           "keybind": "r",
           "icon": "${pkgs.wleave}/share/wleave/icons/reboot.svg"

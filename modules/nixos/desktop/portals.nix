@@ -11,7 +11,7 @@
       xdg-desktop-portal-hyprland
       kdePackages.xdg-desktop-portal-kde
       # Last-resort FileChooser / Settings fallback (prefer KDE above).
-      xdg-desktop-portal-gtk
+      #xdg-desktop-portal-gtk
     ];
 
     config = {
@@ -32,6 +32,7 @@
   #
   # Only tweak drop-in fields here — declaring wantedBy/after for package-provided
   # units (e.g. plasma-xdg-desktop-portal-kde) replaces the unit and drops ExecStart.
+  /*
   systemd.user.services.xdg-desktop-portal-hyprland = {
     unitConfig = {
       StartLimitIntervalSec = "60";
@@ -63,5 +64,5 @@
         systemctl --user restart xdg-desktop-portal.service || true
       '';
     };
-  };
+  };*/
 }

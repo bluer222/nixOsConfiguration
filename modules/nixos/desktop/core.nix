@@ -25,7 +25,12 @@
           enable = true;
           control = "[success=done default=ignore]";
         };
+        kwallet = {
+          enable = true;
+          forceRun = true;
+        };
       };
+      greetd.kwallet.enable = true;
       systemd-run0 = {
         enable = true;
         howdy = {

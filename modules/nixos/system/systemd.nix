@@ -25,8 +25,7 @@
 
     #nowait
     services.NetworkManager-wait-online.enable = false;
-    #this adds like half a second to boot time
-    oomd.enable = false;
+    oomd.enable = true;
 
     services.libvirtd = {
       enable = true;

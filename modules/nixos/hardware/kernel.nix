@@ -4,8 +4,14 @@
   # Hardware-specific kernel modules and parameters
   boot = {
     extraModulePackages = [ config.boot.kernelPackages.msi-ec ];
-    blacklistedKernelModules = [ ];
+    blacklistedKernelModules = [ "cdc_ncm" ];
+    
     kernelModules = [ "i2c-dev" "ec_sys" "msi-ec" ];
+    # TCP BBR congestion control
+    kernel.sysctl = {
+      "net.core.default_qdisc" = "fq";
+      "net.ipv4.tcp_congestion_control" = "bbr";
+    };
 
     # Kernel parameters for embedded controller and memory compression
     kernelParams = [

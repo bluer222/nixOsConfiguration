@@ -11,6 +11,8 @@
   wayland.windowManager.hyprland = {
     enable = true;
 
+    package = pkgs.hyprland;
+
     plugins = [
       pkgs.hyprlandPlugins.hypr-dynamic-cursors
       pkgs.hyprlandPlugins.hypr-darkwindow

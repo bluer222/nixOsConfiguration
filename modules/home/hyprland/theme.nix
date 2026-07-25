@@ -32,15 +32,15 @@ in {
   ];
 
   home.sessionVariables = {
-    QT_QPA_PLATFORM = "wayland;xcb";
-    QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-    GTK_CSD = "0";
-    ELECTRON_OZONE_PLATFORM_HINT = "auto";
-    GTK_USE_PORTAL = "1";
-    XCURSOR_THEME = "Bibata-Modern-Classic";
-    XCURSOR_SIZE = "24";
-    HYPRCURSOR_THEME = "Bibata-Modern-Classic";
-    HYPRCURSOR_SIZE = "24";
+    #QT_QPA_PLATFORM = "wayland;xcb";
+    #QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
+    #GTK_CSD = "0";
+    #ELECTRON_OZONE_PLATFORM_HINT = "auto";
+    #GTK_USE_PORTAL = "1";
+    #XCURSOR_THEME = "Bibata-Modern-Classic";
+    #XCURSOR_SIZE = "24";
+    #HYPRCURSOR_THEME = "Bibata-Modern-Classic";
+    #HYPRCURSOR_SIZE = "24";
   };
 
   qt = {
@@ -72,7 +72,7 @@ in {
     };
   };
 
-  systemd.user.sessionVariables = config.home.sessionVariables;
+  #systemd.user.sessionVariables = config.home.sessionVariables;
 
   # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
   fonts.fontconfig = {

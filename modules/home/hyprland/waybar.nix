@@ -147,7 +147,7 @@
           format-off = "󰂲 off";
           format-on = "󰂯 on";
           format-connected = "󰂱 {num_connections}";
-          on-click = "";
+          on-click = "${pkgs.blueman}/bin/blueman-manager";
         };
 
         "battery" = {
@@ -166,23 +166,23 @@
           tooltip-format = "Power profile: {profile}";
           tooltip = true;
           format-icons = {
-            default = " ";
-            performance = " ";
-            balanced = " ";
-            power-saver = " ";
+            default = "  ";
+            performance = "  ";
+            balanced = "  ";
+            power-saver = "  ";
           };
         };
-
-        "clock" = {
-          format = "{:%a %d/%b %m  %H:%M}";
-          interval = 1;
-          tooltip-format = "{:%A, %d %B %Y  %H:%M:%S}";
-          on-click = "";
-        };
-
+        
         "tray" = {
           icon-size = 16;
           spacing = 10;
+        };
+
+        "clock" = {
+          format = "{:%a %d/%b %m/%y  %H:%M}";
+          interval = 1;
+          tooltip-format = "{:%A, %d %B %Y  %H:%M:%S}";
+          on-click = "";
         };
       };
     };

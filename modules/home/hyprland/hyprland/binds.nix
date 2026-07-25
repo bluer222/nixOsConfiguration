@@ -12,7 +12,7 @@ in {
     {
       _args = [
         (inline ''mainMod .. " + SUPER_L"'')
-        (inline "hl.dsp.exec_cmd(\"albert toggle\")")
+        (inline "function() require(\"utils\").run(\"albert toggle\") end")
         {
           release = true;
         }
@@ -105,7 +105,7 @@ in {
     {
       _args = [
         (inline ''mainMod .. " + V"'')
-        (inline "hl.dsp.exec_cmd(\"cliphist list | rofi -dmenu -unfocus-exit -theme ~/.config/rofi/spotlight.rasi | cliphist decode | wl-copy\")")
+        (inline "function() require(\"utils\").run(\"sh -c 'cliphist list | rofi -dmenu -unfocus-exit -theme ~/.config/rofi/spotlight.rasi | cliphist decode | wl-copy'\") end")
       ];
     }
     {
@@ -117,7 +117,7 @@ in {
     {
       _args = [
         "Print"
-        (inline "hl.dsp.exec_cmd(\"hyprshot -m region --output-folder '${config.home.homeDirectory}/Pictures/Screenshots'\")")
+        (inline "function() require(\"utils\").run(\"hyprshot -m region --output-folder '${config.home.homeDirectory}/Pictures/Screenshots'\") end")
       ];
     }
     {
@@ -169,35 +169,35 @@ in {
     {
       _args = [
         "XF86MonBrightnessUp"
-        (inline "hl.dsp.exec_cmd(\"lightctl -d up\")")
+        (inline "function() require(\"utils\").run(\"lightctl -d up\") end")
         bindOpts
       ];
     }
     {
       _args = [
         "XF86MonBrightnessDown"
-        (inline "hl.dsp.exec_cmd(\"lightctl -d down\")")
+        (inline "function() require(\"utils\").run(\"lightctl -d down\") end")
         bindOpts
       ];
     }
     {
       _args = [
         "code:224"
-        (inline "hl.dsp.exec_cmd(\"lightctl -d down\")")
+        (inline "function() require(\"utils\").run(\"lightctl -d down\") end")
         bindOpts
       ];
     }
     {
       _args = [
         "code:225"
-        (inline "hl.dsp.exec_cmd(\"lightctl -d up\")")
+        (inline "function() require(\"utils\").run(\"lightctl -d up\") end")
         bindOpts
       ];
     }
     {
       _args = [
         "XF86PowerOff"
-        (inline "hl.dsp.exec_cmd(\"wleave\")")
+        (inline "function() require(\"utils\").run(\"wleave\") end")
         {
           locked = true;
         }
@@ -210,6 +210,13 @@ in {
         {
           locked = true;
         }
+      ];
+    }
+    {
+      _args = [
+        "switch:on:Lid Switch"
+        (inline "hl.dsp.exec_cmd(\"pidof hyprlock || hyprlock & systemctl suspend-then-hibernate\")")
+        { locked = true; }
       ];
     }
   ];

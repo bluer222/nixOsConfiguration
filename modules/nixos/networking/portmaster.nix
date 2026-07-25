@@ -73,6 +73,12 @@ let
     lan = true;
     inbound = true;
   };
+  allowAll = mkRule {
+    internet = true;
+    lan = true;
+    inbound = true;
+    p2p = true;
+  };
 in
 {
   services.portmaster = {
@@ -200,6 +206,14 @@ in
         settings = allowInternetInbound;
       };
 
+      signal = {
+        name = "Signal Desktop";
+        identity.fingerprints = pkgRegex pkgs.signal-desktop ++ [
+          (mkPathRegex "^/nix/store/[^/]+-electron-unwrapped-[^/]+/libexec/electron$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       postman = {
         name = "Postman";
         identity.fingerprints = pkgRegex pkgs.postman;
@@ -212,7 +226,7 @@ in
         identity.fingerprints = pkgRegex pkgs.steam ++ [
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/Steam/.*")
         ];
-        settings = allowInternetLANInbound;
+        settings = allowAll;
       };
 
       lutris = {
@@ -322,7 +336,7 @@ in
 
       antigravity = {
         name = "Antigravity AI Agent";
-        identity.fingerprints = pkgRegex pkgs.antigravity;
+        identity.fingerprints = pkgRegex pkgs.antigravity-ide-fhs ++ pkgRegex pkgs.antigravity-cli;
         settings = allowInternet;
       };
 
@@ -396,7 +410,7 @@ in
       tor-browser = {
         name = "Tor Browser";
         identity.fingerprints = pkgRegex pkgs.tor-browser;
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       nmap = {

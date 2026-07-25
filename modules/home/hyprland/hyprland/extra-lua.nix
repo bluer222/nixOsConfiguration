@@ -1,34 +1,6 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
-let
-  # MUST NOT run on Hyprland's main thread — blocking os.execute() freezes the
-  # compositor (black screen, dead IPC) for the whole retry window.
-  uwsmFinalize = pkgs.writeShellScript "hyprland-uwsm-finalize" ''
-    set -euo pipefail
-    uwsm=${pkgs.uwsm}/bin/uwsm
-    systemctl=${pkgs.systemd}/bin/systemctl
-    log=/tmp/hyprland-uwsm.log
-    ts() { date '+%Y-%m-%d %H:%M:%S'; }
-    # Not under UWSM (e.g. manual test) — nothing to finalize.
-    if ! $systemctl --user cat wayland-wm@hyprland.desktop.service >/dev/null 2>&1; then
-      echo "$(ts) finalize skip: wayland-wm@ unit not present" >>"$log"
-      exit 0
-    fi
-    for attempt in $(seq 1 100); do
-      $uwsm finalize >>"$log" 2>&1 || true
-      wm=$($systemctl --user is-active wayland-wm@hyprland.desktop.service 2>/dev/null || true)
-      gs=$($systemctl --user is-active graphical-session.target 2>/dev/null || true)
-      if [ "$wm" = active ] || [ "$gs" = active ]; then
-        echo "$(ts) finalize ok (attempt $attempt, wm=$wm gs=$gs)" >>"$log"
-        exit 0
-      fi
-      echo "$(ts) finalize not ready (attempt $attempt, wm=$wm gs=$gs)" >>"$log"
-      sleep 0.2
-    done
-    echo "$(ts) finalize FAILED after retries" >>"$log"
-    exit 1
-  '';
-in {
+{
   wayland.windowManager.hyprland.extraLuaFiles = {
     "utils" = {
       autoLoad = true;
@@ -38,7 +10,7 @@ in {
         local utils = {}
         
         function utils.run(cmd)
-          os.execute(cmd .. " >/dev/null 2>&1 &")
+          hl.exec_cmd("${pkgs.uwsm}/bin/uwsm app -- " .. cmd)
         end
 
         function utils.log_uwsm(msg)
@@ -48,14 +20,6 @@ in {
             log:close()
           end
         end
-
-        -- Fire-and-forget: retries live in a shell script so the compositor
-        -- keeps compositing / answering IPC during cold-login races.
-        function utils.uwsm_finalize()
-          utils.log_uwsm("finalize spawned (async)")
-          utils.run("${uwsmFinalize}")
-        end
-        
         function utils.play_sound(sound_path)
           utils.run("pw-play '" .. sound_path .. "'")
         end
@@ -85,37 +49,6 @@ in {
           return true
         end
 
-        function utils.get_mute_status(mic)
-          local target = mic and "@DEFAULT_AUDIO_SOURCE@" or "@DEFAULT_AUDIO_SINK@"
-          local handle = io.popen("wpctl get-volume " .. target)
-          if not handle then return false end
-          local result = handle:read("*a")
-          handle:close()
-          return result and result:find("%[MUTED%]")
-        end
-
-        function utils.set_led_status(mic)
-          local led_val 
-          if utils.get_mute_status(mic) then
-            led_val = 0
-          else
-            led_val = 1
-          end
-
-          local led_path
-          if mic then
-            led_path = "/sys/class/leds/platform::micmute/brightness"
-          else
-            led_path = "/sys/class/leds/platform::mute/brightness"
-          end
-
-          local led_file = io.open(led_path, "w")
-          if led_file then
-              led_file:write(led_val)
-              led_file:close()
-          end
-        end
-        
         return utils
       '';
     };
@@ -147,26 +80,6 @@ in {
         end
         
         return wallpaper
-      '';
-    };
-
-    "window_mgmt" = {
-      autoLoad = true;
-      content = ''
-        -- Window management: Close duplicate Plasma popups on window focus
-        
-        local window_mgmt = {}
-        
-        function window_mgmt.manage_plasma_popups()
-          local active = hl.get_active_window()
-
-          -- If there's an active window, and it is NOT the plasma popup, close all plasma popups
-          if active and active.class ~= "org.kde.plasmawindowed" then
-              hl.dispatch(hl.dsp.window.close({ window = "class:org.kde.plasmawindowed" }))
-          end
-        end
-        
-        return window_mgmt
       '';
     };
 
@@ -216,68 +129,6 @@ in {
       '';
     };
 
-    "power" = {
-      autoLoad = false;
-      content = ''
-        local utils = require("utils")
-        local sounds = require("sounds")
-
-        local state = {
-          plugged = nil,
-          percentage = nil
-        }
-        
-        local function handle_power_event(event)
-          if event == "plugged" then
-            utils.play_sound(sounds.powerPlug)
-          elseif event == "unplugged" then
-            utils.play_sound(sounds.powerUnplug)
-          elseif event == "percentage" then
-            if state.percentage < 20 then
-              utils.play_sound(sounds.batteryLow)
-            elseif state.percentage == 100 then
-              utils.play_sound(sounds.batteryFull)
-            end
-          end
-        end
-
-        local function monitor_battery()
-          -- Use upower to stream power device changes cleanly
-          local cmd = "upower --monitor-detail | grep --line-buffered -E 'state:|percentage:'"
-          local handle = io.popen(cmd, "r")
-          if not handle then return end
-
-          while true do
-              local line = handle:read("*l")
-              if not line then break end
-              
-              -- Parse the raw upower stream lines
-              if string.find(line, "state:%s+charging") or string.find(line, "state:%s+pending-charge") or string.find(line, "state:%s+fully-charged")then
-                if not state.plugged then
-                    state.plugged = true
-                    handle_power_event("plugged")
-                end
-              elseif string.find(line, "state:%s+discharging") then
-                if state.plugged then
-                    state.plugged = false
-                    handle_power_event("unplugged")
-                end
-              elseif string.find(line, "percentage:%s+(%d+)%%") then
-                new_percent = tonumber(string.match(line, "percentage:%s+(%d+)%%"))
-                if state.percentage ~= new_percent then
-                    state.percentage = new_percent
-                    handle_power_event("percentage")
-                end
-              end
-          end
-
-          handle:close()
-        end
-
-        monitor_battery()
-      '';
-    };
-
     "globals" = {
       autoLoad = true;
       content = ''
@@ -285,7 +136,6 @@ in {
         
         local utils = require("utils")
         local wallpaper = require("wallpaper")
-        local window_mgmt = require("window_mgmt")
         local brightness = require("brightness")
         local sounds = require("sounds")
         
@@ -353,17 +203,7 @@ in {
             utils.run("volumectl -d toggle-mute")
           end
 
-          utils.set_led_status(mic)
-
           utils.play_sound(sounds.dialogInformation)
-        end
-        
-        function power_plug()
-          utils.play_sound(sounds.powerPlug)
-        end
-        
-        function power_unplug()
-          utils.play_sound(sounds.powerUnplug)
         end
         
         -- ========================================================================
@@ -383,27 +223,8 @@ in {
         -- ========================================================================
         
         hl.on("hyprland.start", function()          
-          -- Finalize UWSM session (syncs env and starts graphical-session.target).
-          -- Required with programs.hyprland.withUWSM; retries cover cold-login races.
-          utils.uwsm_finalize()
-
-          -- Must use uwsm app so Albert (and apps it launches) land in a tracked
-          -- user scope. Bare forks end up in cgroup `/` with no unit; polkit then
-          -- cannot build a subject and GUI privilege prompts say "not available".
-          utils.run("${pkgs.uwsm}/bin/uwsm app -- albert")
-          
-          -- Set initial wallpaper
-          local active_ws = hl.get_active_workspace()
-          if active_ws then
-            on_workspace_change(active_ws.id)
-          end
-
-          -- set audio leds
-          utils.set_led_status(true)
-          utils.set_led_status(false)
-
-          -- run battery monitor
-          --utils.run("${pkgs.lua}/bin/lua ${config.home.homeDirectory}/.config/hypr/power.lua")
+          utils.run("${pkgs.kdePackages.kwallet-pam}/libexec/pam_kwallet_init")
+          utils.run("hyprlock")
         end)
         
         -- ========================================================================
@@ -413,15 +234,11 @@ in {
         hl.on("workspace.active", function(workspace)
           on_workspace_change(workspace.id)
         end)
-        
-        hl.on("window.active", function()
-          window_mgmt.manage_plasma_popups()
-        end)
       '';
     };
 
     "plugins/darkwindow" = {
-      autoLoad = true;
+      autoLoad = false;
       content = ''
         -- Chromakey + subpixel antialiasing do not mix (RGB fringe pixels survive the key).
         -- Subpixel is disabled in ~/.config/fontconfig/fonts.conf.

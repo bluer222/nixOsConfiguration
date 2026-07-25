@@ -8,21 +8,26 @@
     rulesProvider = pkgs.ananicy-rules-cachyos;
     extraRules = [
       { name = "Hyprland"; type = "Realtime"; }
-      { name = "Xorg"; type = "Realtime"; }
     ];
   };
 
-  # Prioritize foreground processes
-  services.system76-scheduler.enable = true;
+  # Prioritize foreground processes(overlaps with ananicy)
+  #services.system76-scheduler.enable = true;
 
-  # Distribute interrupts across CPU cores
-  services.irqbalance.enable = true;
+  # Distribute interrupts across CPU cores(only helpful on servers)
+  #services.irqbalance.enable = true;
 
   # Resource management for active user sessions (custom module)
   services.uresourced.enable = true;
 
   # Optimize for gaming
   programs.gamemode.enable = true;
+
+  #scheduler thing
+  #services.scx = {
+  #  enable = true;
+  # scheduler = "scx_lavd";  # or scx_rusty / scx_bpfland
+  #};
 
   # Use dbus-broker for better responsiveness
   services.dbus.implementation = "broker";

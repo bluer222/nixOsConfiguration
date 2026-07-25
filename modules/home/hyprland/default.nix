@@ -12,24 +12,10 @@ in {
     ./idle.nix
     ./theme.nix
     ./notifications.nix
+    ./session-services.nix
     ./wleave.nix
   ];
 
-  wayland.systemd.target = lib.mkIf config.wayland.windowManager.hyprland.enable
-    "graphical-session.target";
-
-  wayland.windowManager.hyprland = {
-    enable = true;
-    package = pkgs.hyprland;
-    # With UWSM, graphical-session.target is started by `uwsm finalize` in
-    # globals.lua — not hyprland-session.target (that conflicts with uwsm).
-    # Keep HM systemd enabled only for dbus-update-activation-environment.
-    # https://wiki.hypr.land/Useful-Utilities/Systemd-start/#uwsm
-    systemd = {
-      enable = true;
-      extraCommands = [ ];
-    };
-  };
 
   services.hyprpolkitagent.enable = true;
   services.avizo.enable = true;
@@ -56,7 +42,6 @@ in {
 
     libsecret
     hyprshutdown
-    libnotify
     nerdFont
 
     hypridle
@@ -67,20 +52,18 @@ in {
   ];
 
   home.sessionVariables = {
-    XDG_CURRENT_DESKTOP = "Hyprland";
-    XDG_SESSION_TYPE = "wayland";
-    XDG_SESSION_DESKTOP = "Hyprland";
+    #XDG_CURRENT_DESKTOP = "Hyprland";
+    #XDG_SESSION_TYPE = "wayland";
+    #XDG_SESSION_DESKTOP = "Hyprland";
     # iGPU only — see modules/nixos/desktop/hyprland.nix (nvidia AQ hang).
-    AQ_DRM_DEVICES = "/dev/dri/intel-igpu";
-    # Prefer logind even if a seatd socket is present from another package.
-    LIBSEAT_BACKEND = "logind";
+    #AQ_DRM_DEVICES = "/dev/dri/intel-igpu";
     # Albert splits on `;` — wrap every launched app in a UWSM scope so polkit
     # can see a valid subject (see uwsm README launcher table).
     ALBERT_APPLICATIONS_COMMAND_PREFIX = "uwsm;app;--";
   };
 
   systemd.user.startServices = "sd-switch";
-
+/*
   systemd.user.services.portmaster-tray = {
     Unit = {
       Description = "Portmaster tray UI";
@@ -105,7 +88,7 @@ in {
     Install = {
       WantedBy = [ "graphical-session.target" ];
     };
-  };
+  };*/
 
   services.hyprpaper= {
     enable = true;

@@ -52,6 +52,7 @@ let
         plugged = None
         percentage = None
         low_notified = False
+        on_display = False
 
         proc = subprocess.Popen(
             [UPOWER, "--monitor-detail"],
@@ -65,6 +66,14 @@ let
         for line in proc.stdout:
             line = line.strip()
             if not line:
+                continue
+
+            lower = line.lower()
+            if "device:" in lower or "device changed:" in lower:
+                # Aggregate device only — avoids double events from BAT* + DisplayDevice.
+                on_display = "displaydevice" in lower
+                continue
+            if not on_display:
                 continue
 
             m_state = STATE_RE.search(line)
@@ -170,10 +179,10 @@ let
 
 
     def sync_leds(pulse):
-        # Match prior Hyprland Lua: LED on when unmuted.
+        # LED on when muted.
         try:
             sink = pulse.get_sink_by_name(pulse.server_info().default_sink_name)
-            write_led(MUTE_LED, 0 if sink.mute else 1)
+            write_led(MUTE_LED, 1 if sink.mute else 0)
         except pulsectl.PulseError:
             pass
 
@@ -181,7 +190,7 @@ let
             source = pulse.get_source_by_name(
                 pulse.server_info().default_source_name
             )
-            write_led(MICMUTE_LED, 0 if source.mute else 1)
+            write_led(MICMUTE_LED, 1 if source.mute else 0)
         except pulsectl.PulseError:
             pass
 
@@ -267,6 +276,20 @@ in
     };
     Service = {
       ExecStart = "${pkgs.albert}/bin/albert";
+      Restart = "on-failure";
+      RestartSec = 3;
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+  };
+
+  systemd.user.services.mcontrolcenter = {
+    Unit = {
+      Description = "MControlCenter";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Service = {
+      ExecStart = "${pkgs.mcontrolcenter}/bin/mcontrolcenter";
       Restart = "on-failure";
       RestartSec = 3;
     };

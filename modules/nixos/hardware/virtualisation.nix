@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 {
   #add quemu
   virtualisation = {
@@ -18,6 +18,10 @@
       #enableNvidia = true;
     };
   };
+
+  #dont wait for online
+  systemd.services.docker.after = lib.mkForce [ "network.target" "firewalld.service" ];
+  systemd.services.docker.wants = lib.mkForce [ ];
 
   programs.virt-manager.enable = true;
 

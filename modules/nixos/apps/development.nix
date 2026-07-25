@@ -18,7 +18,7 @@
     gemini-cli
     cursor-cli
     python3
-    #antigravity
+    antigravity-ide-fhs
     antigravity-cli
     kdePackages.konsole
     ntfs3g
