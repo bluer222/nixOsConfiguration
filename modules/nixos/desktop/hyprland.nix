@@ -1,6 +1,11 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
-{  
+{
   programs.hyprland = {
     enable = true;
     withUWSM = true;
@@ -10,9 +15,12 @@
   services.greetd = {
     enable = true;
     settings = {
-      default_session = {
+      initial_session = {
         command = "${pkgs.uwsm}/bin/uwsm start hyprland-uwsm.desktop";
         user = "samm";
+      };
+      default_session = {
+        command = "${pkgs.greetd}/bin/agreety --cmd ${lib.escapeShellArg "${pkgs.uwsm}/bin/uwsm start hyprland-uwsm.desktop"}";
       };
     };
   };

@@ -46,13 +46,6 @@ final: prev: {
       opencv4Full = pythonPrev.opencv4;
     })
   ];
-  # Python 3.14 removed type= from BooleanOptionalAction; upstream still passes type=bool.
-  catppuccin-gtk = prev.catppuccin-gtk.overrideAttrs (old: {
-    postPatch = (old.postPatch or "") + ''
-      substituteInPlace sources/build/args.py \
-        --replace-fail 'type=bool,' '# type=bool,  # removed for Python 3.14'
-    '';
-  });
   mcontrolcenter = prev.mcontrolcenter.overrideAttrs (oldAttrs: {
     version = "unstable-2026-05-04";
     src = final.fetchFromGitHub {
@@ -69,11 +62,21 @@ final: prev: {
   });
   hyprlandPlugins = prev.hyprlandPlugins // {
     hypr-darkwindow = prev.hyprlandPlugins.hypr-darkwindow.overrideAttrs (oldAttrs: {
+      version = "0.56.0";
       src = final.fetchFromGitHub {
         owner = "micha4w";
         repo = "Hypr-DarkWindow";
-        tag = "v${oldAttrs.version}";
-        hash = "sha256-91l5TD46OMfvmhd1WqWxm42cEnjR1yAj2Qk/73mr3ks=";
+        tag = "v0.56.0";
+        hash = "sha256-2upGTy7IRhrhxf+5VPjzrua8ebOtED6i8kSN8ka+ffg=";
+      };
+    });
+    hypr-dynamic-cursors = prev.hyprlandPlugins.hypr-dynamic-cursors.overrideAttrs (oldAttrs: {
+      version = "0-unstable-2026-07-21";
+      src = final.fetchFromGitHub {
+        owner = "VirtCode";
+        repo = "hypr-dynamic-cursors";
+        rev = "f5ba36c7622098b53bf62ddb8ddf03b914abbdf8";
+        hash = "sha256-HKzJtEkafkWjTx35spDp6pm1oClN7vIipJ2wwU4ocNY=";
       };
     });
   };

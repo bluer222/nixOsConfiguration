@@ -3,7 +3,9 @@
   # Avahi for service discovery (mDNS)
   services.avahi = {
     enable = true;
-    nssmdns4 = true;
     openFirewall = true;
+    nssmdns4 = true;
+    nssmdns6 = true;
+    nssmdnsFull = true;
   };
 }

@@ -13,6 +13,70 @@
           hl.exec_cmd("${pkgs.uwsm}/bin/uwsm app -- " .. cmd)
         end
 
+        function utils.run_capture(cmd)
+          local handle = io.popen(cmd .. " 2>&1", "r")
+          if not handle then
+            return nil, false
+          end
+
+          local output = handle:read("*a")
+          local ok, _, _ = handle:close()
+          return output, ok == true
+        end
+
+        function utils.shell_quote(str)
+          return "'" .. str:gsub("'", "'\"'\"'") .. "'"
+        end
+
+        function utils.copy_to_clipboard(text)
+          local handle = io.popen("wl-copy", "w")
+          if not handle then
+            return false
+          end
+
+          handle:write(text)
+          handle:close()
+          return true
+        end
+
+        function utils.ocr_selection()
+          local image_path = "/tmp/hyprshot-ocr.png"
+          os.remove(image_path)
+
+          local _, ok = utils.run_capture("{pkgs.hyprshot}/bin/hyprshot -m region --output-folder /tmp --filename hyprshot-ocr.png >/dev/null 2>&1")
+          if not ok then
+            hl.notification.create({
+              text = "OCR cancelled or failed",
+              timeout = 3000
+            })
+            return
+          end
+
+          if not utils.file_exists(image_path) then
+            hl.notification.create({
+              text = "No screenshot captured",
+              timeout = 3000
+            })
+            return
+          end
+
+          local text, text_ok = utils.run_capture("{pkgs.tesseract}/bin/tesseract " .. utils.shell_quote(image_path) .. " stdout 2>/dev/null")
+          if not text_ok or not text or text:gsub("%s+", "") == "" then
+            hl.notification.create({
+              text = "No text detected",
+              timeout = 3000
+            })
+            return
+          end
+
+          utils.copy_to_clipboard(text)
+
+          hl.notification.create({
+            text = text,
+            timeout = 5000
+          })
+        end
+
         function utils.log_uwsm(msg)
           local log = io.open("/tmp/hyprland-uwsm.log", "a")
           if log then
@@ -204,6 +268,10 @@
           end
 
           utils.play_sound(sounds.dialogInformation)
+        end
+
+        function ocr_selection()
+          utils.ocr_selection()
         end
         
         -- ========================================================================

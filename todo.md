@@ -8,4 +8,5 @@ Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland n
  - kwallet not auto unlocked
  - pixelate closing effect
  - super + space to float a window
- 
+ why isnt avahi running
+ fix xcursor size and theme

@@ -122,6 +122,15 @@ in {
     }
     {
       _args = [
+        (inline ''ALT .. " + Print"'')
+        (inline "function() require(\"utils\").ocr_selection() end")
+        {
+          locked = true;
+        }
+      ];
+    }
+    {
+      _args = [
         (inline ''mainMod .. " + mouse:272"'')
         (inline "hl.dsp.window.resize()")
         {
@@ -210,13 +219,6 @@ in {
         {
           locked = true;
         }
-      ];
-    }
-    {
-      _args = [
-        "switch:on:Lid Switch"
-        (inline "hl.dsp.exec_cmd(\"pidof hyprlock || hyprlock & systemctl suspend-then-hibernate\")")
-        { locked = true; }
       ];
     }
   ];

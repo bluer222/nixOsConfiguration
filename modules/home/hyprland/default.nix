@@ -49,6 +49,7 @@ in {
     hyprshot
     hyprpaper
     hyprpwcenter
+    tesseract
   ];
 
   home.sessionVariables = {

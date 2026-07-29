@@ -26,10 +26,6 @@
     unrar        # For .rar files
     gnutar       # For .tar files
     gzip         # For .tar.gz files
-
-    #(pkgs.kdePackages.spectacle.override {
-    #    tesseractLanguages = [ "eng" ];
-    #})
   ];
 
   programs.kde-pim.kmail = true;

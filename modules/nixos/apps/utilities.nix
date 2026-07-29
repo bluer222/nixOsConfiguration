@@ -44,13 +44,10 @@ programs.qgroundcontrol.enable = true;
     yt-dlp
     autotalent
     sqlite
-    tesseract
     mediawriter
     wl-clipboard
     postman
     libGL
-    noto-fonts-cjk-sans
-    noto-fonts-cjk-serif
     libreoffice-qt-fresh
     onlyoffice-desktopeditors
     albert
