@@ -5,16 +5,37 @@ let
 in {
   programs.swaylock = {
     enable = true;
+    packages = pkgs.swaylock-effects;
     settings = {
-      color = "1e1e2e";
-      inside-color = "1e1e2e";
-      ring-color = "94e2d5";
-      key-hl-color = "94e2d5";
+      color = "24273a";
+      bs-hl-color = "f4dbd6";
+      caps-lock-bs-hl-color = "f4dbd6";
+      caps-lock-key-hl-color = "a6da95";
+      inside-color = "24273a";
+      inside-clear-color = "24273a";
+      inside-caps-lock-color = "24273a";
+      inside-ver-color = "24273a";
+      inside-wrong-color = "24273a";
+      key-hl-color = "a6da95";
+      layout-bg-color = "00000000";
+      layout-border-color = "00000000";
+      layout-text-color = "cad3f5";
       line-color = "00000000";
-      text-color = "cdd6f4";
-      layout-bg-color = "1e1e2e";
-      layout-text-color = "cdd6f4";
+      line-clear-color = "00000000";
+      line-caps-lock-color = "00000000";
+      line-ver-color = "00000000";
+      line-wrong-color = "00000000";
+      ring-color = "363a4f";
+      ring-clear-color = "f4dbd6";
+      ring-caps-lock-color = "f5a97f";
+      ring-ver-color = "8aadf4";
+      ring-wrong-color = "ee99a0";
       separator-color = "00000000";
+      text-color = "cad3f5";
+      text-clear-color = "f4dbd6";
+      text-caps-lock-color = "f5a97f";
+      text-ver-color = "8aadf4";
+      text-wrong-color = "ee99a0";
       font = "FiraCode Nerd Font";
       indicator-radius = 100;
       indicator-thickness = 8;
@@ -33,7 +54,7 @@ in {
       }
       {
         timeout = 120;
-        command = "${pkgs.swaylock}/bin/swaylock -f; ${pkgs.niri}/bin/niri msg action power-off-monitors";
+        command = "${pkgs.swaylock}/bin/swaylock -f --screenshots --clock --indicator; ${pkgs.niri}/bin/niri msg action power-off-monitors";
         resumeCommand = "${pkgs.niri}/bin/niri msg action power-on-monitors; && ${helper} restore";
       }
       {
@@ -42,7 +63,7 @@ in {
       }
     ];
     events = {
-      before-sleep = "${pkgs.swaylock}/bin/swaylock -f";
+      before-sleep = "${pkgs.swaylock}/bin/swaylock -f --screenshots --clock --indicator";
       after-resume = "${helper} wake";
     };
   };

@@ -8,7 +8,7 @@ in {
       "buttons": [
         {
           "label": "lock",
-          "action": "swaylock -f",
+          "action": "${pkgs.swaylock}/bin/swaylock -f --screenshots --clock --indicator",
           "text": "Lock",
           "keybind": "l",
           "icon": "${pkgs.wleave}/share/wleave/icons/lock.svg"
