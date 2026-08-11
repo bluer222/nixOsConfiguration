@@ -3,7 +3,10 @@
 {
   programs.waybar = {
     enable = true;
-    systemd.enable = true;
+    systemd = {
+      enable = true;
+      targets = [ "niri.service" ];
+    };
     style = ''
       @define-color base   #1e1e2e;
       @define-color text   #cdd6f4;
@@ -67,7 +70,7 @@
         ];
 
         modules-center = [
-          "hyprland/workspaces"
+          "niri/workspaces"
         ];
 
         modules-right = [
@@ -88,25 +91,19 @@
           ignore-list = [ "Albert" ];
           on-click = "activate";
           on-click-middle = "close";
-          rewrite = {
-            "^(.{16}).+$" = "$1...";
-          };
+          truncate = true;
         };
 
-        "hyprland/workspaces" = {
+        "niri/workspaces" = {
           format = "{icon}";
-          "show-special" = false;
           format-icons = {
             "1" = "1";
             "2" = "2";
             "3" = "3";
-            "default" = "•";
+            default = "•";
           };
-          persistent-workspaces = {
-            "1" = [ ];
-            "2" = [ ];
-            "3" = [ ];
-          };
+          # Hide the show-desktop spare workspace from the switcher.
+          ignore-workspaces = [ "desktop" ];
         };
 
         "cpu" = {
@@ -114,7 +111,7 @@
         };
 
         "memory" = {
-          format = "RAM {}%";
+          format = "RAM {used:0.1f}/{total:0.1f}G";
         };
 
         "network" = {
@@ -172,7 +169,7 @@
             power-saver = "  ";
           };
         };
-        
+
         "tray" = {
           icon-size = 16;
           spacing = 10;

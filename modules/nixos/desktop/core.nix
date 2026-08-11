@@ -30,7 +30,7 @@
   security.pam = {
     howdy.enable = false;
     services = {
-      hyprlock = {
+      swaylock = {
         enable = true;
         howdy = {
           enable = true;

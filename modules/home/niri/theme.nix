@@ -1,23 +1,6 @@
 { config, pkgs, lib, ... }:
 
-let
-  bibataHyprcursor = pkgs.runCommand "bibata-modern-classic-hyprcursor"
-    {
-      inherit (pkgs.bibata-cursors) version;
-      nativeBuildInputs = [ pkgs.hyprcursor pkgs.xcur2png ];
-    }
-    ''
-      work=$(mktemp -d)
-      hyprcursor-util -x ${pkgs.bibata-cursors}/share/icons/Bibata-Modern-Classic -o "$work"
-      extracted="$work/extracted_Bibata-Modern-Classic"
-      sed -i 's/name = Extracted Theme/name = Bibata-Modern-Classic/' "$extracted/manifest.hl"
-      outdir=$(mktemp -d)
-      hyprcursor-util -c "$extracted" -o "$outdir"
-      mkdir -p $out/share/icons
-      mv "$outdir/theme_Bibata-Modern-Classic" "$out/share/icons/Bibata-Modern-Classic"
-      rm -rf "$work" "$outdir"
-    '';
-in {
+{
   home.packages = with pkgs; [
     qt6Packages.qtwayland
     libsForQt5.qtwayland
@@ -26,22 +9,8 @@ in {
     libsForQt5.qt5ct
     qt6Packages.qt6ct
     pkgs.kdePackages.breeze-icons
-
-    bibataHyprcursor
-    hyprcursor
+    bibata-cursors
   ];
-
-  home.sessionVariables = {
-    #QT_QPA_PLATFORM = "wayland;xcb";
-    #QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
-    #GTK_CSD = "0";
-    #ELECTRON_OZONE_PLATFORM_HINT = "auto";
-    #GTK_USE_PORTAL = "1";
-    #XCURSOR_THEME = "Bibata-Modern-Classic";
-    #XCURSOR_SIZE = "24";
-    #HYPRCURSOR_THEME = "Bibata-Modern-Classic";
-    #HYPRCURSOR_SIZE = "24";
-  };
 
   qt = {
     enable = true;
@@ -50,7 +19,8 @@ in {
       Appearance = {
         style = "kvantum";
         icon_theme = "breeze-dark";
-        #color_scheme_path = "${config.home.homeDirectory}/.config/qt5ct/style-colors.conf";
+        color_scheme_path = "${config.home.homeDirectory}/.config/qt5ct/style-colors.conf";
+        custom_palette = true;
       };
       Fonts = {
         fixed = "\"Monospace,10,-1,5,50,0,0,0,0,0\"";
@@ -58,7 +28,6 @@ in {
       };
     };
     qt6ctSettings = config.qt.qt5ctSettings;
-    #style.name = "kvantum"; <-- this forces the style, better to do it through qtct
     kvantum = {
       enable = true;
       settings = {
@@ -72,9 +41,6 @@ in {
     };
   };
 
-  #systemd.user.sessionVariables = config.home.sessionVariables;
-
-  # Subpixel antialiasing breaks Hypr-DarkWindow chromakey (colored fringe pixels).
   fonts.fontconfig = {
     enable = true;
     subpixelRendering = "none";
@@ -94,13 +60,9 @@ in {
     };
     theme.name = "catppuccin-mocha-blue-standard";
     theme.package = pkgs.catppuccin-gtk;
-    #for some reason .theme only sets gtk2-3 by default
     gtk4.theme = config.gtk.theme;
-    #this is needed because .gtkrc-2.0 breaks somehow
     gtk2.force = true;
   };
-
-  #home.file.".gtkrc-2.0".force = lib.mkForce true;
 
   xdg.configFile."kdeglobals".text = ''
     [KDE]
@@ -108,7 +70,6 @@ in {
     [Icons]
     Theme=breeze-dark
   '';
-
 
   xdg.configFile."rofi/spotlight.rasi".text = ''
     * {
@@ -193,5 +154,4 @@ in {
     fade-in = 0.15
     fade-out = 0.3
   '';
-
 }

@@ -1,12 +1,12 @@
-Note to agent: avoid gnome and gtk apps like the plague. prefer qt or hyprland native tools(generally qt, hyprland native if it is clearly better than the qt option)
+Note to agent: avoid gnome and gtk apps like the plague. prefer qt or niri-native tools (generally qt; compositor-native if clearly better than the qt option)
 
  todo:
- - when i use hyprland global zoom with three finger, applications also triger thier built in two finger reaction.(maybe unfixable)
- - keybind to toggle darkwindow effect
+ - keybind to toggle darkwindow effect (dropped with hyprland; revisit if a niri alternative appears)
  - open games on desk 2(lutris, steam etc)
- - add hyprpicker, trigger with super+c
+ - add color picker (was hyprpicker); trigger with super+c
  - kwallet not auto unlocked
- - pixelate closing effect
- - super + space to float a window
- why isnt avahi running
- fix xcursor size and theme
+ - super tap opens Albert (Mod+Space still works as fallback)
+ - fix xcursor size and theme
+ - add kactivitymanagerd for dolphin recents
+ - verify niri shake-to-enlarge once nixpkgs niri / niri-flake settings expose it
+ - add three finger zoom once niri impleemnts zoom IPC

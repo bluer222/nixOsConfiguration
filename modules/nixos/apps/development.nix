@@ -23,5 +23,6 @@
     kdePackages.konsole
     ntfs3g
     gpsd
+    github-copilot-cli
   ];
 }

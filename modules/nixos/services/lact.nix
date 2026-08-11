@@ -4,7 +4,7 @@
   config.services.lact.enable = true;
   
   config.services.lact.settings = {
-    version = 5;
+    version = 6;
     daemon = {
       log_level = "info";
       admin_group = "wheel";

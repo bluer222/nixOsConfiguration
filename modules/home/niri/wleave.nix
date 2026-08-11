@@ -1,47 +1,49 @@
 { config, pkgs, ... }:
 
-{
+let
+  helper = "${pkgs.niri-helper}/bin/niri-helper";
+in {
   xdg.configFile."wleave/layout.json".text = ''
     {
       "buttons": [
         {
           "label": "lock",
-          "action": "hyprlock",
+          "action": "swaylock -f",
           "text": "Lock",
           "keybind": "l",
           "icon": "${pkgs.wleave}/share/wleave/icons/lock.svg"
         },
         {
           "label": "hibernate",
-          "action": "hyprshutdown --post-cmd 'systemctl hibernate'",
+          "action": "systemctl hibernate",
           "text": "Hibernate",
           "keybind": "h",
           "icon": "${pkgs.wleave}/share/wleave/icons/hibernate.svg"
         },
         {
           "label": "logout",
-          "action": "hyprshutdown --post-cmd '${pkgs.uwsm}/bin/uwsm stop'",
+          "action": "${helper} logout",
           "text": "Logout",
           "keybind": "e",
           "icon": "${pkgs.wleave}/share/wleave/icons/logout.svg"
         },
         {
           "label": "shutdown",
-          "action": "hyprshutdown --post-cmd 'systemctl poweroff'",
+          "action": "${helper} logout --then poweroff",
           "text": "Shutdown",
           "keybind": "s",
           "icon": "${pkgs.wleave}/share/wleave/icons/shutdown.svg"
         },
         {
           "label": "suspend",
-          "action": "hyprshutdown --post-cmd 'systemctl suspend'",
+          "action": "systemctl suspend",
           "text": "Suspend",
           "keybind": "u",
           "icon": "${pkgs.wleave}/share/wleave/icons/suspend.svg"
         },
         {
           "label": "reboot",
-          "action": "hyprshutdown --post-cmd 'systemctl reboot'",
+          "action": "${helper} logout --then reboot",
           "text": "Reboot",
           "keybind": "r",
           "icon": "${pkgs.wleave}/share/wleave/icons/reboot.svg"

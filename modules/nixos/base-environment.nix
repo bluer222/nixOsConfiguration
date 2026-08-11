@@ -4,7 +4,6 @@
   #some packages need to be system
   environment = {
     systemPackages = [ 
-      pkgs.mcontrolcenter
     ];
     variables = {
       __GLX_VENDOR_LIBRARY_NAME = "mesa";  # Avoids loading NVIDIA GLX
@@ -20,11 +19,15 @@
       # ZED Camera
       SUBSYSTEM=="usb", ATTRS{idVendor}=="2b03", MODE="0666"
       KERNEL=="video*", ATTRS{idVendor}=="2b03", MODE="0666"
-      # mute and micmute leds
-      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp audio /sys%p/brightness", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys%p/brightness"
-      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::mute", RUN+="${pkgs.coreutils}/bin/chgrp audio /sys%p/brightness", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys%p/brightness"
+      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::*mute", MODE="0775", GROUP="audio", ATTR{brightness}="0664"
     '';
   };
+
+  #msi ec 
+  systemd.tmpfiles.rules = [
+    "z /sys/devices/platform/msi-ec/* 0664 root wheel - -"  #msi ec
+  ];
+
 
   programs = {
     gamescope.enable = true;
@@ -48,12 +51,12 @@
         libxcb-wm
         fontconfig
         freetype
-libsm
-libxext
-libxrender
-libice
-libxkbcommon
-libX11
+        libsm
+        libxext
+        libxrender
+        libice
+        libxkbcommon
+        libX11
     ];
     direnv = {
       enable = true;

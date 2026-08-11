@@ -3,7 +3,7 @@
 {
   # Security settings
   security = {
-    protectKernelImage = false;
+    protectKernelImage = false; #disabled for hibernation 
     sudo.extraConfig = "Defaults pwfeedback";
     polkit.enable = true;
 
@@ -40,26 +40,14 @@
   };
 
   # AppImage support
-  boot.binfmt.registrations.appimage = {
-    wrapInterpreterInShell = false;
-    interpreter = "${pkgs.appimage-run}/bin/appimage-run";
-    recognitionType = "magic";
-    offset = 0;
-    mask = "\\xff\\xff\\xff\\xff\\x00\\x00\\x00\\x00\\xff\\xff\\xff";
-    magicOrExtension = "\\x7fELF....AI\\x02";
+  programs.appimage = {
+    enable = true;
+    binfmt = true;
   };
 
   # Kernel settings
   boot.kernel.sysctl = {
     "vm.swappiness" = 100;
-  };
-
-  # Memory compression settings (disabled, using zswap instead)
-  zramSwap = {
-    enable = false;
-    memoryPercent = 100;
-    algorithm = "zstd";
-    priority = 5;
   };
 
   # Nix settings
@@ -82,7 +70,7 @@
   # System auto-upgrade
   system.autoUpgrade = {
     enable = true;
-    flake = "/etc/nixos";
+    flake = "/etc/nixos#samm-desktop";
     flags = [
       "--print-build-logs"
       "--recreate-lock-file"

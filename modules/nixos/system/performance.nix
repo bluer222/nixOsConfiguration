@@ -7,7 +7,7 @@
     package = pkgs.ananicy-cpp;
     rulesProvider = pkgs.ananicy-rules-cachyos;
     extraRules = [
-      { name = "Hyprland"; type = "Realtime"; }
+      { name = "niri"; type = "Realtime"; }
     ];
   };
 
@@ -23,7 +23,7 @@
   # Optimize for gaming
   programs.gamemode.enable = true;
 
-  #scheduler thing
+  #scheduler thing(conflicts with active cpu scheduler)
   #services.scx = {
   #  enable = true;
   # scheduler = "scx_lavd";  # or scx_rusty / scx_bpfland

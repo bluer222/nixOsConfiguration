@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ../../modules/home/hyprland/default.nix
+    ../../modules/home/niri/default.nix
   ];
 
   home = {
@@ -12,6 +12,8 @@
 
     packages = with pkgs; [
       brave
+      brave-origin
+      google-chrome
     ];
   };
 

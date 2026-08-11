@@ -1,7 +1,6 @@
 { inputs, nixpkgs, ... }:
 
 final: prev: {
-  portmaster = inputs.nixpkgs-portmaster.legacyPackages.${prev.stdenv.hostPlatform.system}.portmaster;
   glaumar_repo = inputs.glaumar_repo.packages."${prev.stdenv.hostPlatform.system}";
 
   llama-cpp-cuda = prev.llama-cpp.override {
@@ -46,38 +45,10 @@ final: prev: {
       opencv4Full = pythonPrev.opencv4;
     })
   ];
-  mcontrolcenter = prev.mcontrolcenter.overrideAttrs (oldAttrs: {
-    version = "unstable-2026-05-04";
-    src = final.fetchFromGitHub {
-      owner = "dmitry-s93";
-      repo = "MControlCenter";
-      rev = "618c4ec1e6f114fb309f8b8529bdf937c69b0618";
-      hash = "sha256-XNsWbrryjKAqTPpcv9cLnUzWp8Wgq8c/5E73g4ipS1s=";
-    };
-  });
   linuxPackages_latest = prev.linuxPackages_latest.extend (lFinal: lPrev: {
     msi-ec = lPrev.msi-ec.overrideAttrs (oldAttrs: {
       inherit (inputs.nixpkgs-msi-ec.legacyPackages.${prev.stdenv.hostPlatform.system}.linuxPackages_latest.msi-ec) version src patches;
     });
   });
-  hyprlandPlugins = prev.hyprlandPlugins // {
-    hypr-darkwindow = prev.hyprlandPlugins.hypr-darkwindow.overrideAttrs (oldAttrs: {
-      version = "0.56.0";
-      src = final.fetchFromGitHub {
-        owner = "micha4w";
-        repo = "Hypr-DarkWindow";
-        tag = "v0.56.0";
-        hash = "sha256-2upGTy7IRhrhxf+5VPjzrua8ebOtED6i8kSN8ka+ffg=";
-      };
-    });
-    hypr-dynamic-cursors = prev.hyprlandPlugins.hypr-dynamic-cursors.overrideAttrs (oldAttrs: {
-      version = "0-unstable-2026-07-21";
-      src = final.fetchFromGitHub {
-        owner = "VirtCode";
-        repo = "hypr-dynamic-cursors";
-        rev = "f5ba36c7622098b53bf62ddb8ddf03b914abbdf8";
-        hash = "sha256-HKzJtEkafkWjTx35spDp6pm1oClN7vIipJ2wwU4ocNY=";
-      };
-    });
-  };
+  niri-helper = final.callPackage ../pkgs/niri-helper { };
 }

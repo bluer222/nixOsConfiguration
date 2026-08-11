@@ -2,7 +2,6 @@
 
 {
   environment.systemPackages = [
-    pkgs.hyprshutdown
     pkgs.jq
     pkgs.libnotify
     pkgs.wleave

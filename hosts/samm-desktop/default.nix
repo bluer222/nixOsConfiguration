@@ -20,7 +20,7 @@
     ../../modules/nixos/desktop/polkit.nix
     ../../modules/nixos/desktop/logout.nix
     ../../modules/nixos/system/performance.nix
-    ../../modules/nixos/desktop/hyprland.nix
+    ../../modules/nixos/desktop/niri.nix
     ../../modules/nixos/system/systemd.nix
 
     # Networking services

@@ -1,14 +1,6 @@
 { config, pkgs, lib, ... }:
 
 let
-  pkgRegex = pkg: [
-    {
-      type = "path";
-      operation = "regex";
-      value = "^${lib.escapeRegex (toString pkg)}/.*";
-    }
-  ];
-
   mkPathRegex = value: {
     type = "path";
     operation = "regex";
@@ -24,8 +16,6 @@ let
   # Per-profile rule constructor.
   # Always set all filter flags explicitly so profile behavior does not depend on
   # global defaults.
-  # Profile imports require nested config keys (filter.blockInbound), not the flat
-  # slash keys used by global runtime config.json (filter/blockInbound).
   mkRule = {
     internet ? false,
     lan ? false,
@@ -40,7 +30,6 @@ let
     };
   };
 
-  # Baseline for most apps: outbound internet only.
   allowInternet = mkRule { internet = true; };
   allowLAN = mkRule { lan = true; };
   allowInbound = mkRule { inbound = true; };
@@ -56,13 +45,11 @@ let
     internet = true;
     p2p = true;
   };
-  # Internet + LAN + P2P, no inbound (browsers, general outbound apps).
   allowInternetLANP2P = mkRule {
     internet = true;
     lan = true;
     p2p = true;
   };
-  # Inbound + P2P for peer connectivity (SSH, video calls, torrents).
   allowInternetInbound = mkRule {
     internet = true;
     inbound = true;
@@ -83,85 +70,87 @@ in
 {
   services.portmaster = {
     enable = true;
+    profilePrefix = "[NixOS] ";
     settings = {
       devmode = true; # UI at 127.0.0.1:817
-      # Block everything by default; managedProfiles grant explicit per-app access.
+      # Block everything by default; declarative profiles grant explicit per-app access.
       "filter/blockInternet" = true;
       "filter/blockLAN" = true;
       "filter/blockInbound" = true;
       "filter/blockP2P" = true;
     };
 
-    managedProfiles = { #python needs to be added with iternet and p2p
-      # --- System Core ---
+    profiles = {
       nix = {
         name = "Nix";
-        identity.fingerprints = pkgRegex pkgs.nix;
+        packages = [ pkgs.nix ];
         settings = allowInternet;
       };
 
-      systemd = {
-        name = "systemd";
-        identity.fingerprints = pkgRegex pkgs.systemd;
+      timesyncd = {
+        name = "timesyncd";
+        fingerprints = [
+          # /nix/store/r6sz8p6sd6c73fp9z8nzl04dri7lyx8n-systemd-261.1/lib/systemd
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-systemd(-[^/]+)?/lib/systemd/systemd-timesyncd$")
+        ];
         settings = allowInternet;
       };
 
-      # --- System Services ---
       geoclue = {
         name = "Geoclue";
-        # Service may run from an older store path until restarted; match any geoclue build.
-        identity.fingerprints = pkgRegex pkgs.geoclue2 ++ [
-          (mkPathRegex "^/nix/store/[^/]+-geoclue-[^/]+/libexec/\\.geoclue-wrapped$")
+        fingerprints = [
+          # /nix/store/8zyh4lvbg4wkdfmkmcnc9lsxpa98h45d-geoclue-2.8.1/libexec
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-geoclue(-[^/]+)?/libexec/.geoclue-wrapped")
         ];
         settings = allowInternetP2P;
       };
 
       nsncd = {
         name = "nsncd";
-        identity.fingerprints = pkgRegex pkgs.nsncd;
+        packages = [ pkgs.nsncd ];
         settings = allowInternet;
       };
 
       fwupd = {
         name = "fwupd";
-        identity.fingerprints = pkgRegex pkgs.fwupd;
+        packages = [ pkgs.fwupd ];
         settings = allowInternetP2P;
       };
 
       flatpak = {
         name = "Flatpak";
-        identity.fingerprints = pkgRegex pkgs.flatpak;
+        packages = [ pkgs.flatpak ];
         settings = allowInternet;
       };
 
       cups = {
         name = "CUPS";
-        identity.fingerprints = pkgRegex pkgs.cups;
+        packages = [ pkgs.cups ];
         settings = allowInternetLANInbound;
       };
 
       cups-browsed = {
         name = "CUPS Browsed";
-        identity.fingerprints = pkgRegex pkgs.cups-browsed;
+        packages = [ pkgs.cups-browsed ];
         settings = allowLAN;
       };
 
       ssh = {
         name = "SSH";
-        identity.fingerprints = pkgRegex pkgs.openssh;
+        packages = [ pkgs.openssh ];
         settings = allowInternetLAN;
       };
 
-      # --- Essential Interactive Tools ---
       gemini-cli = {
         name = "Gemini CLI";
-        identity.fingerprints = pkgRegex pkgs.gemini-cli;
+        packages = [ pkgs.gemini-cli ];
         settings = allowInternet;
       };
 
       cursor-agent = {
         name = "Cursor Agent";
-        identity.fingerprints = pkgRegex pkgs.cursor-cli ++ [
+        packages = [ pkgs.cursor-cli ];
+        fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-cursor-cli-[^/]+/share/cursor-agent/node$")
         ];
         settings = allowInternetP2P;
@@ -169,7 +158,8 @@ in
 
       codex = {
         name = "Codex";
-        identity.fingerprints = pkgRegex pkgs.codex ++ [
+        packages = [ pkgs.codex ];
+        fingerprints = [
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.vscode/extensions/openai.chatgpt.*")
         ];
         settings = allowInternetP2P;
@@ -177,38 +167,62 @@ in
 
       git = {
         name = "Git";
-        identity.fingerprints = pkgRegex pkgs.git;
+        fingerprints = [
+          # /nix/store/6f0qqak4qbcrbw4f750phr88c9yhpf5s-git-2.55.0/libexec/git-core
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-git(-[^/]+)?/libexec/git-core.*")
+        ];
         settings = allowInternetP2P;
       };
 
       curl = {
         name = "curl";
-        identity.fingerprints = pkgRegex pkgs.curl;
+        packages = [ pkgs.curl ];
         settings = allowInternet;
       };
 
       wget = {
         name = "wget";
-        identity.fingerprints = pkgRegex pkgs.wget;
+        packages = [ pkgs.wget ];
         settings = allowInternetP2P;
       };
 
-      # --- Browsers & Communication ---
       brave = {
         name = "Brave Browser";
-        identity.fingerprints = pkgRegex pkgs.brave;
+        fingerprints = [
+          # /nix/store/x6fs3l8zsh60az8hd7f89478x1yv1jpg-brave-1.93.129/opt/brave.com/brave
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave(-[^/]+)?/opt/brave.com/brave/brave$")
+        ];
+        settings = allowInternetLANP2P;
+      };
+
+      brave-origin = {
+        name = "Brave Origin";
+        fingerprints = [
+          # /nix/store/w5pnxnw5bfyijnfi5zq7119scki0g9vw-brave-origin-1.93.129/opt/brave.com/brave-origin
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave-origin(-[^/]+)?/opt/brave.com/brave-origin/brave$")
+        ];
+        settings = allowInternetLANP2P;
+      };
+
+      google-chrome = {
+        name = "Google Chrome";
+        fingerprints = [
+          #/nix/store/gfmwds1c4smb53nmrn3h4424gpg2lsa1-google-chrome-151.0.7922.75/share/google/chrome
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-google-chrome(-[^/]+)?/share/google/chrome/chrome$")
+        ];
         settings = allowInternetLANP2P;
       };
 
       zoom = {
         name = "Zoom";
-        identity.fingerprints = pkgRegex pkgs.zoom-us;
+        packages = [ pkgs.zoom-us ];
         settings = allowInternetInbound;
       };
 
       signal = {
         name = "Signal Desktop";
-        identity.fingerprints = pkgRegex pkgs.signal-desktop ++ [
+        packages = [ pkgs.signal-desktop ];
+        fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-electron-unwrapped-[^/]+/libexec/electron$")
         ];
         settings = allowInternetP2P;
@@ -216,14 +230,14 @@ in
 
       postman = {
         name = "Postman";
-        identity.fingerprints = pkgRegex pkgs.postman;
+        packages = [ pkgs.postman ];
         settings = allowInternet;
       };
 
-      # --- Gaming & Streaming ---
       steam = {
         name = "Steam";
-        identity.fingerprints = pkgRegex pkgs.steam ++ [
+        packages = [ pkgs.steam ];
+        fingerprints = [
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/Steam/.*")
         ];
         settings = allowAll;
@@ -231,235 +245,260 @@ in
 
       lutris = {
         name = "Lutris";
-        identity.fingerprints = pkgRegex pkgs.lutris;
+        packages = [ pkgs.lutris ];
         settings = allowInternet;
       };
 
       godot = {
         name = "Godot Engine";
-        identity.fingerprints = pkgRegex pkgs.godot_4;
+        packages = [ pkgs.godot_4 ];
         settings = allowInternet;
       };
 
       winetricks = {
         name = "Winetricks";
-        identity.fingerprints = pkgRegex pkgs.winetricks;
+        packages = [ pkgs.winetricks ];
         settings = allowInternet;
       };
 
       obs-studio = {
         name = "OBS Studio";
-        identity.fingerprints = pkgRegex pkgs.obs-studio;
+        packages = [ pkgs.obs-studio ];
         settings = allowInternetLANInbound;
       };
 
+      discover = {
+        name = "Discover";
+        fingerprints = [
+          #/nix/store/rpgg0cz14dpn7djfkmd56h47jkkx80nw-discover-6.7.4/bin
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-discover(-[^/]+)?/bin/.plasma-discover-wrapped$")
+          #kioworker:  /nix/store/c19br0qpnzyncml49khiasz4j49jrj99-kio-6.28.0/libexec/kf6
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+
+
       vlc = {
         name = "VLC Media Player";
-        identity.fingerprints = pkgRegex pkgs.vlc;
+        packages = [ pkgs.vlc ];
         settings = allowInternetLAN;
       };
 
       wivrn = {
         name = "WiVRn VR Streamer";
-        identity.fingerprints = pkgRegex pkgs.wivrn;
+        packages = [ pkgs.wivrn ];
         settings = allowInternetLANInbound;
       };
 
-      # --- Discovery & Synchronization ---
       kdeconnect = {
         name = "KDE Connect";
-        identity.fingerprints = pkgRegex pkgs.kdePackages.kdeconnect-kde;
+        fingerprints = [
+          # /nix/store/cqv9kvkx8zs4b7kmjnp5gx16qj4fyhd0-kdeconnect-kde-26.04.3/bin
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kdeconnect-kde(-[^/]+)?/bin/.kdeconnectd-wrapped$")
+        ];
         settings = allowLANInbound;
       };
 
       avahi = {
         name = "Avahi Daemon";
-        identity.fingerprints = pkgRegex pkgs.avahi;
+        fingerprints = [
+          #/nix/store/15g69mx7za6sazxmn2hiz3x8dp40cs48-avahi-0.8/bin/avahi-daemon
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-avahi(-[^/]+)?/bin/avahi-daemon$")
+        ];
         settings = allowLANInbound;
       };
 
-      # --- Specialized Tools ---
+      copilot = {
+        name = "GitHub Copilot";
+        packages = [ pkgs.github-copilot-cli ];
+        settings = allowInternetP2P;
+      };
+
       proton-vpn = {
         name = "Proton VPN";
-        identity.fingerprints = pkgRegex pkgs.proton-vpn;
+        packages = [ pkgs.proton-vpn ];
         settings = allowInternet;
       };
 
       nicotine-plus = {
         name = "Nicotine+";
-        identity.fingerprints = pkgRegex pkgs.nicotine-plus;
+        packages = [ pkgs.nicotine-plus ];
         settings = allowInternetInbound;
       };
 
       immich-go = {
         name = "Immich-go";
-        identity.fingerprints = pkgRegex pkgs.immich-go;
+        packages = [ pkgs.immich-go ];
         settings = allowInternet;
       };
 
       kiwix = {
         name = "Kiwix";
-        identity.fingerprints = pkgRegex pkgs.kiwix;
+        packages = [ pkgs.kiwix ];
         settings = allowInternet;
       };
 
       kubectl = {
         name = "kubectl";
-        identity.fingerprints = pkgRegex pkgs.kubectl;
+        packages = [ pkgs.kubectl ];
         settings = allowInternet;
       };
 
-      # --- Development Tools ---
       vscode = {
         name = "VS Code";
-        identity.fingerprints = pkgRegex pkgs.vscode;
+        fingerprints = [
+          # /nix/store/g9bmnqasp0w164216m4z53wpbssmg3s4-vscode-1.130.0/lib/vscode
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-vscode-1.130.0/lib/vscode/code$")
+        ];
         settings = allowInternetP2P;
       };
 
       android-studio = {
         name = "Android Studio";
-        identity.fingerprints = pkgRegex pkgs.android-studio;
+        packages = [ pkgs.android-studio ];
         settings = allowInternetP2P;
       };
 
       arduino-ide = {
         name = "Arduino IDE";
-        identity.fingerprints = pkgRegex pkgs.arduino-ide;
+        packages = [ pkgs.arduino-ide ];
         settings = allowInternet;
       };
 
       neovim = {
         name = "Neovim";
-        identity.fingerprints = pkgRegex pkgs.neovim;
+        packages = [ pkgs.neovim ];
         settings = allowInternet;
       };
 
       antigravity = {
         name = "Antigravity AI Agent";
-        identity.fingerprints = pkgRegex pkgs.antigravity-ide-fhs ++ pkgRegex pkgs.antigravity-cli;
+        packages = [ pkgs.antigravity-ide-fhs pkgs.antigravity-cli ];
         settings = allowInternet;
       };
 
       docker = {
         name = "Docker";
-        identity.fingerprints = pkgRegex pkgs.docker;
+        packages = [ pkgs.docker ];
         settings = allowInternetLAN;
       };
 
       qgroundcontrol = {
         name = "QGroundControl";
-        identity.fingerprints = pkgRegex pkgs.qgroundcontrol;
+        packages = [ pkgs.qgroundcontrol ];
         settings = allowInternetLANInbound;
       };
 
       scrcpy = {
         name = "scrcpy";
-        identity.fingerprints = pkgRegex pkgs.scrcpy;
+        packages = [ pkgs.scrcpy ];
         settings = allowInternetLANInbound;
       };
 
       servo = {
         name = "Servo Browser";
-        identity.fingerprints = pkgRegex pkgs.servo;
+        packages = [ pkgs.servo ];
         settings = allowInternet;
       };
 
       yt-dlp = {
         name = "yt-dlp";
-        identity.fingerprints = pkgRegex pkgs.yt-dlp;
+        packages = [ pkgs.yt-dlp ];
         settings = allowInternet;
       };
 
       mediawriter = {
         name = "Fedora Media Writer";
-        identity.fingerprints = pkgRegex pkgs.mediawriter;
+        packages = [ pkgs.mediawriter ];
         settings = allowInternet;
       };
 
       onlyoffice = {
         name = "ONLYOFFICE";
-        identity.fingerprints = pkgRegex pkgs.onlyoffice-desktopeditors;
+        packages = [ pkgs.onlyoffice-desktopeditors ];
         settings = allowInternet;
       };
 
       ocs-url = {
         name = "ocs-url";
-        identity.fingerprints = pkgRegex pkgs.ocs-url;
+        packages = [ pkgs.ocs-url ];
         settings = allowInternet;
       };
 
       ckan = {
         name = "CKAN Mod Manager";
-        identity.fingerprints = pkgRegex pkgs.ckan;
+        packages = [ pkgs.ckan ];
         settings = allowInternet;
       };
 
       digikam = {
         name = "DigiKam";
-        identity.fingerprints = pkgRegex pkgs.digikam;
+        packages = [ pkgs.digikam ];
         settings = allowInternet;
       };
 
       cura = {
         name = "Cura Slicer";
-        identity.fingerprints = pkgRegex pkgs.cura-appimage;
+        packages = [ pkgs.cura-appimage ];
         settings = allowInternetLANInbound;
       };
 
-      # --- Security Research ---
       tor-browser = {
         name = "Tor Browser";
-        identity.fingerprints = pkgRegex pkgs.tor-browser;
+        fingerprints = [
+          #/nix/store/pj67yxvxz0czg48i2vkg5rwgfnlcr3dn-tor-browser-15.0.19/share/tor-browser/TorBrowser/Tor
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-tor-browser-15.0.19/share/tor-browser/TorBrowser/Tor/tor$")
+        ];
         settings = allowInternetP2P;
       };
 
       nmap = {
         name = "nmap";
-        identity.fingerprints = pkgRegex pkgs.nmap;
+        packages = [ pkgs.nmap ];
         settings = allowInternetLAN;
       };
 
       metasploit = {
         name = "Metasploit";
-        identity.fingerprints = pkgRegex pkgs.metasploit;
+        packages = [ pkgs.metasploit ];
         settings = allowInternetLAN;
       };
 
       burpsuite = {
         name = "Burp Suite";
-        identity.fingerprints = pkgRegex pkgs.burpsuite;
+        packages = [ pkgs.burpsuite ];
         settings = allowInternetLANInbound;
       };
 
       rustscan = {
         name = "RustScan";
-        identity.fingerprints = pkgRegex pkgs.rustscan;
+        packages = [ pkgs.rustscan ];
         settings = allowInternetLAN;
       };
 
-      # --- Desktop & Services ---
       kmail = {
         name = "KMail";
-        identity.fingerprints = pkgRegex pkgs.kdePackages.kmail;
+        packages = [ pkgs.kdePackages.kmail ];
         settings = allowInternet;
       };
 
       automatic-timezoned = {
         name = "Automatic Timezoned";
-        identity.fingerprints = pkgRegex pkgs.automatic-timezoned;
+        packages = [ pkgs.automatic-timezoned ];
         settings = allowInternet;
       };
 
       waydroid = {
         name = "Waydroid";
-        identity.fingerprints = pkgRegex pkgs.waydroid-nftables;
+        packages = [ pkgs.waydroid-nftables ];
         settings = allowInternetLANInbound;
       };
 
-      # --- External / non-Nix paths ---
       twintaillauncher = {
         name = "Twintail Launcher";
-        identity.fingerprints = [
+        fingerprints = [
           (mkPathEquals "/app/bin/twintaillauncher")
           (mkPathRegex "^/home/samm/.var/app/app.twintaillauncher.ttl/.*")
         ];
@@ -468,7 +507,7 @@ in
 
       android-java = {
         name = "Java for android studio";
-        identity.fingerprints = [
+        fingerprints = [
           (mkPathRegex "^/home/samm/.jdks/.*")
         ];
         settings = allowInternet;
@@ -476,28 +515,11 @@ in
 
       webkit-network-process = {
         name = "WebKit Network Process";
-        identity.fingerprints = [
+        fingerprints = [
           (mkPathEquals "/usr/libexec/webkit2gtk-4.1/WebKitNetworkProcess")
         ];
         settings = allowInternet;
       };
-    };
-  };
-
-  # Re-import managed profiles periodically so UI deletions get repaired.
-  systemd.timers.portmaster-managed-profiles-resync = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnBootSec = "2min";
-      OnUnitActiveSec = "15min";
-    };
-  };
-
-  systemd.services.portmaster-managed-profiles-resync = {
-    description = "Re-sync Portmaster managed profiles";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.systemd}/bin/systemctl restart portmaster-managed-profiles.service";
     };
   };
 }
