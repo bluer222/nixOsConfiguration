@@ -5,8 +5,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"syscall"
+	"time"
 )
+
+// Switch by starting the new swaybg first (stacks on top), waiting for it to
+// paint, then killing the previous one — no grey flash, no leftover layers.
+
+const wallpaperHandoff = 100 * time.Millisecond
 
 var (
 	wallpaperMu   sync.Mutex
@@ -32,11 +37,10 @@ func setWallpaper(path string) error {
 	wallpaperMu.Lock()
 	defer wallpaperMu.Unlock()
 
-	if path == wallpaperPath && swaybgAlive() {
+	//already set
+	if path == wallpaperPath {
 		return nil
 	}
-
-	stopSwaybgLocked()
 
 	cmd := exec.Command("swaybg", "-m", "fill", "-i", path)
 	cmd.Stdout = nil
@@ -44,28 +48,19 @@ func setWallpaper(path string) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	go func(c *exec.Cmd) { _ = c.Wait() }(cmd)
+
+	old := swaybgCmd
 	swaybgCmd = cmd
 	wallpaperPath = path
 
-	go func(c *exec.Cmd) {
-		_ = c.Wait()
-	}(cmd)
+	if old != nil && old.Process != nil {
+		//close the previous wallpaper after waiting for the new one to start
+		go func(c *exec.Cmd) {
+			time.Sleep(wallpaperHandoff)
+			_ = c.Process.Signal(os.Interrupt)
+			_ = c.Process.Kill()
+		}(old)
+	}
 	return nil
-}
-
-func swaybgAlive() bool {
-	if swaybgCmd == nil || swaybgCmd.Process == nil {
-		return false
-	}
-	return swaybgCmd.Process.Signal(syscall.Signal(0)) == nil
-}
-
-func stopSwaybgLocked() {
-	if swaybgCmd == nil || swaybgCmd.Process == nil {
-		swaybgCmd = nil
-		return
-	}
-	_ = swaybgCmd.Process.Signal(os.Interrupt)
-	_ = swaybgCmd.Process.Kill()
-	swaybgCmd = nil
 }
