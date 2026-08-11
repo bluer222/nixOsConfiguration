@@ -8,6 +8,9 @@ in {
     # Validate generated KDL against the same nixpkgs niri used at runtime.
     package = pkgs.niri;
     settings = {
+      #intel gpu
+      debug.render-drm-device = "/dev/dri/renderD128";
+      
       prefer-no-csd = true;
 
       input = {
@@ -28,6 +31,8 @@ in {
           enable = true;
           max-scroll-amount = "100%";
         };
+        #using wleave instead
+        power-key-handling.enable = false;
       };
 
       animations = {
@@ -51,11 +56,11 @@ in {
         };
         border = {
           enable = true;
-          width = 4;
+          width = 3;
           active.color = "#94e2d5";
-          inactive.color = "#1e1e2e00";
+          inactive.color = "#1e1e2e";
         };
-        default-column-width.proportion = 50.0;
+        default-column-width.proportion = 0.5;
       };
 
       # Named workspaces; "desktop" is the show-desktop target (hidden in waybar).
@@ -115,9 +120,9 @@ in {
         "XF86AudioMicMute".action.spawn = [ helper "volume" "mic-mute" ];
         "XF86AudioMicMute".allow-when-locked = true;
 
-        "XF86MonBrightnessUp".action.spawn = [ "lightctl" "-d" "up" ];
+        "XF86MonBrightnessUp".action.spawn = [ "lightctl" "-d" "up" "1" ];
         "XF86MonBrightnessUp".allow-when-locked = true;
-        "XF86MonBrightnessDown".action.spawn = [ "lightctl" "-d" "down" ];
+        "XF86MonBrightnessDown".action.spawn = [ "lightctl" "-d" "down" "1" ];
         "XF86MonBrightnessDown".allow-when-locked = true;
 
         "XF86PowerOff".action.spawn = [ "wleave" ];
