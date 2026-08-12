@@ -35,39 +35,14 @@ func reconnectBluetooth() {
 }
 
 func runOCR() error {
-	dir := filepath.Join(homeDir(), "Pictures", "Screenshots")
-	_ = os.MkdirAll(dir, 0o755)
-	tmp := filepath.Join(runtimeDir(), "niri-helper-ocr.png")
-	_ = os.Remove(tmp)
-
-	geom, err := runCmdOutput("slurp")
-	if err != nil {
+	flag := filepath.Join(runtimeDir(), "noctalia-ocr-request")
+	if err := os.WriteFile(flag, []byte("1"), 0o600); err != nil {
 		return err
 	}
-	if err := runCmd("grim", "-g", geom, tmp); err != nil {
+	if err := runCmd("noctalia", "msg", "screenshot-region"); err != nil {
+		_ = os.Remove(flag)
 		return err
 	}
-
-	text, err := runCmdOutput("tesseract", tmp, "stdout")
-	_ = os.Remove(tmp)
-	if err != nil {
-		return err
-	}
-	text = strings.TrimSpace(text)
-	if text == "" {
-		notify("normal", "OCR", "No text found")
-		return nil
-	}
-	cmd := exec.Command("wl-copy")
-	cmd.Stdin = strings.NewReader(text)
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-	preview := text
-	if len(preview) > 120 {
-		preview = preview[:120] + "…"
-	}
-	notify("low", "OCR", preview)
 	return nil
 }
 
@@ -95,13 +70,13 @@ func runVolume(args []string) error {
 	playSound(oxygen("dialog-information.ogg"))
 	switch args[0] {
 	case "up":
-		return runCmd("volumectl", "-d", "up")
+		return runCmd("noctalia", "msg", "volume-up")
 	case "down":
-		return runCmd("volumectl", "-d", "down")
+		return runCmd("noctalia", "msg", "volume-down")
 	case "mute":
-		return runCmd("volumectl", "-d", "toggle-mute")
+		return runCmd("noctalia", "msg", "volume-mute")
 	case "mic-mute":
-		return runCmd("volumectl", "-d", "-m", "toggle-mute")
+		return runCmd("noctalia", "msg", "mic-mute")
 	default:
 		return fmt.Errorf("unknown volume action %q", args[0])
 	}

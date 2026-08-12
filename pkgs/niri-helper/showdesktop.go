@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const desktopWorkspace = "desktop"
+const desktopWorkspace = "4"
 
 type showDesktopState struct {
 	mu       sync.Mutex

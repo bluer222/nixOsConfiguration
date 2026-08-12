@@ -22,7 +22,6 @@ func runDaemon() error {
 	applyMSIBootDefaults()
 	startWallpaper(defaultWallpaper())
 	go startupHooks()
-	go runBatteryMonitor()
 	go runAudioMonitor()
 	go runSuperTap()
 

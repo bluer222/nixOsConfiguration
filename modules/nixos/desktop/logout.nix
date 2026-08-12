@@ -4,7 +4,6 @@
   environment.systemPackages = [
     pkgs.jq
     pkgs.libnotify
-    pkgs.wleave
   ];
 
   services.logind.settings.Login.HandlePowerKey = "ignore";

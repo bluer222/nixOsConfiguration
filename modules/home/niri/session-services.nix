@@ -3,14 +3,16 @@
 {
   systemd.user.services.niri-helper = {
     Unit = {
-      Description = "Niri session helper daemon (wallpaper, idle, power, binds)";
+      Description = "Niri session helper daemon (wallpaper, idle dim, power, binds)";
       PartOf = [ "graphical-session.target" ];
       After = [
         "graphical-session.target"
+        "noctalia.service"
         "pipewire.service"
         "wireplumber.service"
       ];
       Wants = [
+        "noctalia.service"
         "pipewire.service"
         "wireplumber.service"
       ];
@@ -19,20 +21,6 @@
       ExecStart = "${pkgs.niri-helper}/bin/niri-helper daemon";
       Restart = "always";
       RestartSec = 2;
-    };
-    Install.WantedBy = [ "niri.service" ];
-  };
-
-  systemd.user.services.albert = {
-    Unit = {
-      Description = "Albert launcher";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.albert}/bin/albert";
-      Restart = "on-failure";
-      RestartSec = 3;
     };
     Install.WantedBy = [ "niri.service" ];
   };
@@ -51,16 +39,17 @@
     Install.WantedBy = [ "niri.service" ];
   };
 
-  systemd.user.services.plasma-polkit-agent = {
+  # Dolphin "Recent Files" / places history needs the activity manager.
+  systemd.user.services.kactivitymanagerd = {
     Unit = {
-      Description = "KDE PolicyKit Authentication Agent";
+      Description = "KDE Activity Manager";
       PartOf = [ "graphical-session.target" ];
       After = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStart = "${pkgs.kdePackages.polkit-kde-agent-1}/libexec/polkit-kde-authentication-agent-1";
+      ExecStart = "${pkgs.kdePackages.kactivitymanagerd}/bin/kactivitymanagerd";
       Restart = "on-failure";
-      RestartSec = 2;
+      RestartSec = 3;
     };
     Install.WantedBy = [ "niri.service" ];
   };

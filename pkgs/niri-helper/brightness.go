@@ -50,7 +50,7 @@ func dimBrightness() error {
 		return nil
 	}
 	savedBrightness = &pct
-	return runCmd("lightctl", "-d", "set", "10")
+	return runCmd("brightnessctl", "set", "10%")
 }
 
 func restoreBrightness() error {
@@ -60,7 +60,7 @@ func restoreBrightness() error {
 	if savedBrightness != nil {
 		pct := *savedBrightness
 		savedBrightness = nil
-		return runCmd("lightctl", "-d", "set", strconv.Itoa(pct))
+		return runCmd("brightnessctl", "set", strconv.Itoa(pct)+"%")
 	}
-	return runCmd("lightctl", "-d", "set", "80")
+	return runCmd("brightnessctl", "set", "80%")
 }

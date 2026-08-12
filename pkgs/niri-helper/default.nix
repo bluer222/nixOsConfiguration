@@ -4,18 +4,16 @@
   makeWrapper,
   libnotify,
   pipewire,
-  grim,
-  slurp,
+  pulseaudio, # pactl subscribe (pipewire-pulse)
   tesseract,
   wl-clipboard,
   bluez,
   upower,
-  avizo,
   niri,
-  swaybg,
-  pulseaudio,
+  wireplumber,
   coreutils,
-  albert,
+  noctalia,
+  brightnessctl,
   kdePackages,
 }:
 
@@ -37,18 +35,16 @@ buildGoModule {
       --prefix PATH : ${lib.makeBinPath [
         libnotify
         pipewire
-        grim
-        slurp
+        pulseaudio
         tesseract
         wl-clipboard
         bluez
         upower
-        avizo
         niri
-        swaybg
-        pulseaudio
+        wireplumber
         coreutils
-        albert
+        noctalia
+        brightnessctl
       ]} \
       --set NIRI_HELPER_OXYGEN ${kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo \
       --set NIRI_HELPER_KWALLET_INIT ${kdePackages.kwallet-pam}/libexec/pam_kwallet_init

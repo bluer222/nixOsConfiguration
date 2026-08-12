@@ -1,20 +1,12 @@
 { pkgs, ... }:
 
-let
-  nerdFont = pkgs."nerd-fonts".fira-code;
-in {
+{
   imports = [
     ./settings.nix
-    ./idle.nix
-    ./waybar.nix
+    ./noctalia.nix
     ./theme.nix
-    ./notifications.nix
     ./session-services.nix
-    ./wleave.nix
-    ./cliphist.nix
   ];
-
-  services.avizo.enable = true;
 
   home.packages = with pkgs; [
     wl-clipboard
@@ -22,8 +14,6 @@ in {
     xdg-utils
     libxcb-cursor
 
-    waybar
-    rofi
     kdePackages.dolphin
     kdePackages.qtsvg
     kdePackages.kio
@@ -36,20 +26,19 @@ in {
     kdePackages.kwalletmanager
 
     libsecret
-    nerdFont
+    nerd-fonts.fira-code
 
-    swayidle
-    swaylock
-    swaybg
-    grim
-    slurp
-    tesseract
     niri-helper
     xwayland-satellite
-    hyprpwcenter
+    hyprpicker
+    brightnessctl
+    kdePackages.kactivitymanagerd
   ];
 
-  home.sessionVariables = { };
+  home.sessionVariables = {
+    QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
+    GTK_CSD = "0";
+  };
 
   systemd.user.startServices = "sd-switch";
 }

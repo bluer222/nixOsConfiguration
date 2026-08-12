@@ -21,16 +21,21 @@
 
     affinity-nix.url = "github:mrshmllow/affinity-nix";
     comfyui-nix.url = "github:utensils/comfyui-nix";
-    waybar = {
-      url = "github:Alexays/Waybar";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # Pin to cachix branch so binary cache hits; do not follow nixpkgs.
+    noctalia.url = "github:noctalia-dev/noctalia/cachix";
     nixpkgs-nvidia.url = "github:NixOS/nixpkgs/ab9ad415916a0fb89d1f539a9291d9737e95148e";
     nixpkgs-msi-ec.url = "github:Svenum/nixpkgs/3dec65fda85d03630173e5ab5f0eab6ae861c551";
 
+    # Local secrets outside the flake tree (not git-filtered). Update with:
+    #   nix flake update nixos-secrets
+    nixos-secrets = {
+      url = "path:/home/samm/.config/nixos-secrets";
+      flake = false;
+    };
   };
 
-  outputs = { self, nixpkgs, home-manager, comfyui-nix, waybar, niri, ... }@inputs: {
+
+  outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, ... }@inputs: {
     nixosConfigurations = {
       samm-desktop = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
@@ -38,7 +43,7 @@
           ({
             nixpkgs.overlays = [
               comfyui-nix.overlays.default
-              waybar.overlays.default
+              noctalia.overlays.default
               (import ./overlays/default.nix { inherit inputs nixpkgs; })
             ];
           })
@@ -52,7 +57,10 @@
               extraSpecialArgs = { inherit inputs; };
               # Settings DSL only — do not import niri.homeModules.niri
               # (that one enables gnome-keyring / GNOME portals).
-              sharedModules = [ niri.homeModules.config ];
+              sharedModules = [
+                niri.homeModules.config
+                noctalia.homeModules.default
+              ];
               users.samm = import ./hosts/samm-desktop/home.nix;
             };
           }

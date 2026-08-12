@@ -1,22 +1,16 @@
 package main
 
 import (
-	"os"
+	"fmt"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 )
 
-// Switch by starting the new swaybg first (stacks on top), waiting for it to
-// paint, then killing the previous one — no grey flash, no leftover layers.
-
-const wallpaperHandoff = 100 * time.Millisecond
-
 var (
 	wallpaperMu   sync.Mutex
 	wallpaperPath string
-	swaybgCmd     *exec.Cmd
 )
 
 func defaultWallpaper() string {
@@ -37,30 +31,23 @@ func setWallpaper(path string) error {
 	wallpaperMu.Lock()
 	defer wallpaperMu.Unlock()
 
-	//already set
 	if path == wallpaperPath {
 		return nil
 	}
 
-	cmd := exec.Command("swaybg", "-m", "fill", "-i", path)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	if err := cmd.Start(); err != nil {
-		return err
+	var lastErr error
+	for i := 0; i < 40; i++ {
+		cmd := exec.Command("noctalia", "msg", "wallpaper-set", path)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			lastErr = fmt.Errorf("noctalia wallpaper-set: %w (%s)", err, string(out))
+			time.Sleep(250 * time.Millisecond)
+			continue
+		}
+		wallpaperPath = path
+		return nil
 	}
-	go func(c *exec.Cmd) { _ = c.Wait() }(cmd)
-
-	old := swaybgCmd
-	swaybgCmd = cmd
-	wallpaperPath = path
-
-	if old != nil && old.Process != nil {
-		//close the previous wallpaper after waiting for the new one to start
-		go func(c *exec.Cmd) {
-			time.Sleep(wallpaperHandoff)
-			_ = c.Process.Signal(os.Interrupt)
-			_ = c.Process.Kill()
-		}(old)
+	if lastErr == nil {
+		lastErr = fmt.Errorf("noctalia wallpaper-set failed for %s", path)
 	}
-	return nil
+	return lastErr
 }

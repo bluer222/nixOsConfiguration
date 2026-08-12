@@ -104,7 +104,7 @@ func handleSuperTapKey(code uint16, value int32) {
 		if value == 0 && superTap.held > 0 {
 			superTap.held--
 			if superTap.held == 0 && !superTap.dirty {
-				runDetached("albert", "toggle")
+				runDetached("noctalia", "msg", "panel-toggle", "launcher")
 			}
 		}
 		return

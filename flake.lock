@@ -129,22 +129,6 @@
         "type": "github"
       }
     },
-    "flake-compat_3": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1767039857,
-        "narHash": "sha256-vNpUSpF5Nuw8xvDLj2KCwwksIbjua2LZCqhV1LNRDns=",
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "rev": "5edf11c44bc78a0d334f6334cdaf7d60d732daab",
-        "type": "github"
-      },
-      "original": {
-        "owner": "edolstra",
-        "repo": "flake-compat",
-        "type": "github"
-      }
-    },
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -297,6 +281,19 @@
         "owner": "YaLTeR",
         "repo": "niri",
         "type": "github"
+      }
+    },
+    "nixos-secrets": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786545738,
+        "narHash": "sha256-BgSbwlQ7UIR77OsvOfryc7CEjNUbcxvlIi97zNsr064=",
+        "path": "/home/samm/.config/nixos-secrets",
+        "type": "path"
+      },
+      "original": {
+        "path": "/home/samm/.config/nixos-secrets",
+        "type": "path"
       }
     },
     "nixpkgs": {
@@ -473,6 +470,38 @@
         "type": "github"
       }
     },
+    "nixpkgs_6": {
+      "locked": {
+        "lastModified": 1786106723,
+        "narHash": "sha256-CgKDSHL6rqAAQkkvg1xaZDQXb77+4XW73iGcUMJ+2w0=",
+        "rev": "f13ff45afd1bb73e640eaa08a7066dbed07e3238",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.11pre1049422.f13ff45afd1b/nixexprs.tar.zst"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.zst"
+      }
+    },
+    "noctalia": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_6"
+      },
+      "locked": {
+        "lastModified": 1786462142,
+        "narHash": "sha256-ESBm32DJg1yLiPnXw88n5h8RcrdL2adc7TuLhtPzeow=",
+        "owner": "noctalia-dev",
+        "repo": "noctalia",
+        "rev": "b62efdd0dc163bf593358ada70b4efa76fec3d27",
+        "type": "github"
+      },
+      "original": {
+        "owner": "noctalia-dev",
+        "ref": "cachix",
+        "repo": "noctalia",
+        "type": "github"
+      }
+    },
     "on-linux": {
       "flake": false,
       "locked": {
@@ -513,10 +542,11 @@
         "glaumar_repo": "glaumar_repo",
         "home-manager": "home-manager",
         "niri": "niri",
+        "nixos-secrets": "nixos-secrets",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-msi-ec": "nixpkgs-msi-ec",
         "nixpkgs-nvidia": "nixpkgs-nvidia",
-        "waybar": "waybar"
+        "noctalia": "noctalia"
       }
     },
     "rust-analyzer-src": {
@@ -551,27 +581,6 @@
       "original": {
         "owner": "numtide",
         "repo": "treefmt-nix",
-        "type": "github"
-      }
-    },
-    "waybar": {
-      "inputs": {
-        "flake-compat": "flake-compat_3",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1785791220,
-        "narHash": "sha256-POvwObPOp6O14n6KYWNLp2Y3paunA5f8U1NCaodNFcc=",
-        "owner": "Alexays",
-        "repo": "Waybar",
-        "rev": "084d87401d0a91182c16aa7e5f674a7dde767185",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Alexays",
-        "repo": "Waybar",
         "type": "github"
       }
     },

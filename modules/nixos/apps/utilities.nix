@@ -50,7 +50,6 @@ programs.qgroundcontrol.enable = true;
     libGL
     libreoffice-qt-fresh
     onlyoffice-desktopeditors
-    albert
     nss
     ckan
     immich-go

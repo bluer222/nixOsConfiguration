@@ -19,13 +19,21 @@
       # ZED Camera
       SUBSYSTEM=="usb", ATTRS{idVendor}=="2b03", MODE="0666"
       KERNEL=="video*", ATTRS{idVendor}=="2b03", MODE="0666"
-      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::*mute", MODE="0775", GROUP="audio", ATTR{brightness}="0664"
+      # MSI EC mute LEDs: ATTR{brightness}="0664" wrongly sets the value, not mode.
+      ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::*mute|platform::stealth", MODE="0775", GROUP="wheel", RUN+="${pkgs.coreutils}/bin/chmod 0664 /sys/class/leds/%k/brightness", RUN+="${pkgs.coreutils}/bin/chgrp wheel /sys/class/leds/%k/brightness"
     '';
   };
 
-  #msi ec 
+  # msi-ec sysfs: dirs need +x to traverse; brightness nodes must be group-writable.
   systemd.tmpfiles.rules = [
-    "z /sys/devices/platform/msi-ec/* 0664 root wheel - -"  #msi ec
+    "z /sys/devices/platform/msi-ec 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/* 0664 root wheel - -"
+    "z /sys/devices/platform/msi-ec/cpu 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/gpu 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/power 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/leds 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/leds/* 0755 root wheel - -"
+    "z /sys/devices/platform/msi-ec/leds/*/brightness 0664 root wheel - -"
   ];
 
 

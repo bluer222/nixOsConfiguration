@@ -26,12 +26,12 @@
     };
   };
 
-  # Use Howdy only for screen locking, sudo, and polkit (run0), not for initial login
+  # Use Howdy for screen locking (Noctalia uses PAM "login"), sudo, and polkit.
+  # Keep it off greetd so face auth is not required for initial session open.
   security.pam = {
     howdy.enable = false;
     services = {
-      swaylock = {
-        enable = true;
+      login = {
         howdy = {
           enable = true;
           control = "[success=done default=ignore]";

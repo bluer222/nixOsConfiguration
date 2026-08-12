@@ -44,6 +44,10 @@ func dispatch(cmd string, args []string) error {
 		return runOCR()
 	case "volume":
 		return runVolume(args)
+	case "power-plugged":
+		return powerPlugged()
+	case "power-unplugged":
+		return powerUnplugged()
 	case "kill-focused":
 		return killFocused()
 	case "logout":
@@ -65,6 +69,8 @@ commands (forwarded to the running daemon):
   wake            post-sleep hooks
   ocr             region OCR to clipboard
   volume ...      up|down|mute|mic-mute
+  power-plugged   MSI EC profile for AC (noctalia hook)
+  power-unplugged MSI EC profile for battery (noctalia hook)
   kill-focused    SIGKILL focused window pid
   logout [--then poweroff|reboot|hibernate]
 `)

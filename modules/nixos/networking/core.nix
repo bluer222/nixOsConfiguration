@@ -7,9 +7,6 @@
     devices = [ "/dev/rfcomm0" ];
   };
 
-  services.blueman.enable = true;
-
-
   # Networking configuration
   networking = {
     hostName = "Sam-Computer";
