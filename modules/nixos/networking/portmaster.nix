@@ -13,6 +13,13 @@ let
     value = path;
   };
 
+   mkFlatpakEquals = value: {
+    type = "tag";
+    operation = "equals";
+    key = "Flatpak ID";
+    value = value;
+  };
+
   # Per-profile rule constructor.
   # Always set all filter flags explicitly so profile behavior does not depend on
   # global defaults.
@@ -162,6 +169,14 @@ in
         ];
         settings = allowInternetP2P;
       };
+      
+      sober = {
+        name = "Sober";
+        fingerprints = [
+          (mkFlatpakEquals "org.vinegarhq.Sober")
+        ];
+        settings = allowInternetP2P;
+      };
 
       git = {
         name = "Git";
@@ -265,12 +280,10 @@ in
         name = "Discover";
         fingerprints = [
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-discover(-[^/]+)?/bin/.plasma-discover-wrapped$")
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6/.kioworker-wrapped$")
         ];
         settings = allowInternetP2P;
       };
-
-
 
       vlc = {
         name = "VLC Media Player";
