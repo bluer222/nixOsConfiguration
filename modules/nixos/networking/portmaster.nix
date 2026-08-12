@@ -217,7 +217,7 @@ in
         name = "Signal Desktop";
         packages = [ pkgs.signal-desktop ];
         fingerprints = [
-          (mkPathRegex "^/nix/store/[^/]+-electron-unwrapped-[^/]+/libexec/electron$")
+          (mkPathRegex "^/nix/store/[^/]+-electron-unwrapped-[^/]+/libexec/electron/electron$")
         ];
         settings = allowInternetP2P;
       };
