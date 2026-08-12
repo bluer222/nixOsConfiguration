@@ -90,7 +90,6 @@ in
       timesyncd = {
         name = "timesyncd";
         fingerprints = [
-          # /nix/store/r6sz8p6sd6c73fp9z8nzl04dri7lyx8n-systemd-261.1/lib/systemd
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-systemd(-[^/]+)?/lib/systemd/systemd-timesyncd$")
         ];
         settings = allowInternet;
@@ -99,8 +98,7 @@ in
       geoclue = {
         name = "Geoclue";
         fingerprints = [
-          # /nix/store/8zyh4lvbg4wkdfmkmcnc9lsxpa98h45d-geoclue-2.8.1/libexec
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-geoclue(-[^/]+)?/libexec/.geoclue-wrapped")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-geoclue(-[^/]+)?/libexec/.geoclue-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -168,7 +166,6 @@ in
       git = {
         name = "Git";
         fingerprints = [
-          # /nix/store/6f0qqak4qbcrbw4f750phr88c9yhpf5s-git-2.55.0/libexec/git-core
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-git(-[^/]+)?/libexec/git-core.*")
         ];
         settings = allowInternetP2P;
@@ -189,7 +186,6 @@ in
       brave = {
         name = "Brave Browser";
         fingerprints = [
-          # /nix/store/x6fs3l8zsh60az8hd7f89478x1yv1jpg-brave-1.93.129/opt/brave.com/brave
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave(-[^/]+)?/opt/brave.com/brave/brave$")
         ];
         settings = allowInternetLANP2P;
@@ -198,7 +194,6 @@ in
       brave-origin = {
         name = "Brave Origin";
         fingerprints = [
-          # /nix/store/w5pnxnw5bfyijnfi5zq7119scki0g9vw-brave-origin-1.93.129/opt/brave.com/brave-origin
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave-origin(-[^/]+)?/opt/brave.com/brave-origin/brave$")
         ];
         settings = allowInternetLANP2P;
@@ -207,7 +202,6 @@ in
       google-chrome = {
         name = "Google Chrome";
         fingerprints = [
-          #/nix/store/gfmwds1c4smb53nmrn3h4424gpg2lsa1-google-chrome-151.0.7922.75/share/google/chrome
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-google-chrome(-[^/]+)?/share/google/chrome/chrome$")
         ];
         settings = allowInternetLANP2P;
@@ -270,9 +264,7 @@ in
       discover = {
         name = "Discover";
         fingerprints = [
-          #/nix/store/rpgg0cz14dpn7djfkmd56h47jkkx80nw-discover-6.7.4/bin
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-discover(-[^/]+)?/bin/.plasma-discover-wrapped$")
-          #kioworker:  /nix/store/c19br0qpnzyncml49khiasz4j49jrj99-kio-6.28.0/libexec/kf6
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6$")
         ];
         settings = allowInternetP2P;
@@ -295,7 +287,6 @@ in
       kdeconnect = {
         name = "KDE Connect";
         fingerprints = [
-          # /nix/store/cqv9kvkx8zs4b7kmjnp5gx16qj4fyhd0-kdeconnect-kde-26.04.3/bin
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-kdeconnect-kde(-[^/]+)?/bin/.kdeconnectd-wrapped$")
         ];
         settings = allowLANInbound;
@@ -304,7 +295,6 @@ in
       avahi = {
         name = "Avahi Daemon";
         fingerprints = [
-          #/nix/store/15g69mx7za6sazxmn2hiz3x8dp40cs48-avahi-0.8/bin/avahi-daemon
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-avahi(-[^/]+)?/bin/avahi-daemon$")
         ];
         settings = allowLANInbound;
@@ -349,8 +339,7 @@ in
       vscode = {
         name = "VS Code";
         fingerprints = [
-          # /nix/store/g9bmnqasp0w164216m4z53wpbssmg3s4-vscode-1.130.0/lib/vscode
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-vscode-1.130.0/lib/vscode/code$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-vscode(-[^/]+)?/lib/vscode/code$")
         ];
         settings = allowInternetP2P;
       };
@@ -448,8 +437,7 @@ in
       tor-browser = {
         name = "Tor Browser";
         fingerprints = [
-          #/nix/store/pj67yxvxz0czg48i2vkg5rwgfnlcr3dn-tor-browser-15.0.19/share/tor-browser/TorBrowser/Tor
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-tor-browser-15.0.19/share/tor-browser/TorBrowser/Tor/tor$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-tor-browser(-[^/]+)?/share/tor-browser/TorBrowser/Tor/tor$")
         ];
         settings = allowInternetP2P;
       };
@@ -520,6 +508,114 @@ in
         ];
         settings = allowInternet;
       };
+
+      noctalia = {
+        name = "Noctalia";
+        packages = [ pkgs.noctalia ];
+        settings = allowInternetP2P;
+      };
     };
   };
+
+  # Portmaster allowReplace keys profiles by fingerprint identity. When
+  # fingerprints change, rebuilds leave duplicate "[NixOS] …" rows. If that
+  # happens, soft-delete the dupes then reimport. Stable fingerprints → no-op.
+  systemd.services.portmaster-cleanup-orphans =
+    let
+      managedNames = lib.mapAttrsToList (
+        _: p: config.services.portmaster.profilePrefix + p.name
+      ) config.services.portmaster.profiles;
+      namesFile = pkgs.writeText "portmaster-managed-names" (
+        lib.concatStringsSep "\n" managedNames + "\n"
+      );
+    in
+    {
+      description = "Remove duplicate NixOS-managed Portmaster profiles";
+      after = [ "portmaster.service" ];
+      before = [ "portmaster-managed-profiles.service" ];
+      wants = [ "portmaster.service" ];
+      requiredBy = [ "portmaster-managed-profiles.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = pkgs.writeShellScript "portmaster-cleanup-orphans" ''
+          set -euo pipefail
+          db="/var/lib/portmaster/databases/core/sqlite/db.sqlite"
+          key_file="/var/lib/portmaster/config/nix-managed-profiles-api-key"
+          names=${namesFile}
+
+          if [ ! -f "$db" ] || [ ! -f "$key_file" ]; then
+            exit 0
+          fi
+
+          ready=0
+          for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
+            if ${pkgs.curl}/bin/curl --silent --fail --noproxy '*' --max-time 2 \
+              http://127.0.0.1:817/api/v1/ping >/dev/null; then
+              ready=1
+              break
+            fi
+            ${pkgs.coreutils}/bin/sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "portmaster API not ready; skipping orphan cleanup" >&2
+            exit 0
+          fi
+
+          now=$(${pkgs.coreutils}/bin/date +%s)
+          # allowReplace keys by fingerprint identity, so fingerprint edits can
+          # leave multiple rows with the same "[NixOS] …" name. Only wipe when
+          # that has already happened (stable fingerprints → no-op on boot).
+          dups=$(${pkgs.sqlite}/bin/sqlite3 "$db" "
+            SELECT json_extract(value, '$.Name') AS name
+            FROM records
+            WHERE key LIKE 'profiles/local/%' AND deleted = 0
+            GROUP BY name
+            HAVING COUNT(*) > 1;
+          ")
+          if [ -z "$dups" ]; then
+            exit 0
+          fi
+
+          count=0
+          while IFS='|' read -r key name; do
+            if ! ${pkgs.gnugrep}/bin/grep -Fxq "$name" "$names"; then
+              continue
+            fi
+            # Only touch names that are actually duplicated.
+            if ! ${pkgs.gnugrep}/bin/grep -Fxq "$name" <<<"$dups"; then
+              continue
+            fi
+            esc=$(${pkgs.gnused}/bin/sed "s/'/''''/g" <<<"$key")
+            ${pkgs.sqlite}/bin/sqlite3 "$db" \
+              "UPDATE records SET deleted = $now, modified = $now WHERE key = '$esc';"
+            count=$((count + 1))
+          done < <(${pkgs.sqlite}/bin/sqlite3 "$db" "
+            SELECT key, json_extract(value, '$.Name')
+            FROM records
+            WHERE key LIKE 'profiles/local/%' AND deleted = 0;
+          ")
+
+          if [ "$count" -eq 0 ]; then
+            exit 0
+          fi
+          echo "soft-deleted $count duplicate NixOS-managed Portmaster profiles"
+
+          key=$(${pkgs.coreutils}/bin/tr -d '\r\n' < "$key_file")
+          ${pkgs.curl}/bin/curl --silent --fail --noproxy '*' --max-time 10 \
+            -H "Authorization: Bearer $key" \
+            -X POST http://127.0.0.1:817/api/v1/core/restart >/dev/null || true
+
+          for _ in $(${pkgs.coreutils}/bin/seq 1 60); do
+            if ${pkgs.curl}/bin/curl --silent --fail --noproxy '*' --max-time 2 \
+              http://127.0.0.1:817/api/v1/ping >/dev/null; then
+              exit 0
+            fi
+            ${pkgs.coreutils}/bin/sleep 1
+          done
+          echo "portmaster did not come back after restart" >&2
+          exit 1
+        '';
+      };
+    };
 }
