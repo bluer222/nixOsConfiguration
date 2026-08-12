@@ -7,6 +7,10 @@
   # general qt setup(not for kde apps):
   # qt5ct and 6ct theme apps, rendering provided by darkly, color scheme provided by noctalia
   # kde apps instead pick up from generated kdeglobals
+  # all qt apps follow the configures style in qtct however for the color scheme this differs:
+  # keysmith seems to reads from kdeglobals solely 
+  # konsole gwenview and dolphin have a color scheme selector hidden in their menus.
+  # partitionmanager and some other kde apps and most non kde apps use the system theme correctly
 
   home.packages = with pkgs; [
     bibata-cursors
@@ -75,6 +79,25 @@
       @import url("noctalia.css");
       * {
           border-radius: 0px !important;
+      }
+      headerbar {
+          min-height: 0px !important;
+          height: 0px !important;
+          padding: 0px !important;
+          margin: 0px !important;
+          border: none !important;
+          background: none !important;
+          box-shadow: none !important;
+      }
+
+      /* Ensure the underlying container elements inside the header bar are hidden */
+      headerbar windowhandle, 
+      headerbar box {
+          min-height: 0px !important;
+          height: 0px !important;
+          padding: 0px !important;
+          margin: 0px !important;
+          opacity: 0 !important;
       }
     '';
     gtk3.extraCss = config.gtk.gtk4.extraCss;
