@@ -43,7 +43,7 @@ in {
         panel = { #clipboard and polkit prompt are panels
           shadow = false;
           open_near_click_control_center = true; #open callender etc near the widget
-          transparency_mode = "soft";
+          transparency_mode = "solid";
         };
         animation.speed = 1.4; #niri slowdown=0.7, 1/0.7~1.4
         screenshot = {
@@ -115,6 +115,14 @@ in {
           enable_builtin_templates = true;
           builtin_ids = [ "gtk3" "gtk4" "qt" "kcolorscheme" "btop" "niri" ];
           community_ids = [ "blender" "antigravity" "gimp" "inkscape" "libreoffice" "vscode" "steam" "fastfetch" "obs" ];
+          user.kvantum = {
+            input_path  = "${home}/.config/noctalia/templates/kvantum.kvconfig";
+            output_path = "${home}/.config/Kvantum/Noctalia/Noctalia.kvconfig";
+          };
+          user.kvantum_svg = {
+            input_path  = "${home}/.config/noctalia/templates/kvantum.svg";
+            output_path = "${home}/.config/Kvantum/Noctalia/Noctalia.svg";
+          };
         };
         #builtin = "Catppuccin";
       };

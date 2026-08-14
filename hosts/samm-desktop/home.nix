@@ -11,9 +11,7 @@
     stateVersion = "25.11";
 
     packages = with pkgs; [
-      brave
       brave-origin
-      google-chrome
     ];
   };
 

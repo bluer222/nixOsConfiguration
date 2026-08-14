@@ -1,5 +1,23 @@
 { config, pkgs, lib, ... }:
 
+let
+  # Upstream Catppuccin Kvantum (macchiato-blue), templatized for Noctalia.
+  # Hex→token map + transparency edits live in ./kvantum-templatize.py
+  ctpKvantum = pkgs.catppuccin-kvantum.override {
+    variant = "macchiato";
+    accent = "blue";
+  };
+  ctpThemeDir = "${ctpKvantum}/share/Kvantum/catppuccin-macchiato-blue";
+
+  noctaliaKvantumTemplates = pkgs.runCommand "noctalia-kvantum-templates" {
+    nativeBuildInputs = [ pkgs.python3 ];
+  } ''
+    python3 ${./kvantum-templatize.py} \
+      ${ctpThemeDir}/catppuccin-macchiato-blue.kvconfig \
+      ${ctpThemeDir}/catppuccin-macchiato-blue.svg \
+      $out
+  '';
+in
 {
   #notes:
   #must leave kdeglobals alone, generated nocalia css
@@ -15,12 +33,12 @@
   home.packages = with pkgs; [
     bibata-cursors
     pkgs.kdePackages.breeze-icons
-    
+    qt6Packages.qtstyleplugin-kvantum
+    libsForQt5.qtstyleplugin-kvantum
     qt6Packages.qtwayland
     libsForQt5.qtwayland
     libsForQt5.qt5ct
     qt6Packages.qt6ct
-    pkgs.darkly
     pkgs.adw-gtk3
   ];
   
@@ -29,8 +47,9 @@
     platformTheme.name = "qtct";
     qt5ctSettings = {
       Appearance = {
-        style = "Darkly";
+        style = "kvantum";
         icon_theme = "breeze-dark";
+        #color scheme doesnt do anything when using kvantum style
         color_scheme_path = "${config.home.homeDirectory}/.config/qt5ct/colors/noctalia.conf";
         custom_palette = true;
       };
@@ -42,6 +61,14 @@
     qt6ctSettings = lib.recursiveUpdate config.qt.qt5ctSettings {
       Appearance.color_scheme_path = "${config.home.homeDirectory}/.config/qt6ct/colors/noctalia.conf";
     };
+    kvantum = {
+      enable = true;
+      settings = {
+        General = {
+          theme = "Noctalia";
+        };
+      };
+    };
   };
 
   fonts.fontconfig = {
@@ -51,7 +78,6 @@
 
   gtk = {
     enable = true;
-
     colorScheme = "dark";
 
     iconTheme = {
@@ -99,29 +125,21 @@
           margin: 0px !important;
           opacity: 0 !important;
       }
+
+      /* 80% opacity */
+      window, .background {
+        background-color: alpha(@window_bg_color, 0.20) !important;
+      }
     '';
     gtk3.extraCss = config.gtk.gtk4.extraCss;
     gtk2.force = true;
   };
 
-
-  xdg.configFile."darklyrc".text = ''
-    [Common]
-    CornerRadius=1
-    FancyMargins=false
-    FloatingTitlebar=false
-    ShadowSize=ShadowNone
-    ShadowStrength=51
-
-    [Style]
-    DisableDolphinUrlNavigatorBackground=false
-    RoundedRubberBandFrame=false
-    ScrollBarSubLineButtons=2
-    TabDrawHighlight=true
-    TabsHeight=-5
-    UnifiedTabBarKonsole=true
-
-    [Windeco]
-    RoundedCorners=false
-  '';
+  # Templates from pkgs.catppuccin-kvantum (macchiato-blue), hex→qtct-aligned
+  # Noctalia tokens; reduce_window_opacity=20 + #..cc for ~80% opacity.
+  # See kvantum-templatize.py.
+  xdg.configFile."noctalia/templates/kvantum.kvconfig".source =
+    "${noctaliaKvantumTemplates}/kvantum.kvconfig";
+  xdg.configFile."noctalia/templates/kvantum.svg".source =
+    "${noctaliaKvantumTemplates}/kvantum.svg";
 }

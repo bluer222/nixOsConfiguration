@@ -44,13 +44,9 @@ func dimBrightness() error {
 	if err != nil {
 		return err
 	}
-	//already dimmer than dimmed percent
-	if pct < 10 {
-		savedBrightness = nil
-		return nil
-	}
 	savedBrightness = &pct
-	return runCmd("brightnessctl", "set", "10%")
+	//set brightness to current -10
+	return runCmd("brightnessctl", "set", strconv.Itoa(pct - 10)+"%")
 }
 
 func restoreBrightness() error {

@@ -2,6 +2,7 @@
 {
   services.wivrn = {
     enable = true;
+    steam.enable = true;
     openFirewall = true;
     # Write information to /etc/xdg/openxr/1/active_runtime.json, VR applications
     # will automatically read this and work with WiVRn (Note: This does not currently

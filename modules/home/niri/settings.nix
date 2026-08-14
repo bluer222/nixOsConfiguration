@@ -65,6 +65,7 @@ in {
           active.color = "#94e2d5";
           inactive.color = "#1e1e2e";
         };
+        shadow.enable = false;
         default-column-width.proportion = 0.5;
         # Stationary noctalia wallpaper sits in the backdrop.
         background-color = "transparent";
@@ -144,10 +145,13 @@ in {
 
       window-rules = [
         {
-          matches = [{ app-id = "^dev\\.noctalia\\.Noctalia$"; }];
-          open-floating = true;
-          default-column-width = { fixed = 1080; };
-          default-window-height = { fixed = 920; };
+          #no matches = all windows
+          #matches = [ ];
+          background-effect = {
+            blur = true;
+            #noise = 0.05;
+            #saturation = 3;
+          };
         }
         # Games / launchers → workspace 2
         {
