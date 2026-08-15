@@ -3,7 +3,8 @@
 {
   #boot stuff actually related to booting
   boot = {
-    resumeDevice = "/dev/disk/by-uuid/68fe3efa-3a25-452a-aa77-3c0882d19d93";
+    # systemd initrd injects resume= from this; do not also add resume= to kernelParams.
+    resumeDevice = "/dev/disk/by-label/nixos-swap";
     #splashscreen
     plymouth = {
       enable = true;
