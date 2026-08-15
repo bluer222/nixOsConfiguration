@@ -32,7 +32,6 @@
     steam
     lutris
     godot_4
-    proton-vpn
     mangohud
     winetricks
     wayvr

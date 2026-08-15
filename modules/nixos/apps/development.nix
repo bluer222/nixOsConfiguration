@@ -15,7 +15,6 @@
     arduino-ide
     kdePackages.umbrello
     gnumake
-    gemini-cli
     cursor-cli
     python3
     antigravity-ide-fhs
