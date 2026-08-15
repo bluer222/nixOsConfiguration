@@ -183,7 +183,8 @@ in {
       brightness.minimum_brightness = 0.01;
 
       hooks = {
-        started = "noctalia msg session lock";
+        #dont need this anymore because disk encryption handles intial lock
+        #started = "noctalia msg session lock";
         # MSI EC power profile via niri-helper (replaces upower battery monitor).
         battery_charging = "${helper} power-plugged";
         battery_plugged = "${helper} power-plugged";
