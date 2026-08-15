@@ -23,7 +23,6 @@
     comfyui-nix.url = "github:utensils/comfyui-nix";
     # Pin to cachix branch so binary cache hits; do not follow nixpkgs.
     noctalia.url = "github:noctalia-dev/noctalia/cachix";
-    nixpkgs-nvidia.url = "github:NixOS/nixpkgs/ab9ad415916a0fb89d1f539a9291d9737e95148e";
     nixpkgs-msi-ec.url = "github:Svenum/nixpkgs/3dec65fda85d03630173e5ab5f0eab6ae861c551";
 
     # Local secrets outside the flake tree (not git-filtered). Update with:

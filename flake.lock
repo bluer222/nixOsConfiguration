@@ -358,22 +358,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-nvidia": {
-      "locked": {
-        "lastModified": 1771170098,
-        "narHash": "sha256-xWU7EFeR+OQk4UcykJD5pOjhHle6/VPAHQqsNUWj4Rc=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "ab9ad415916a0fb89d1f539a9291d9737e95148e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "ab9ad415916a0fb89d1f539a9291d9737e95148e",
-        "type": "github"
-      }
-    },
     "nixpkgs-stable": {
       "locked": {
         "lastModified": 1786430034,
@@ -545,7 +529,6 @@
         "nixos-secrets": "nixos-secrets",
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-msi-ec": "nixpkgs-msi-ec",
-        "nixpkgs-nvidia": "nixpkgs-nvidia",
         "noctalia": "noctalia"
       }
     },
