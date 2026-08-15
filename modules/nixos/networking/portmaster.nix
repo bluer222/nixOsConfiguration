@@ -77,6 +77,14 @@ in
 {
   services.portmaster = {
     enable = true;
+    # Keep core + menu launcher; drop the packaged tray autostart without rebuilding.
+    package = pkgs.symlinkJoin {
+      inherit (pkgs.portmaster) name pname version meta;
+      paths = [ pkgs.portmaster ];
+      postBuild = ''
+        rm -rf "$out/etc"
+      '';
+    };
     profilePrefix = "[NixOS] ";
     settings = {
       devmode = true; # UI at 127.0.0.1:817
@@ -189,7 +197,7 @@ in
       curl = {
         name = "curl";
         packages = [ pkgs.curl ];
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       wget = {
