@@ -14,11 +14,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    glaumar_repo = {
-      url = "github:glaumar/nur";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     affinity-nix.url = "github:mrshmllow/affinity-nix";
     comfyui-nix.url = "github:utensils/comfyui-nix";
     # Pin to cachix branch so binary cache hits; do not follow nixpkgs.

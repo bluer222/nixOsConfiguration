@@ -184,26 +184,6 @@
         "type": "github"
       }
     },
-    "glaumar_repo": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1737428919,
-        "narHash": "sha256-uywQK2tlqk12fznVJHJrYnYT90lv3oiS8fqdBxoJJJM=",
-        "owner": "glaumar",
-        "repo": "nur",
-        "rev": "84d56f9f26afcb07620c1e126673d033338406de",
-        "type": "github"
-      },
-      "original": {
-        "owner": "glaumar",
-        "repo": "nur",
-        "type": "github"
-      }
-    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -523,7 +503,6 @@
       "inputs": {
         "affinity-nix": "affinity-nix",
         "comfyui-nix": "comfyui-nix",
-        "glaumar_repo": "glaumar_repo",
         "home-manager": "home-manager",
         "niri": "niri",
         "nixos-secrets": "nixos-secrets",

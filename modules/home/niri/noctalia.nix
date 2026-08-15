@@ -124,7 +124,6 @@ in {
             output_path = "${home}/.config/Kvantum/Noctalia/Noctalia.svg";
           };
         };
-        #builtin = "Catppuccin";
       };
 
       wallpaper = {
