@@ -1,6 +1,23 @@
 { inputs, nixpkgs, ... }:
 
 final: prev: {
+  # Backport nixpkgs#554373 (python3Packages.dlib after the 20.0.1 bump).
+  pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
+    (pythonFinal: pythonPrev: {
+      dlib = pythonPrev.dlib.overridePythonAttrs {
+        patches = [ ./dlib-build-cores.patch ];
+        format = null;
+        pyproject = true;
+        build-system = [
+          pythonPrev.cmake
+          pythonPrev.setuptools
+        ];
+        nativeCheckInputs = [ pythonPrev.pytestCheckHook ];
+        postPatch = "";
+      };
+    })
+  ];
+
   llama-cpp-cuda = prev.llama-cpp.override {
     cudaSupport = true;
     rocmSupport = false;
