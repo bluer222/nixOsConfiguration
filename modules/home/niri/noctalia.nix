@@ -130,9 +130,7 @@ in {
         enabled = true;
         fill_mode = "crop";
         directory = "${home}/Pictures/Wallpapers";
-        transition = [ "zoom" ];
-        transition_duration = 400;
-        transition_on_startup = false;
+        transition = [ ];
         default.path = "${home}/Pictures/Wallpapers/workspace-1.png";
       };
 
