@@ -60,10 +60,8 @@ in
     # accessible via `nvidia-settings`.
     nvidiaSettings = true;
 
-    # Optionally, you may need to select the appropriate driver version for your specific GPU.
-#vulkan beta was the only one that worked for me in the past
-    #switching to beta because its newer(560{open is the default now})
-    package = config.boot.kernelPackages.nvidiaPackages.vulkan_beta;
+    # vulkan_beta (595.44.09) does not build against linuxPackages_latest (7.2).
+    package = config.boot.kernelPackages.nvidiaPackages.latest;
   };
 
   services.udev.extraRules = ''
