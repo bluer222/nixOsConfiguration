@@ -1,6 +1,11 @@
 { config, pkgs, ... }:
 
 {
+  services.sunshine = {
+    enable = true;
+    openFirewall = true;
+    autoStart = false;
+  };
   # gpsd
   services.gpsd = {
     enable = true;

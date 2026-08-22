@@ -10,7 +10,7 @@
     git
     neovim
     android-studio
-    kicad-small
+    kicad
     blender
     arduino-ide
     kdePackages.umbrello
@@ -23,5 +23,8 @@
     ntfs3g
     gpsd
     github-copilot-cli
+    moonlight-qt
+    opencode
+    opencode-desktop
   ];
 }
