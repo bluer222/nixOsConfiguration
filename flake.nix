@@ -26,6 +26,11 @@
       url = "path:/home/samm/.config/nixos-secrets";
       flake = false;
     };
+
+    plymouth-luks-subtle = {
+      url = "github:bluer222/plymouth-luks-subtle";
+      flake = false;
+    };
   };
 
 

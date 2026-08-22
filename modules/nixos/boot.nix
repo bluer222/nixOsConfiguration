@@ -8,7 +8,11 @@
     #splashscreen
     plymouth = {
       enable = true;
-      theme = "bgrt";
+      #theme = "bgrt";
+      theme = "nix-flake";
+      themePackages = [
+        (pkgs.callPackage inputs.plymouth-luks-subtle {})
+      ];
     };
     # Bootloader and console verbosity
     kernelParams = [
