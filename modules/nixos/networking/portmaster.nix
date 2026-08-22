@@ -126,7 +126,10 @@ in
 
       fwupd = {
         name = "fwupd";
-        packages = [ pkgs.fwupd ];
+        fingerprints = [
+          # /nix/store/yhdklphh417r1g4cg34h4xw9bwvl194h-fwupd-2.1.6/bin/.fwupdmgr-wrapped
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-fwupd(-[^/]+)?/bin/.fwupdmgr-wrapped$")
+        ];
         settings = allowInternetP2P;
       };
 
@@ -165,6 +168,8 @@ in
         packages = [ pkgs.cursor-cli ];
         fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-cursor-cli-[^/]+/share/cursor-agent/node$")
+          # /home/samm/.local/share/cursor-agent/versions/2026.08.11-e8db854/node
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/cursor-agent/versions/[^/]+/node$")
         ];
         settings = allowInternetP2P;
       };
