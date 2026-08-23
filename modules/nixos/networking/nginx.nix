@@ -1,10 +1,14 @@
-{ config, pkgs, ... }:
+{ config, pkgs, lib, ... }:
 
 {
   services.nginx.user = "samm";
   systemd.services.nginx.serviceConfig.ProtectHome = "read-only";
   systemd.services.nginx.serviceConfig.ReadOnlyPaths = [ "/home/samm" ];
   users.users."samm".homeMode = "744";
+
+  # Don't let nginx gate multi-user/graphical.target; nothing needs it early.
+  # It still starts during boot, just off the critical chain.
+  systemd.services.nginx.wantedBy = lib.mkForce [ "graphical.target" ];
 
   #file browser and styling
   services.nginx.appendHttpConfig = "
