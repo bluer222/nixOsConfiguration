@@ -23,7 +23,6 @@
       genericName = "Web Browser";
       exec = "brave-origin --password-store=kwallet6 %U";
       icon = "brave-origin";
-      startupWMClass = "brave-origin";
       terminal = false;
       categories = [ "Network" "WebBrowser" ];
       mimeType = [
@@ -53,7 +52,6 @@
       genericName = "Web Browser";
       exec = "brave-origin --password-store=kwallet6 %U";
       icon = "brave-origin";
-      startupWMClass = "brave-origin";
       terminal = false;
       categories = [ "Network" "WebBrowser" ];
       actions = {
