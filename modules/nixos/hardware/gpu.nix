@@ -31,6 +31,10 @@ in
   # Load nvidia
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.nvidia-container-toolkit.enable = true;
+  # CDI generation does slow GPU introspection; don't let it gate
+  # multi-user.target — docker only needs it when a container actually starts.
+  systemd.services.nvidia-container-toolkit-cdi-generator.wantedBy =
+    lib.mkForce [ "graphical.target" ];
   #use cuda
   #nixpkgs.config.cudaSupport = true;
   # Load nvidia driver for Xorg and Wayland
@@ -62,6 +66,32 @@ in
 
     # vulkan_beta (595.44.09) does not build against linuxPackages_latest (7.2).
     package = config.boot.kernelPackages.nvidiaPackages.latest;
+  };
+
+  # See ../../gpu.md for rationale + undo instructions.
+  #
+  # nvidia.nix eagerly adds nvidia_uvm to boot.kernelModules for open-module
+  # users because the softdep lazy-load is broken upstream (NixOS#334180).
+  # systemd-modules-load then runs modprobe during sysinit.target, which pulls
+  # in the whole nvidia driver synchronously — RM init stalls ~2s on failing
+  # MSI SBIOS ACPI calls (NBCI platform requests) and blocked ~45% of boot.
+  # Filter it out of the sync path and load it after graphical.target instead;
+  # the udev mknod rules still fire whenever the module appears.
+  environment.etc."modules-load.d/nixos.conf" = lib.mkForce {
+    text = lib.concatStringsSep "\n"
+      (lib.filter (m: m != "nvidia_uvm") config.boot.kernelModules) + "\n";
+    mode = "0644";
+  };
+
+  systemd.services.load-nvidia-uvm = {
+    description = "Load nvidia_uvm off the boot-critical path";
+    wantedBy = [ "graphical.target" ];
+    after = [ "graphical.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.kmod}/bin/modprobe nvidia_uvm";
+      RemainAfterExit = true;
+    };
   };
 
   services.udev.extraRules = ''
