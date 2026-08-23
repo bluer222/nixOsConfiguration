@@ -34,6 +34,6 @@
     niri-helper
   ];
 
-  # Prefer KWallet over gnome-keyring (nixpkgs niri enables keyring by default).
+  # No gnome-keyring: KeePassXC provides the Secret Service API instead.
   services.gnome.gnome-keyring.enable = lib.mkForce false;
 }

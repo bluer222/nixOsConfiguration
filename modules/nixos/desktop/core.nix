@@ -28,6 +28,7 @@
 
   # Use Howdy for screen locking (Noctalia uses PAM "login"), sudo, and polkit.
   # Keep it off greetd so face auth is not required for initial session open.
+  # Secrets come from KeePassXC's Secret Service integration (KWallet removed).
   security.pam = {
     howdy.enable = false;
     services = {
@@ -36,12 +37,7 @@
           enable = true;
           control = "[success=done default=ignore]";
         };
-        kwallet = {
-          enable = true;
-          forceRun = true;
-        };
       };
-      greetd.kwallet.enable = true;
       systemd-run0 = {
         enable = true;
         howdy = {

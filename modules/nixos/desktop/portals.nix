@@ -17,12 +17,14 @@
       common = {
         default = [ "kde" "gtk" ];
       };
-      # mkForce: nixpkgs programs.niri also sets config.niri (GNOME/keyring defaults).
-      niri = lib.mkForce {
-        default = [ "kde" "gtk" ];
-        "org.freedesktop.impl.portal.FileChooser" = [ "kde" ];
-        "org.freedesktop.impl.portal.Secret" = [ "kwallet" ];
-        "org.freedesktop.impl.portal.ScreenCast" = [ "gnome" ];
+        # mkForce: nixpkgs programs.niri also sets config.niri (GNOME/keyring defaults).
+        # No Secret backend: KWallet is gone, KeePassXC serves secrets directly
+        # via org.freedesktop.secrets (portals can't reach it — acceptable,
+        # few apps use the Secret portal).
+        niri = lib.mkForce {
+          default = [ "kde" "gtk" ];
+          "org.freedesktop.impl.portal.FileChooser" = [ "kde" ];
+          "org.freedesktop.impl.portal.ScreenCast" = [ "gnome" ];
         "org.freedesktop.impl.portal.Screenshot" = [ "gnome" ];
         "org.freedesktop.impl.portal.Access" = [ "gtk" ];
         "org.freedesktop.impl.portal.Notification" = [ "gtk" ];
