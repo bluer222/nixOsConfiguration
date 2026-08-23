@@ -25,20 +25,6 @@
     Install.WantedBy = [ "niri.service" ];
   };
 
-  systemd.user.services.kwalletd6 = {
-    Unit = {
-      Description = "KDE Wallet daemon";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
-    };
-    Service = {
-      ExecStart = "${pkgs.kdePackages.kwallet}/bin/kwalletd6";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "niri.service" ];
-  };
-
   # Dolphin "Recent Files" / places history needs the activity manager.
   systemd.user.services.kactivitymanagerd = {
     Unit = {

@@ -34,6 +34,8 @@
     niri-helper
   ];
 
-  # Prefer KWallet over gnome-keyring (nixpkgs niri enables keyring by default).
+  # No keyring of any kind: no gnome-keyring, no KWallet. Brave runs in
+  # basic mode (local obfuscation only) — accepted tradeoff under autologin
+  # where the LUKS volume is the security boundary.
   services.gnome.gnome-keyring.enable = lib.mkForce false;
 }
