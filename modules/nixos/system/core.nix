@@ -66,16 +66,4 @@
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
-
-  # System auto-upgrade
-  system.autoUpgrade = {
-    enable = true;
-    flake = "/etc/nixos#samm-desktop";
-    flags = [
-      "--print-build-logs"
-      "--recreate-lock-file"
-    ];
-    dates = "09:00";
-    runGarbageCollection = true;
-  };
 }
