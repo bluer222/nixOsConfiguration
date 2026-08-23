@@ -75,8 +75,5 @@
   };
 
   # Custom package overrides
-  nixpkgs.config = {
-    permittedInsecurePackages = [];
-    allowBroken = true;
-  };
+  nixpkgs.config.permittedInsecurePackages = [];
 }

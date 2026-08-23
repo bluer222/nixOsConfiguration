@@ -11,10 +11,8 @@ programs.qgroundcontrol.enable = true;
     mesa-demos #glx-info
     libva-utils
     powertop
-    zoom-us
     #teams
     scrcpy
-    libGL
     pciutils
     clinfo
     virtiofsd
@@ -22,7 +20,6 @@ programs.qgroundcontrol.enable = true;
     btop
     unrar
     wayland-utils
-    xclicker
     usbutils
     nix-output-monitor
     libsysprof-capture
@@ -47,7 +44,6 @@ programs.qgroundcontrol.enable = true;
     mediawriter
     wl-clipboard
     postman
-    libGL
     libreoffice-qt-fresh
     onlyoffice-desktopeditors
     nss
