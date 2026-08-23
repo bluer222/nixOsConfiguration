@@ -1,9 +1,21 @@
 { config, pkgs, ... }:
 {
   # Power management core
-  powerManagement = {
-    enable = true;
-    powertop.enable = true;
+  # powertop tunables removed: conflict with TLP (double-apply runtime PM and
+  # re-enable devices TLP denylists, e.g. nvidia)
+  powerManagement.enable = true;
+
+  # Suspend to RAM first, then hibernate after a delay so a dead battery
+  # doesn't lose the session (requires resumeDevice, set in boot.nix)
+  systemd.sleep.settings.Sleep = {
+    AllowSuspendThenHibernate = "yes";
+    HibernateDelaySec = "30min";
+  };
+
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend-then-hibernate";
+    HandleLidSwitchExternalPower = "suspend-then-hibernate";
+    HandleLidSwitchDocked = "suspend-then-hibernate";
   };
 
   # Thermal management for Intel CPUs
@@ -93,7 +105,7 @@
       # ========================================================================
       # PCIe Active State Power Management
       PCIE_ASPM_ON_AC = "performance";
-      PCIE_ASPM_ON_BAT = "balance_power";
+      PCIE_ASPM_ON_BAT = "powersave";
       PCIE_ASPM_ON_SAV = "powersupersave";
 
       # Runtime Power Management for devices
