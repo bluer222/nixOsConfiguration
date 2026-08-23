@@ -47,7 +47,8 @@
       After = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStart = "${pkgs.kdePackages.kactivitymanagerd}/bin/kactivitymanagerd";
+      # Binary lives in libexec/, not bin/, since the KDE 6 packaging change.
+      ExecStart = "${pkgs.kdePackages.kactivitymanagerd}/libexec/kactivitymanagerd";
       Restart = "on-failure";
       RestartSec = 3;
     };
