@@ -49,11 +49,12 @@
     let
       unlockScript = pkgs.writeShellScript "keepassxc-autounlock" ''
         # DB password lives here by design: security boundary is the LUKS
-        # volume, same as the keyfile and everything else in $HOME. The store
-        # is world-readable locally — acceptable for this threat model.
-        printf '%s\n' 'dj2#9(jd@10' | ${pkgs.keepassxc}/bin/keepassxc --minimized \
-          --keyfile "$HOME"/Passwords.keyx \
-          --pw-stdin "$HOME"/Passwords.kdbx
+        # volume, same as the keyfile and everything else in $HOME.
+        # KeePassXC refuses piped stdin for credentials unless a TTY exists,
+        # hence the script(1) pty wrapper; xcb backend per upstream docs.
+        printf '%s\n' 'dj2#9(jd@10' | ${pkgs.util-linux}/bin/script -qec \
+          "env QT_QPA_PLATFORM=xcb ${pkgs.keepassxc}/bin/keepassxc --minimized --keyfile $HOME/Passwords.keyx --pw-stdin $HOME/Passwords.kdbx" \
+          /dev/null
       '';
     in
     {
