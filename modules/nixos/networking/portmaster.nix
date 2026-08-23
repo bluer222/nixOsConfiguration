@@ -165,11 +165,18 @@ in
 
       cursor-agent = {
         name = "Cursor Agent";
-        packages = [ pkgs.cursor-cli ];
         fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-cursor-cli-[^/]+/share/cursor-agent/node$")
           # /home/samm/.local/share/cursor-agent/versions/2026.08.11-e8db854/node
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/cursor-agent/versions/[^/]+/node$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      opencode = {
+        name = "Opencode";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-opencode-[^/]+/bin/.opencode-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -269,6 +276,16 @@ in
         name = "Lutris";
         packages = [ pkgs.lutris ];
         settings = allowInternet;
+      };
+
+      lutris-wine = {
+        name = "Lutris Wine";
+        fingerprints = [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/lutris/runners/wine/[^/]+-lutris-wine-[^/]+/files/bin/wineserver$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/lutris/runners/wine/[^/]+-lutris-wine-[^/]+/bin/wineserver$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/lutris/runners/wine/[^/]+-lutris-wine-[^/]+/files/lib/wine/x86_64-unix/(wine64-preloader|wine-preloader)$")
+        ];
+        settings = allowInternetP2P;
       };
 
       godot = {
