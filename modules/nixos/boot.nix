@@ -28,22 +28,17 @@
     loader = {
       #i dont want to wait
       timeout = 1;
-      grub = {
-        #hide it(esc to show it)
-        #timeoutStyle = "menu";
-        timeoutStyle = "hidden";
-        #no ugily nixos spash(this jpg is just the bgrt image)
-        splashImage = "/home/samm/boot.jpg";
-        #splashImage = null;
-      };
       #efi stuff to make grub work
       efi = {
         canTouchEfiVariables = true;
         efiSysMountPoint = "/boot"; # ← use the same mount point here.
       };
-      #enable grub
       grub = {
         enable = true;
+        #hide it(esc to show it)
+        timeoutStyle = "hidden";
+        #no ugily nixos spash(this jpg is just the bgrt image)
+        splashImage = ../../hosts/samm-desktop/boot.jpg;
         useOSProber = true;
         device = "nodev";
         efiSupport = true;
