@@ -42,20 +42,26 @@
   };
 
   # Secrets provider (Secret Service API for browsers etc.). Keyfile-only DB:
-  # unlocks silently as long as keepassxc.ini remembers the keyfile association
-  # (established on first manual open). Security boundary = the LUKS volume,
-  # same as everything else in $HOME.
-  systemd.user.services.keepassxc = {
-    Unit = {
-      Description = "KeePassXC (Secret Service provider)";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
+  # --pw-stdin feeds an empty password so the unlock dialog never appears;
+  # the keyfile association comes from keepassxc.ini. Security boundary = the
+  # LUKS volume, same as everything else in $HOME.
+  systemd.user.services.keepassxc =
+    let
+      unlockScript = pkgs.writeShellScript "keepassxc-autounlock" ''
+        printf '\n' | ${pkgs.keepassxc}/bin/keepassxc --pw-stdin "$HOME"/Passwords.kdbx
+      '';
+    in
+    {
+      Unit = {
+        Description = "KeePassXC (Secret Service provider)";
+        PartOf = [ "graphical-session.target" ];
+        After = [ "graphical-session.target" ];
+      };
+      Service = {
+        ExecStart = "${unlockScript}";
+        Restart = "on-failure";
+        RestartSec = 3;
+      };
+      Install.WantedBy = [ "niri.service" ];
     };
-    Service = {
-      ExecStart = "${pkgs.keepassxc}/bin/keepassxc %h/Passwords.kdbx";
-      Restart = "on-failure";
-      RestartSec = 3;
-    };
-    Install.WantedBy = [ "niri.service" ];
-  };
 }
