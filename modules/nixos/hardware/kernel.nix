@@ -28,7 +28,7 @@
       "zswap.enabled=1"
       "zswap.shrinker_enabled=1"
       "zswap.compressor=zstd"
-      "zswap.max_pool_percent=40"
+      "zswap.max_pool_percent=60"
       "zswap.zpool=zsmalloc"
     ];
   };
