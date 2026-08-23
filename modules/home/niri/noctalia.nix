@@ -93,11 +93,6 @@ in {
         hidden_tabs = ["weather"];
       };
 
-      plugins = {
-        enabled = [ ];
-        auto_update = true;
-      };
-
       #battery threshold plugin
       #plugin_settings = {
       #  "damian-ds7/battery-threshold" = {

@@ -4,17 +4,12 @@
   # KDE Plasma desktop environment and kde-specific packages
   environment.systemPackages = with pkgs; [
     kdePackages.filelight
-    kdePackages.kmail
-    kdePackages.kmailtransport
-    kdePackages.kmail-account-wizard
-    kdePackages.keysmith
+    keepassxc    # replaces Keysmith (TOTP); Secret Service API can replace KWallet
+    thunderbird  # replaces Kmail/Akonadi
     kdePackages.ghostwriter
     kdePackages.kate
-    kdePackages.baloo
     kdePackages.oxygen-sounds
     kdePackages.kde-gtk-config
-    kdePackages.karousel
-    kdePackages.kitemmodels
 
     # Core archive manager
     kdePackages.ark
@@ -28,7 +23,6 @@
     gzip         # For .tar.gz files
   ];
 
-  programs.kde-pim.kmail = true;
   programs.partition-manager.enable = true;
   programs.kdeconnect.enable = true;
 }

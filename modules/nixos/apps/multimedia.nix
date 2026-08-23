@@ -13,7 +13,6 @@
     audacity
     ffmpeg-full
     kdePackages.kolourpaint
-    kdePackages.krecorder
     gimp3
     qview
     cura-appimage

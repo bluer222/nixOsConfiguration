@@ -52,7 +52,6 @@ programs.qgroundcontrol.enable = true;
     kubectl
     signal-desktop
     kdePackages.gwenview
-    kdePackages.discover
   ];
 
 }
