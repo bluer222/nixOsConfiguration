@@ -4,7 +4,7 @@
   # KDE Plasma desktop environment and kde-specific packages
   environment.systemPackages = with pkgs; [
     kdePackages.filelight
-    keepassxc    # replaces Keysmith (TOTP); Secret Service API can replace KWallet
+    kdePackages.keysmith
     thunderbird  # replaces Kmail/Akonadi
     kdePackages.ghostwriter
     kdePackages.kate

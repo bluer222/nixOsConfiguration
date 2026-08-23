@@ -21,6 +21,9 @@
     kdePackages.kio-fuse
 
     kdePackages.kded
+    kdePackages.kwallet
+    kdePackages.kwallet-pam
+    kdePackages.kwalletmanager
 
     libsecret
     nerd-fonts.fira-code
