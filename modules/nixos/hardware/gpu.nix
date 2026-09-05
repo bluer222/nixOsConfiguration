@@ -29,7 +29,7 @@ in
   }; # Force intel-media-driver
 
   # Load nvidia
-  services.xserver.videoDrivers = [ "nvidia" ];
+  services.xserver.videoDrivers = [ "nvidia" "vmware" ];
   hardware.nvidia-container-toolkit.enable = true;
   # CDI generation does slow GPU introspection; don't let it gate
   # multi-user.target — docker only needs it when a container actually starts.

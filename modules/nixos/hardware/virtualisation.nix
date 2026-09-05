@@ -2,6 +2,7 @@
 {
   #add quemu
   virtualisation = {
+    vmware.host.enable = true;
     libvirtd.enable = true;
     spiceUSBRedirection.enable = true;
 
