@@ -26,5 +26,6 @@
     moonlight-qt
     opencode
     opencode-desktop
+    gcc
   ];
 }
