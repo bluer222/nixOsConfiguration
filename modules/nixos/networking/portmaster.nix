@@ -405,10 +405,20 @@ in
         settings = allowInternet;
       };
 
-      antigravity = {
-        name = "Antigravity AI Agent";
-        packages = [ pkgs.antigravity-ide-fhs pkgs.antigravity-cli ];
-        settings = allowInternet;
+      antigravity-ide = {
+        name = "Antigravity IDE";
+        packages = [ pkgs.antigravity-ide-fhs ];
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-antigravity-ide(-[^/]+)?/lib/antigravity-ide/antigravity-ide$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-antigravity-ide(-[^/]+)?/lib/antigravity-ide/resources/app/extensions/antigravity/bin/language_server_linux_x64$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      antigravity-cli = {
+        name = "Antigravity CLI";
+        packages = [ pkgs.antigravity-cli ];
+        settings = allowInternetP2P;
       };
 
       docker = {
