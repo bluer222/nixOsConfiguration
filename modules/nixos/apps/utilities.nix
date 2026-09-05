@@ -44,7 +44,7 @@ programs.qgroundcontrol.enable = true;
     mediawriter
     wl-clipboard
     postman
-    libreoffice-qt-fresh
+    libreoffice-qt-stable
     onlyoffice-desktopeditors
     nss
     ckan
