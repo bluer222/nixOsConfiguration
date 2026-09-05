@@ -17,5 +17,6 @@
     qview
     cura-appimage
     upscayl
+    affinity-v3
   ];
 }

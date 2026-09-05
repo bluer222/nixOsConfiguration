@@ -34,7 +34,7 @@
   };
 
 
-  outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, ... }@inputs: {
+  outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, affinity-nix, ... }@inputs: {
     nixosConfigurations = {
       samm-desktop = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
@@ -43,6 +43,7 @@
             nixpkgs.overlays = [
               comfyui-nix.overlays.default
               noctalia.overlays.default
+              affinity-nix.overlays.default
               (import ./overlays/default.nix { inherit inputs nixpkgs; })
             ];
           })
