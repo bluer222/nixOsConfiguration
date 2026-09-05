@@ -2,7 +2,30 @@
 
 {
   config.services.lact.enable = true;
-  
+
+  # LACT reloads NvAPI on DRM udev after S3. suspend-then-hibernate wakes
+  # once for the RTC timer with sleep.target still active, then hibernates;
+  # that reload races NVIDIA PM_HIBERNATION_PREPARE and hangs on a black
+  # screen (user.slice is frozen). Stop the daemon for the whole sleep job
+  # and start it only when the sleep *type* target is reached — those are
+  # After= the oneshot, so they fire on real wake, not the RTC gap.
+  config.systemd.services.lactd = {
+    conflicts = [ "sleep.target" ];
+    before = [ "sleep.target" ];
+    after = [
+      "suspend.target"
+      "hibernate.target"
+      "hybrid-sleep.target"
+      "suspend-then-hibernate.target"
+    ];
+    wantedBy = [
+      "suspend.target"
+      "hibernate.target"
+      "hybrid-sleep.target"
+      "suspend-then-hibernate.target"
+    ];
+  };
+
   config.services.lact.settings = {
     version = 6;
     daemon = {
