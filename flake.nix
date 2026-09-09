@@ -18,6 +18,9 @@
     comfyui-nix.url = "github:utensils/comfyui-nix";
     # Pin to cachix branch so binary cache hits; do not follow nixpkgs.
     noctalia.url = "github:noctalia-dev/noctalia/cachix";
+    # AI coding agents (zcode). Do not follow nixpkgs so pre-built
+    # binaries hit the numtide cache (see README upstream).
+    llm-agents.url = "github:numtide/llm-agents.nix";
     nixpkgs-msi-ec.url = "github:Svenum/nixpkgs/3dec65fda85d03630173e5ab5f0eab6ae861c551";
 
     # Local secrets outside the flake tree (not git-filtered). Update with:

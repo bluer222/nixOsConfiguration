@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ config, inputs, pkgs, lib, ... }:
 
 let
   mkPathRegex = value: {
@@ -186,6 +186,15 @@ in
         packages = [ pkgs.codex ];
         fingerprints = [
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.vscode/extensions/openai.chatgpt.*")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      zcode = {
+        name = "ZCode";
+        packages = [ inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode ];
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-zcode-[^/]+/lib/ZCode/zcode$")
         ];
         settings = allowInternetP2P;
       };

@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, inputs, pkgs, ... }:
 
 {
   # Development tools and IDEs
@@ -27,5 +27,6 @@
     opencode
     opencode-desktop
     gcc
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode
   ];
 }
