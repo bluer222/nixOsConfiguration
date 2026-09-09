@@ -5,7 +5,7 @@
   environment.systemPackages = with pkgs; [
     kdePackages.filelight
     kdePackages.keysmith
-    thunderbird  # replaces Kmail/Akonadi
+    mailspring  # replaces Kmail/Akonadi
     kdePackages.ghostwriter
     kdePackages.kate
     kdePackages.oxygen-sounds
