@@ -8,10 +8,11 @@ in {
     # Validate generated KDL against the same nixpkgs niri used at runtime.
     package = pkgs.niri;
     settings = {
-      # Force compositor rendering onto the Intel iGPU (stable by-path; not NVIDIA).
+      # Force compositor rendering onto the Intel iGPU. Numbered renderD*
+      # nodes swap when NVIDIA enumerates first, which ignores eDP-1.
       debug = {
-        render-drm-device = "/dev/dri/renderD128";
-        ignore-drm-device = "/dev/dri/renderD129";
+        render-drm-device = "/dev/dri/by-path/pci-0000:00:02.0-render";
+        ignore-drm-device = "/dev/dri/by-path/pci-0000:01:00.0-render";
         # Allows notification actions and window activation from Noctalia.
         honor-xdg-activation-with-invalid-serial = [ ];
       };
