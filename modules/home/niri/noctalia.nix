@@ -61,22 +61,29 @@ in {
         session = {
           actions = [
             { action = "lock"; }
-            { action = "logout"; }
+            {
+              action = "command";
+              label = "Log Out";
+              glyph = "logout";
+              command = "${helper} logout";
+            }
             {
               action = "command";
               label = "Suspend";
               glyph = "bedtime";
-              command = "systemctl suspend-then-hibernate";
+              command = "systemctl suspend";
             }
             {
               action = "command";
-              label = "Hibernate";
-              glyph = "moon";
-              command = "systemctl hibernate";
+              label = "Reboot";
+              glyph = "reload";
+              command = "${helper} logout --then reboot";
             }
-            { action = "reboot"; }
             {
-              action = "shutdown";
+              action = "command";
+              label = "Shut Down";
+              glyph = "power";
+              command = "${helper} logout --then poweroff";
             }
           ];
         };
@@ -177,10 +184,12 @@ in {
       hooks = {
         #dont need this anymore because disk encryption handles intial lock
         #started = "noctalia msg session lock";
-        # MSI EC power profile via niri-helper (replaces upower battery monitor).
+        # Sound alerts for AC/battery connection
         battery_charging = "${helper} power-plugged";
         battery_plugged = "${helper} power-plugged";
         battery_discharging = "${helper} power-unplugged";
+        # MSI EC power profile via niri-helper
+        power_profile_changed = "${helper} power-profile";
       };
 
       lockscreen = {
@@ -215,7 +224,7 @@ in {
           suspend = {
             timeout = 140;
             action = "command";
-            command = "systemctl suspend-then-hibernate";
+            command = "systemctl suspend";
             resume_command = "${helper} wake";
             enabled = true;
           };
@@ -308,27 +317,16 @@ in {
     };
   };
 
-  # Hibernate delay after suspend-then-hibernate (was in idle.nix).
-  home.file.".config/systemd/sleep.conf".text = ''
-    [Sleep]
-    HibernateDelaySec=900
-  '';
-
   # Bluetooth reconnect after lid / logind sleep (idle resume_command covers idle-triggered suspend).
   systemd.user.services.niri-helper-wake = {
     Unit = {
       Description = "Reconnect bluetooth after sleep";
-      After = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+      After = [ "suspend.target" ];
     };
     Service = {
       Type = "oneshot";
       ExecStart = "${helper} wake";
     };
-    Install.WantedBy = [
-      "suspend.target"
-      "hibernate.target"
-      "hybrid-sleep.target"
-      "suspend-then-hibernate.target"
-    ];
+    Install.WantedBy = [ "suspend.target" ];
   };
 }

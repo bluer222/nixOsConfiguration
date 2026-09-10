@@ -21,6 +21,9 @@
       srun = "run0";
       rebs = "srun nixos-rebuild switch --flake '/etc/nixos#samm-desktop' --log-format internal-json -v  |& nom --json";
       rebb = "srun nixos-rebuild boot --flake '/etc/nixos#samm-desktop' --log-format internal-json -v  |& nom --json";
+      poweroff = "niri-helper logout --then poweroff";
+      reboot = "niri-helper logout --then reboot";
+      shutdown = "niri-helper logout --then poweroff";
       vr = ''
         if systemctl --user is-active --quiet wivrn; then
           echo "🔴 Stopping WiVRn..."

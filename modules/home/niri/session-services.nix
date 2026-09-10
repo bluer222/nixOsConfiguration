@@ -4,8 +4,10 @@
   systemd.user.services.niri-helper = {
     Unit = {
       Description = "Niri session helper daemon (wallpaper, idle dim, power, binds)";
-      PartOf = [ "graphical-session.target" ];
+      PartOf = [ "graphical-session.target" "niri.service" ];
+      BindsTo = [ "niri.service" ];
       After = [
+        "niri.service"
         "graphical-session.target"
         "noctalia.service"
         "pipewire.service"
