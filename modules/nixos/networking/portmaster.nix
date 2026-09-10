@@ -433,7 +433,11 @@ in
       docker = {
         name = "Docker";
         packages = [ pkgs.docker ];
-        settings = allowInternetLAN;
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-moby(-[^/]+)?/libexec/docker/dockerd$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-docker-buildx(-[^/]+)?/libexec/docker/cli-plugins/docker-buildx$")
+        ];
+        settings = allowInternetLANP2P;
       };
 
       qgroundcontrol = {
