@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 )
 
 func writeSys(path, value string) {
@@ -15,30 +16,75 @@ func applyMSIBootDefaults() {
 	writeSys("/sys/devices/platform/msi-ec/webcam", "on")
 	writeSys("/sys/devices/platform/msi-ec/cooler_boost", "off")
 	writeSys("/sys/class/leds/platform::stealth/brightness", "0")
+	applyActivePowerProfile()
 }
 
-// applyPluggedState flips MSI EC power profile for AC vs battery.
-// Sound is left to the caller (noctalia hooks) so we don't double-notify.
-func applyPluggedState(plugged bool) {
-	if plugged {
+// applyPowerProfile sets MSI EC values based on the power profile.
+func applyPowerProfile(profile string) {
+	profile = strings.TrimSpace(strings.ToLower(profile))
+	switch profile {
+	case "performance":
+		writeSys("/sys/devices/platform/msi-ec/shift_mode", "turbo")
+		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
+		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
+	case "balanced":
 		writeSys("/sys/devices/platform/msi-ec/shift_mode", "comfort")
 		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
 		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
-	} else {
+	case "power-saver", "powersave", "power_saver":
 		writeSys("/sys/devices/platform/msi-ec/shift_mode", "eco")
 		writeSys("/sys/devices/platform/msi-ec/fan_mode", "silent")
 		writeSys("/sys/devices/platform/msi-ec/super_battery", "on")
+	default:
+		// Default to balanced if unrecognized
+		writeSys("/sys/devices/platform/msi-ec/shift_mode", "comfort")
+		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
+		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
 	}
 }
 
+// queryActivePowerProfile queries the current active profile from D-Bus via busctl.
+func queryActivePowerProfile() string {
+	out, err := runCmdOutput(
+		"busctl", "get-property",
+		"org.freedesktop.UPower.PowerProfiles",
+		"/org/freedesktop/UPower/PowerProfiles",
+		"org.freedesktop.UPower.PowerProfiles",
+		"ActiveProfile",
+	)
+	if err != nil {
+		return "balanced"
+	}
+	parts := strings.Fields(out)
+	if len(parts) >= 2 {
+		return strings.Trim(parts[1], "\"")
+	}
+	return strings.Trim(strings.TrimSpace(out), "\"")
+}
+
+func applyActivePowerProfile() {
+	applyPowerProfile(queryActivePowerProfile())
+}
+
+func runPowerProfile(args []string) error {
+	profile := ""
+	if len(args) > 0 && args[0] != "" {
+		profile = args[0]
+	} else if env := os.Getenv("NOCTALIA_POWER_PROFILE"); env != "" {
+		profile = env
+	} else {
+		profile = queryActivePowerProfile()
+	}
+	applyPowerProfile(profile)
+	return nil
+}
+
 func powerPlugged() error {
-	applyPluggedState(true)
 	playSound(oxygen("power-plug.ogg"))
 	return nil
 }
 
 func powerUnplugged() error {
-	applyPluggedState(false)
 	playSound(oxygen("power-unplug.ogg"))
 	return nil
 }

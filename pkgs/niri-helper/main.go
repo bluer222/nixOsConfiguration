@@ -14,6 +14,13 @@ func main() {
 	cmd := os.Args[1]
 	args := os.Args[2:]
 
+	// Noctalia hooks set NOCTALIA_POWER_PROFILE in the CLI process, not the daemon.
+	if cmd == "power-profile" && len(args) == 0 {
+		if env := os.Getenv("NOCTALIA_POWER_PROFILE"); env != "" {
+			args = []string{env}
+		}
+	}
+
 	switch cmd {
 	case "daemon":
 		if err := runDaemon(); err != nil {
@@ -48,6 +55,8 @@ func dispatch(cmd string, args []string) error {
 		return powerPlugged()
 	case "power-unplugged":
 		return powerUnplugged()
+	case "power-profile":
+		return runPowerProfile(args)
 	case "kill-focused":
 		return killFocused()
 	case "logout":
@@ -69,8 +78,9 @@ commands (forwarded to the running daemon):
   wake            post-sleep hooks
   ocr             region OCR to clipboard
   volume ...      up|down|mute|mic-mute
-  power-plugged   MSI EC profile for AC (noctalia hook)
-  power-unplugged MSI EC profile for battery (noctalia hook)
+  power-plugged   play power-plug sound (noctalia hook)
+  power-unplugged play power-unplug sound (noctalia hook)
+  power-profile   apply MSI EC values for power profile (power-saver|balanced|performance)
   kill-focused    SIGKILL focused window pid
   logout [--then poweroff|reboot|hibernate]
 `)

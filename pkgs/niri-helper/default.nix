@@ -15,6 +15,7 @@
   noctalia,
   brightnessctl,
   kdePackages,
+  systemd,
 }:
 
 buildGoModule {
@@ -45,9 +46,9 @@ buildGoModule {
         coreutils
         noctalia
         brightnessctl
+        systemd
       ]} \
-      --set NIRI_HELPER_OXYGEN ${kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo \
-      --set NIRI_HELPER_KWALLET_INIT ${kdePackages.kwallet-pam}/libexec/pam_kwallet_init
+      --set NIRI_HELPER_OXYGEN ${kdePackages.oxygen-sounds}/share/sounds/oxygen/stereo
   '';
 
   meta = {

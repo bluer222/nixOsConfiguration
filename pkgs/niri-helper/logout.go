@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -21,6 +22,9 @@ var logoutKeepExact = map[string]bool{
 	"pipewire-pulse":       true,
 	"wireplumber":          true,
 	"niri-helper":          true,
+	"noctalia":             true,
+	"gnome-keyring-daemon": true,
+	"dconf-service":        true,
 }
 
 func logoutKeepPattern(comm, cmdline string) bool {
@@ -129,6 +133,24 @@ func notifyActions(summary, body string, actions []string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
+type niriWindowEntry struct {
+	ID uint64 `json:"id"`
+}
+
+func closeAllWindows() {
+	raw, err := niriMsgJSON("windows")
+	if err != nil {
+		return
+	}
+	var wins []niriWindowEntry
+	if err := json.Unmarshal(raw, &wins); err != nil {
+		return
+	}
+	for _, w := range wins {
+		_ = niriMsg("action", "close-window", "--id", strconv.FormatUint(w.ID, 10))
+	}
+}
+
 func runLogout(args []string) error {
 	then := ""
 	for i := 0; i < len(args); i++ {
@@ -138,33 +160,42 @@ func runLogout(args []string) error {
 		}
 	}
 
+	// 1. First, request all Wayland client windows to close cleanly.
+	// This triggers applications' native quit handlers (prompting to save, flushing state).
+	closeAllWindows()
+
+	// Wait up to 2 seconds for windows to close gracefully before checking processes
+	time.Sleep(2 * time.Second)
+
 	procs, err := listKillCandidates()
 	if err != nil {
 		return err
 	}
-	signalAll(procs, syscall.SIGTERM)
-	leftover := waitGone(procs, 15*time.Second)
+	if len(procs) > 0 {
+		signalAll(procs, syscall.SIGTERM)
+		leftover := waitGone(procs, 10*time.Second)
 
-	if len(leftover) > 0 {
-		names := make([]string, 0, len(leftover))
-		for _, p := range leftover {
-			names = append(names, p.Comm)
+		if len(leftover) > 0 {
+			names := make([]string, 0, len(leftover))
+			for _, p := range leftover {
+				names = append(names, p.Comm)
+			}
+			action, err := notifyActions(
+				"Apps still running",
+				joinNames(names, 8),
+				[]string{"kill", "Kill remaining", "cancel", "Cancel"},
+			)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "notification failed (%v); cancelling logout\n", err)
+				return nil
+			}
+			if action != "kill" {
+				notify("low", "Logout cancelled", "")
+				return nil
+			}
+			signalAll(leftover, syscall.SIGKILL)
+			_ = waitGone(leftover, 2*time.Second)
 		}
-		action, err := notifyActions(
-			"Apps still running",
-			joinNames(names, 8),
-			[]string{"kill", "Kill remaining", "cancel", "Cancel"},
-		)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "notification failed (%v); cancelling logout\n", err)
-			return nil
-		}
-		if action != "kill" {
-			notify("low", "Logout cancelled", "")
-			return nil
-		}
-		signalAll(leftover, syscall.SIGKILL)
-		_ = waitGone(leftover, 2*time.Second)
 	}
 
 	switch then {

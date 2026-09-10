@@ -6,13 +6,36 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
+	"time"
 )
 
 func niriSocketPath() (string, error) {
 	if p := os.Getenv("NIRI_SOCKET"); p != "" {
-		return p, nil
+		if _, err := os.Stat(p); err == nil {
+			return p, nil
+		}
 	}
-	return "", fmt.Errorf("NIRI_SOCKET is not set")
+	matches, err := filepath.Glob(filepath.Join(runtimeDir(), "niri.wayland-*.sock"))
+	if err != nil {
+		return "", err
+	}
+	best := ""
+	var bestMod time.Time
+	for _, p := range matches {
+		st, err := os.Stat(p)
+		if err != nil {
+			continue
+		}
+		if best == "" || st.ModTime().After(bestMod) {
+			best = p
+			bestMod = st.ModTime()
+		}
+	}
+	if best == "" {
+		return "", fmt.Errorf("niri IPC socket not found")
+	}
+	return best, nil
 }
 
 func niriRequest(req any) (json.RawMessage, error) {

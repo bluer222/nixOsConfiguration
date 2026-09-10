@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 )
@@ -116,7 +117,9 @@ func changeWallpaperForWorkspace(info workspaceInfo) {
 	}
 	for _, c := range candidates {
 		if fileExists(c) {
-			_ = setWallpaper(c)
+			if err := setWallpaper(c); err != nil {
+				fmt.Fprintf(os.Stderr, "wallpaper: %v\n", err)
+			}
 			return
 		}
 	}

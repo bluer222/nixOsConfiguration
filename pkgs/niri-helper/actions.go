@@ -14,6 +14,7 @@ import (
 func wakeFromSleep() error {
 	time.Sleep(3000 * time.Millisecond)
 	reconnectBluetooth()
+	applyActivePowerProfile()
 	//add brightness restore
 	return nil
 }
@@ -83,8 +84,5 @@ func runVolume(args []string) error {
 }
 
 func startupHooks() {
-	if p := os.Getenv("NIRI_HELPER_KWALLET_INIT"); p != "" && fileExists(p) {
-		runDetached(p)
-	}
 	_ = wakeFromSleep()
 }
