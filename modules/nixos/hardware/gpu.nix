@@ -49,12 +49,6 @@ in
     # Fine-grained power management. Turns off GPU when not in use.
     # Experimental and only works on modern Nvidia GPUs (Turing or newer).
     powerManagement.finegrained = true;
-    # Kernel notifiers cover a single suspend/hibernate. suspend-then-hibernate
-    # resumes from S3 and immediately hibernates; that path hangs in
-    # PM_HIBERNATION_PREPARE unless userspace writes to
-    # /proc/driver/nvidia/suspend first (NVIDIA's system-sleep hook). NixOS
-    # skips nvidia-suspend.service and that hook when this is true.
-    powerManagement.kernelSuspendNotifier = false;
 
     # Use the NVidia open source kernel module (not to be confused with the
     # independent third-party "nouveau" open source driver).
@@ -113,47 +107,5 @@ in
     # Make sure to use the correct Bus ID values for your system!
     intelBusId = "PCI:0@0:2:0";
     nvidiaBusId = "PCI:1@0:0:0";
-  };
-
-  # nvidia-suspend.service is only RequiredBy systemd-suspend.service, so it
-  # never runs during suspend-then-hibernate. systemd-sleep invokes this hook
-  # around each inner action (SYSTEMD_SLEEP_ACTION=suspend then hibernate).
-  environment.etc."systemd/system-sleep/nvidia-s2h".source =
-    pkgs.writeShellScript "nvidia-s2h" ''
-      set -eu
-      [ -e /proc/driver/nvidia/suspend ] || exit 0
-      [ "''${2-}" = suspend-then-hibernate ] || exit 0
-      case "''${1-}:''${SYSTEMD_SLEEP_ACTION-}" in
-        pre:suspend)
-          echo suspend > /proc/driver/nvidia/suspend
-          ;;
-        pre:hibernate)
-          echo hibernate > /proc/driver/nvidia/suspend
-          ;;
-        pre:suspend-after-failed-hibernate)
-          echo suspend > /proc/driver/nvidia/suspend
-          ;;
-        post:*)
-          echo resume > /proc/driver/nvidia/suspend
-          ;;
-      esac
-    '';
-
-  # Same race as LACT: powerd talks to the GPU across the RTC wake.
-  systemd.services.nvidia-powerd = {
-    conflicts = [ "sleep.target" ];
-    before = [ "sleep.target" ];
-    after = [
-      "suspend.target"
-      "hibernate.target"
-      "hybrid-sleep.target"
-      "suspend-then-hibernate.target"
-    ];
-    wantedBy = [
-      "suspend.target"
-      "hibernate.target"
-      "hybrid-sleep.target"
-      "suspend-then-hibernate.target"
-    ];
   };
 }

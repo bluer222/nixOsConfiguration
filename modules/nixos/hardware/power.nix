@@ -5,17 +5,10 @@
   # re-enable devices TLP denylists, e.g. nvidia)
   powerManagement.enable = true;
 
-  # Suspend to RAM first, then hibernate after a delay so a dead battery
-  # doesn't lose the session (requires resumeDevice, set in boot.nix)
-  systemd.sleep.settings.Sleep = {
-    AllowSuspendThenHibernate = "yes";
-    HibernateDelaySec = "30min";
-  };
-
   services.logind.settings.Login = {
-    HandleLidSwitch = "suspend-then-hibernate";
-    HandleLidSwitchExternalPower = "suspend-then-hibernate";
-    HandleLidSwitchDocked = "suspend-then-hibernate";
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "suspend";
+    HandleLidSwitchDocked = "suspend";
   };
 
   # Thermal management for Intel CPUs
