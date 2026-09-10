@@ -18,5 +18,6 @@
     cura-appimage
     upscayl
     affinity-v3
+    kdePackages.kdenlive
   ];
 }

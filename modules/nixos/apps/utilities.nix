@@ -52,7 +52,7 @@ programs.qgroundcontrol.enable = true;
     kubectl
     signal-desktop
     kdePackages.gwenview
-    (pkgs.llama-cpp.override { cudaSupport = true; })
+    llama-cpp-cuda
   ];
 
 }
