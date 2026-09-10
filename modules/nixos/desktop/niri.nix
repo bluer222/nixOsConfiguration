@@ -32,10 +32,14 @@
   environment.systemPackages = with pkgs; [
     xwayland-satellite
     niri-helper
+    seahorse
+    libsecret
   ];
 
-  # No keyring of any kind: no gnome-keyring, no KWallet. Brave runs in
-  # basic mode (local obfuscation only) — accepted tradeoff under autologin
-  # where the LUKS volume is the security boundary.
-  services.gnome.gnome-keyring.enable = lib.mkForce false;
+  # FreeDesktop Secret Service via GNOME Keyring daemon.
+  # Under autologin + LUKS full-disk encryption, a blank password on the login keyring
+  # allows it to unlock automatically without password prompts.
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.login.enableGnomeKeyring = true;
 }
