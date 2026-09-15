@@ -452,6 +452,14 @@ in
         settings = allowInternetLANInbound;
       };
 
+      github = {
+        name = "GitHub CLI";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-gh(-[^/]+)?/bin/.gh-wrapped$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       servo = {
         name = "Servo Browser";
         packages = [ pkgs.servo ];

@@ -28,5 +28,6 @@
     opencode-desktop
     gcc
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode
+    gh
   ];
 }
