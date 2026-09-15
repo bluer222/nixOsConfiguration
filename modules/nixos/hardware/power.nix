@@ -31,6 +31,10 @@
       #this means to auto switch unless the user sets a profile manually
       TLP_AUTO_SWITCH = 2;
 
+      TLP_PROFILE_AC="BAL";
+      TLP_PROFILE_BAT="SAV";
+
+
       # ========================================================================
       # CPU Scaling & Performance (Intel Raptor Lake i7-13620H)
       # ========================================================================
