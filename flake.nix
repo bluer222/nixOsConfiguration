@@ -15,6 +15,10 @@
     };
 
     affinity-nix.url = "github:mrshmllow/affinity-nix";
+    fusion-nix = {
+      url = "github:bluer222/fusion-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     comfyui-nix.url = "github:utensils/comfyui-nix";
     # Pin to cachix branch so binary cache hits; do not follow nixpkgs.
     noctalia.url = "github:noctalia-dev/noctalia/cachix";
@@ -37,7 +41,7 @@
   };
 
 
-  outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, affinity-nix, ... }@inputs: {
+  outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, affinity-nix, fusion-nix, ... }@inputs: {
     nixosConfigurations = {
       samm-desktop = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
@@ -47,6 +51,7 @@
               comfyui-nix.overlays.default
               noctalia.overlays.default
               affinity-nix.overlays.default
+              fusion-nix.overlays.default
               (import ./overlays/default.nix { inherit inputs nixpkgs; })
             ];
           })

@@ -12,6 +12,7 @@
     android-studio
     kicad
     blender
+    fusion360
     arduino-ide
     kdePackages.umbrello
     gnumake
