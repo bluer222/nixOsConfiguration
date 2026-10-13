@@ -3,6 +3,7 @@
 {
   imports = [
     ../../modules/home/niri/default.nix
+    ../../modules/home/t3code.nix
   ];
 
   home = {
