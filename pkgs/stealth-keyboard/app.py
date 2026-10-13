@@ -2,13 +2,20 @@
 """Native GTK controls for the Stealth 14 Studio keyboard."""
 
 import sys
+import math
+import time
 
 import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Gdk", "4.0")
-from gi.repository import Gdk, GLib, Gtk
+gi.require_version("Gsk", "4.0")
+gi.require_version("Graphene", "1.0")
+gi.require_version("Pango", "1.0")
+from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk, Pango
 
 import keyboard
+import effects
+import layout
 
 
 PRESETS = [("Warm white", "#FFDDB0"), ("White", "#FFFFFF"), ("Ice", "#72D8FF"),
@@ -19,14 +26,53 @@ window { background: #11151c; color: #e6edf6; }
 .title { font-size: 26px; font-weight: 700; }
 .muted { color: #9baabd; }
 .section { font-size: 16px; font-weight: 600; }
-.keyboard { background: #1b222d; padding: 16px; border-radius: 16px; }
+.keyboard { background: #1b222d; border-radius: 16px; }
 button { border-radius: 9px; padding: 7px 12px; }
-button.key { padding: 4px; min-width: 0; min-height: 34px; font-size: 11px; }
+button.key { padding: 0; min-width: 0; min-height: 0; font-size: 11px; }
+button.key label { color: inherit; }
 button.key:checked { outline: 2px solid #8bd5ff; outline-offset: -2px; }
 button.suggested-action { background: #8bd5ff; color: #10212f; font-weight: 600; }
 .error { color: #ff9f9f; }
 .success { color: #9ae6bb; }
 """
+
+
+class KeyboardBoard(Gtk.Fixed):
+    """Native accessible buttons transformed together at one common scale."""
+
+    def __init__(self, on_selection):
+        super().__init__(hexpand=True)
+        self.set_layout_manager(None)
+        self.add_css_class("keyboard")
+        self.buttons = {}
+        for key in layout.KEYS:
+            button = Gtk.ToggleButton(label=key.label)
+            button.add_css_class("key")
+            button.add_css_class(f"key-{key.code}")
+            button.get_child().set_ellipsize(Pango.EllipsizeMode.END)
+            button.set_tooltip_text("Fn: " + key.label.split("\n")[1] if "\n" in key.label else f"Select {key.label}")
+            button.connect("toggled", on_selection, key.code)
+            button.set_parent(self)
+            self.buttons[key.code] = button
+
+    def do_get_request_mode(self):
+        return Gtk.SizeRequestMode.HEIGHT_FOR_WIDTH
+
+    def do_measure(self, orientation, for_size):
+        if orientation == Gtk.Orientation.HORIZONTAL:
+            return 300, layout.NATURAL_WIDTH, -1, -1
+        width = for_size if for_size >= 0 else layout.NATURAL_WIDTH
+        height = math.ceil(width * layout.NATURAL_HEIGHT / layout.NATURAL_WIDTH)
+        return height, height, -1, -1
+
+    def do_size_allocate(self, width, height, baseline):
+        scale = min(width / layout.NATURAL_WIDTH, height / layout.NATURAL_HEIGHT)
+        for code, (x, y, w, h) in layout.rectangles(width, height).items():
+            button = self.buttons[code]
+            button.measure(Gtk.Orientation.HORIZONTAL, -1)
+            button.measure(Gtk.Orientation.VERTICAL, round(w / scale))
+            transform = Gsk.Transform.new().translate(Graphene.Point().init(x, y)).scale(scale, scale)
+            button.allocate(round(w / scale), round(h / scale), -1, transform)
 
 
 class KeyboardWindow(Gtk.ApplicationWindow):
@@ -36,13 +82,19 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         self.selected = set()
         self.buttons = {}
         self.loaded = False
+        self.animation_source = None
+        self.applied_profile = None
+        self.pending = False
+        self.connect("close-request", self.on_close)
         profile_error = None
         try:
-            self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms = keyboard.load_profile()
+            (self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms,
+             self.animation, self.period_ms) = keyboard.load_profile()
         except (OSError, ValueError, TypeError) as exc:
             self.colors = {code: "#FFDDB0" for code in keyboard.REPORT_KEYS}
             self.brightness, self.enabled = 70, True
             self.reactive, self.fade_ms = False, 750
+            self.animation, self.period_ms = "none", 3000
             profile_error = f"Could not load the saved profile: {exc}"
 
         self.provider = Gtk.CssProvider()
@@ -74,21 +126,9 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         instruction = Gtk.Label(label="Select keys, then choose a color. Clear the selection to color the whole keyboard.", xalign=0, wrap=True)
         instruction.add_css_class("muted")
         content.append(instruction)
-        board = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        board.add_css_class("keyboard")
-        for row in keyboard.ROWS:
-            box = Gtk.Box(spacing=5, homogeneous=False)
-            for label, code, width in row:
-                button = Gtk.ToggleButton(label=label, hexpand=True)
-                button.set_size_request(round(32 * width), 40)
-                button.add_css_class("key")
-                button.add_css_class(f"key-{code}")
-                button.set_tooltip_text(f"Select {label}")
-                button.connect("toggled", self.on_selection, code)
-                self.buttons[code] = button
-                box.append(button)
-            board.append(box)
-        content.append(board)
+        self.board = KeyboardBoard(self.on_selection)
+        self.buttons = self.board.buttons
+        content.append(self.board)
 
         selection = Gtk.Box(spacing=10)
         self.scope = Gtk.Label(label="Whole keyboard", xalign=0, hexpand=True)
@@ -152,6 +192,25 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         effect_row.append(Gtk.Label(label="ms"))
         content.append(effect_row)
 
+        timed_row = Gtk.Box(spacing=12)
+        timed_row.append(Gtk.Label(label="Timed effect"))
+        self.effect_control = Gtk.DropDown.new_from_strings(["None", "Rainbow wave", "Breathing"])
+        self.effect_control.set_selected(effects.NAMES.index(self.animation))
+        self.effect_control.set_hexpand(True)
+        self.effect_control.connect("notify::selected", self.on_animation)
+        timed_row.append(self.effect_control)
+        timed_row.append(Gtk.Label(label="Period"))
+        self.period_control = Gtk.SpinButton.new_with_range(0.5, 30, 0.5)
+        self.period_control.set_digits(1)
+        self.period_control.set_value(self.period_ms / 1000)
+        self.period_control.connect("value-changed", self.on_period)
+        timed_row.append(self.period_control)
+        timed_row.append(Gtk.Label(label="seconds"))
+        content.append(timed_row)
+        timed_note = Gtk.Label(label="Wave and breathing run while this app is open. Closing restores your base colors.", xalign=0, wrap=True)
+        timed_note.add_css_class("muted")
+        content.append(timed_note)
+
         footer = Gtk.Box(spacing=12)
         self.status = Gtk.Label(xalign=0, wrap=True, hexpand=True)
         self.status.add_css_class("muted")
@@ -166,6 +225,7 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         content.append(note)
 
         self.loaded = True
+        self.update_effect_controls()
         self.update_preview()
         if profile_error:
             self.message(profile_error, "error")
@@ -231,40 +291,112 @@ class KeyboardWindow(Gtk.ApplicationWindow):
 
     def on_reactive(self, button):
         self.reactive = button.get_active()
-        self.fade_control.set_sensitive(self.reactive)
+        self.update_effect_controls()
         self.mark_changed()
 
     def on_fade(self, control):
         self.fade_ms = control.get_value_as_int()
         self.mark_changed()
 
+    def on_animation(self, control, _):
+        self.animation = effects.NAMES[control.get_selected()]
+        self.update_effect_controls()
+        self.mark_changed()
+
+    def on_period(self, control):
+        self.period_ms = round(control.get_value() * 1000)
+        self.mark_changed()
+
+    def update_effect_controls(self):
+        timed = self.animation != "none"
+        self.reactive_check.set_sensitive(not timed)
+        self.fade_control.set_sensitive(self.reactive and not timed)
+        self.period_control.set_sensitive(timed)
+
     def mark_changed(self):
+        self.pending = True
         self.update_preview()
         self.message("Preview changed · press Apply to update the keyboard.")
 
-    def update_preview(self):
+    def update_preview(self, colors=None, brightness=None, enabled=None):
+        colors = effects.frame(self.colors, self.animation, 0) if colors is None else colors
+        brightness = self.brightness if brightness is None else brightness
+        enabled = self.enabled if enabled is None else enabled
         rules = []
         for code in self.buttons:
-            rgb = bytes.fromhex(self.colors[code][1:])
-            scale = self.brightness / 100 if self.enabled else 0
+            rgb = bytes.fromhex(colors[code][1:])
+            scale = brightness / 100 if enabled else 0
             rgb = tuple(round(channel * scale) for channel in rgb)
             background = "#" + "".join(f"{channel:02x}" for channel in rgb)
-            foreground = "#101722" if sum(c * w for c, w in zip(rgb, (0.2126, 0.7152, 0.0722))) > 135 else "#ffffff"
-            rules.append(f"button.key-{code} {{ background-image: none; background-color: {background}; color: {foreground}; border: 1px solid #526074; }}")
+            foreground = layout.text_color(rgb)
+            # A Pango foreground attribute keeps user theme label rules from
+            # replacing the contrast color on the key's child label.
+            key = layout.BY_CODE[code]
+            size = 5120 if "\n" in key.label else 8192
+            label = GLib.markup_escape_text(key.label)
+            markup = f'<span foreground="{foreground}" size="{size}" weight="bold">{label}</span>'
+            if self.buttons[code].get_child().get_label() != markup:
+                self.buttons[code].get_child().set_markup(markup)
+            rules.append(f"button.key-{code}, button.key-{code}:hover, button.key-{code}:checked, button.key-{code}:active {{ background-image: none; background-color: {background}; color: {foreground}; border: 1px solid #526074; }}")
         self.provider.load_from_data(CSS + "\n".join(rules).encode())
 
     def apply(self):
+        self.stop_animation()
         try:
-            keyboard.apply(self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms)
+            effects.validate(self.animation, self.period_ms)
+            if self.animation == "none" or not self.enabled or self.brightness == 0:
+                keyboard.apply(self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms)
+            else:
+                keyboard.apply(self.colors, self.brightness, self.enabled, False, self.fade_ms)
+                keyboard.stream(effects.frame(self.colors, self.animation, 0), self.brightness)
         except (OSError, ValueError) as exc:
             self.message(str(exc), "error")
             return
+        self.pending = False
+        self.applied_profile = (dict(self.colors), self.brightness, self.enabled, self.reactive,
+                                self.fade_ms, self.animation, self.period_ms)
+        if self.animation != "none" and self.enabled and self.brightness:
+            self.animation_start = time.monotonic()
+            # ponytail: stream the tested color report until onboard effect
+            # uploads have been checked against this model's Windows capture.
+            self.animation_source = GLib.timeout_add(50, self.animate)
         try:
-            keyboard.save_profile(self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms)
+            keyboard.save_profile(self.colors, self.brightness, self.enabled, self.reactive,
+                                  self.fade_ms, self.animation, self.period_ms)
         except OSError as exc:
             self.message(f"Lighting applied, but the profile could not be saved: {exc}", "error")
             return
-        self.message("Applied and saved." if self.enabled and self.brightness else "Lighting off · colors saved.", "success")
+        text = "Timed effect running · keep this app open." if self.animation_source else "Applied and saved."
+        self.message(text if self.enabled and self.brightness else "Lighting off · colors saved.", "success")
+
+    def animate(self):
+        colors, brightness, enabled, _, _, effect, period = self.applied_profile
+        phase = (time.monotonic() - self.animation_start) * 1000 / period
+        frame = effects.frame(colors, effect, phase)
+        try:
+            keyboard.stream(frame, brightness)
+        except OSError as exc:
+            self.animation_source = None
+            self.message(f"Timed effect stopped: {exc}", "error")
+            return GLib.SOURCE_REMOVE
+        if not self.pending:
+            self.update_preview(frame, brightness, enabled)
+        return GLib.SOURCE_CONTINUE
+
+    def stop_animation(self):
+        if self.animation_source is not None:
+            GLib.source_remove(self.animation_source)
+            self.animation_source = None
+
+    def on_close(self, _):
+        was_running = self.animation_source is not None
+        self.stop_animation()
+        if was_running and self.applied_profile:
+            try:
+                keyboard.apply(*self.applied_profile[:5])
+            except OSError as exc:
+                print(f"Could not restore base colors: {exc}", file=sys.stderr)
+        return False
 
 
 class App(Gtk.Application):
@@ -283,22 +415,46 @@ class App(Gtk.Application):
             window.paint("#123456")
             assert window.selected == {26, 4, 22, 7}
             assert all(window.colors[c] == "#123456" for c in window.selected)
+            assert 'foreground="#FFFFFF"' in window.buttons[4].get_child().get_label()
             window.clear_selection()
             window.paint("#FFFFFF")
             assert set(window.colors.values()) == {"#FFFFFF"}
             assert len(window.buttons) == 83
             window.slider.set_value(42)
             window.power.set_active(True)
+            window.effect_control.set_selected(0)
             window.reactive_check.set_active(True)
             window.fade_control.set_value(1200)
             with patch("keyboard.apply") as sent, patch("keyboard.save_profile") as saved:
                 window.apply()
                 sent.assert_called_once_with(window.colors, 42, True, True, 1200)
-                saved.assert_called_once_with(window.colors, 42, True, True, 1200)
+                saved.assert_called_once_with(window.colors, 42, True, True, 1200, "none", window.period_ms)
                 window.power.set_active(False)
                 window.apply()
                 assert sent.call_args.args[2] is False
-            print("GTK smoke check passed: key selection, colors, brightness, fade, off, apply, save.", flush=True)
+            window.power.set_active(True)
+            window.effect_control.set_selected(1)
+            window.period_control.set_value(4)
+            with patch("keyboard.stream") as streamed, patch("keyboard.apply") as restored, patch("keyboard.save_profile"):
+                window.apply()
+                assert window.animation_source is not None
+                window.animate()
+                assert streamed.call_count == 2
+                window.on_close(None)
+                assert restored.call_args.args == (window.colors, 42, True, True, 1200)
+                assert restored.call_args_list[0].args == (window.colors, 42, True, False, 1200)
+                assert window.animation_source is None
+            for factor in (1, 0.5):
+                width, height = round(layout.NATURAL_WIDTH * factor), round(layout.NATURAL_HEIGHT * factor)
+                window.board.measure(Gtk.Orientation.HORIZONTAL, -1)
+                window.board.measure(Gtk.Orientation.VERTICAL, width)
+                window.board.allocate(width, height, -1, None)
+                for code, expected in layout.rectangles(width, height).items():
+                    ok, bounds = window.buttons[code].compute_bounds(window.board)
+                    assert ok
+                    actual = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
+                    assert all(abs(a - e) < 1 for a, e in zip(actual, expected)), (code, actual, expected)
+            print("GTK smoke check passed: contrast, uniform resizing, selection, effects, apply, restore, save.", flush=True)
             GLib.timeout_add(150, lambda: self.quit())
 
 

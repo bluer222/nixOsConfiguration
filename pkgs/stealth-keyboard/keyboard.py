@@ -13,26 +13,9 @@ from pathlib import Path
 import re
 import time
 
+import effects
 
-# Labels use the US layout. HID usages remain the same on other layouts.
-ROWS = [
-    [("Esc", 41, 1)] + [(f"F{i + 1}", 58 + i, 1) for i in range(12)]
-    + [("Del", 76, 1), ("Power", 102, 1)],
-    [("`", 53, 1)] + [(str((i + 1) % 10), 30 + i, 1) for i in range(10)]
-    + [("−", 45, 1), ("=", 46, 1), ("Backspace", 42, 2), ("Ins", 73, 1)],
-    [("Tab", 43, 1.5)]
-    + [(label, code, 1) for label, code in zip("QWERTYUIOP", [20, 26, 8, 21, 23, 28, 24, 12, 18, 19])]
-    + [("[", 47, 1), ("]", 48, 1), ("\\", 49, 1.5), ("PgUp", 75, 1)],
-    [("Caps", 57, 1.75)]
-    + [(label, code, 1) for label, code in zip("ASDFGHJKL", [4, 22, 7, 9, 10, 11, 13, 14, 15])]
-    + [(";", 51, 1), ("'", 52, 1), ("Enter", 40, 2.25), ("PgDn", 78, 1)],
-    [("Shift", 225, 2)]
-    + [(label, code, 1) for label, code in zip("ZXCVBNM", [29, 27, 6, 25, 5, 17, 16])]
-    + [(",", 54, 1), (".", 55, 1), ("/", 56, 1), ("Shift", 229, 2), ("↑", 82, 1), ("End", 77, 1)],
-    [("Ctrl", 224, 1.5), ("Super", 227, 1.25), ("Alt", 226, 1.25), ("Space", 44, 6),
-     ("Alt", 230, 1), ("Fn", 240, 1), ("Ctrl", 228, 1), ("←", 80, 1), ("↓", 81, 1), ("→", 79, 1)],
-]
-VISIBLE_KEYS = {code for row in ROWS for _, code, _ in row}
+
 # Include all addresses from the successful whole-keyboard test, including
 # regional-layout keys which may not have a button in the US preview.
 KEY_GROUPS = [
@@ -128,26 +111,42 @@ def apply(colors, brightness, enabled=True, reactive=False, fade_ms=750):
     return device
 
 
+def stream(colors, brightness):
+    report = make_report(colors, brightness)
+    device = find_device()
+    fd = os.open(device, os.O_RDWR | os.O_CLOEXEC)
+    try:
+        request = (3 << 30) | (len(report) << 16) | (ord("H") << 8) | 6
+        if fcntl.ioctl(fd, request, report, True) != len(report):
+            raise OSError("The controller did not accept the animation frame.")
+    finally:
+        os.close(fd)
+
+
 def load_profile(path=CONFIG_PATH):
     try:
         data = json.loads(path.read_text())
     except FileNotFoundError:
-        return {code: "#FFFFFF" for code in REPORT_KEYS}, 100, True, True, 750
+        return {code: "#FFFFFF" for code in REPORT_KEYS}, 100, True, True, 750, "none", 3000
     if not isinstance(data, dict) or not isinstance(data.get("colors"), dict):
         raise ValueError("The saved keyboard profile is invalid.")
     colors = {int(code): color(value) for code, value in data["colors"].items()}
     brightness, enabled = data.get("brightness"), data.get("enabled")
     reactive, fade_ms = data.get("reactive", False), data.get("fade_ms", 750)
+    animation, period_ms = data.get("animation", "none"), data.get("period_ms", 3000)
     make_group_reports(colors, brightness, enabled, reactive, fade_ms)
-    return colors, brightness, enabled, reactive, fade_ms
+    effects.validate(animation, period_ms)
+    return colors, brightness, enabled, reactive, fade_ms, animation, period_ms
 
 
-def save_profile(colors, brightness, enabled, reactive=False, fade_ms=750, path=CONFIG_PATH):
+def save_profile(colors, brightness, enabled, reactive=False, fade_ms=750, animation="none", period_ms=3000, path=CONFIG_PATH):
     make_group_reports(colors, brightness, enabled, reactive, fade_ms)
+    effects.validate(animation, period_ms)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps({"colors": colors, "brightness": brightness, "enabled": enabled,
-                                     "reactive": reactive, "fade_ms": fade_ms}, indent=2) + "\n")
+                                     "reactive": reactive, "fade_ms": fade_ms,
+                                     "animation": animation, "period_ms": period_ms}, indent=2) + "\n")
     temporary.replace(path)
 
 

@@ -42,6 +42,9 @@
 
 
   outputs = { self, nixpkgs, home-manager, comfyui-nix, noctalia, niri, affinity-nix, fusion-nix, ... }@inputs: {
+    packages.x86_64-linux.stealth-keyboard =
+      nixpkgs.legacyPackages.x86_64-linux.callPackage ./pkgs/stealth-keyboard { };
+
     nixosConfigurations = {
       samm-desktop = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
