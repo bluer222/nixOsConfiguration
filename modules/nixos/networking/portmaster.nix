@@ -414,6 +414,14 @@ in
         settings = allowInternet;
       };
 
+      antigravity-acp = {
+        name = "Antigravity ACP (T3 Code)";
+        fingerprints = [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.t3/tools/antigravity-acp/[^/]+/versions/[^/]+/(agy_acp_server\\.par|localharness_external)$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       antigravity-ide = {
         name = "Antigravity IDE";
         packages = [ pkgs.antigravity-ide-fhs ];
