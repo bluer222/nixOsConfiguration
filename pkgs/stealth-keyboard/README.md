@@ -114,6 +114,17 @@ after the app exits is distinct from surviving a power loss or controller
 reset. If the laptop resets its lighting, open the app and Apply again.
 Automatic resume/reboot reapplication and GG profile readback are not included.
 
+For firmware research, the official
+[Engine 3.18.0 installer](https://engine.steelseriescdn.com/SteelSeriesEngine3.18.0Setup.exe)
+contains `firmware/272113716/firmware-klc-ge66-v237.bin`, identified by its
+manifest as GE66 KLC version 2.37.0.0. The extracted image is 36,864 bytes,
+SHA-256 `a4e2b6e6df657261e5f280756108d88971eedf4f9815baf653e99c019d30eee7`.
+Offline inspection confirms readable ARM Thumb startup code, image base
+`0x08003000`, initial stack pointer `0x20004000`, and Thumb reset entry
+`0x08003449`. These provide starting points for Cortex-M analysis in Ghidra.
+The exact Stealth 14 firmware, update compatibility, and recovery path remain
+unverified. The app's RAM effect uploads are separate from firmware updating.
+
 For backend checks, run `python3 -m unittest discover -s tests -v` from this
 directory. The packaged app's `--smoke-test` checks the GTK controls without
 writing to the keyboard.
