@@ -9,6 +9,7 @@
     ../../modules/nixos/hardware/gpu.nix
     ../../modules/nixos/hardware/kernel.nix
     ../../modules/nixos/hardware/power.nix
+    ../../modules/nixos/hardware/keyboard-rgb.nix
     ../../modules/nixos/hardware/virtualisation.nix
 
     # System core settings
