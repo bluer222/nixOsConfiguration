@@ -1,20 +1,21 @@
-"""Per-key lighting patterns rendered through the tested RAM color reports."""
+"""Colors for settings that continue running on the keyboard after Apply."""
 
 import colorsys
 import math
 import re
+import struct
 
 import layout
 
 
-MODES = ("static", "reactive", "breathing", "cycle", "wave", "gradient", "pulse", "blink", "twinkle", "scanner")
-LABELS = ("Static", "Keypress fade", "Breathing", "Color cycle", "Wave", "Gradient", "Pulse", "Blink", "Twinkle", "Scanner")
-TIMED = set(MODES) - {"static", "reactive", "gradient"}
+MODES = ("static", "reactive", "gradient", "cycle", "breathing", "wave")
+LABELS = ("Static", "Keypress fade", "Gradient", "Color cycle", "Breathing", "Wave")
+ANIMATED = {"cycle", "breathing", "wave"}
+MAX_PROGRAMS = 14
 DIRECTIONS = ("right", "left", "down", "up", "outward", "inward", "clockwise", "counterclockwise")
 DIRECTION_LABELS = ("Right", "Left", "Down", "Up", "Outward", "Inward", "Clockwise", "Counterclockwise")
-EASINGS = ("sine", "linear", "smooth", "in", "out")
-EASING_LABELS = ("Sine", "Linear", "Smooth", "Ease in", "Ease out")
 RAINBOW = ["#FF0000", "#FFAA00", "#FFFF00", "#00FF00", "#00FFFF", "#0055FF", "#AA00FF"]
+REMOVED_MODES = {"pulse", "blink", "twinkle", "scanner"}
 
 
 def color(value):
@@ -24,11 +25,9 @@ def color(value):
 
 
 def settings(mode="static"):
-    return {"mode": mode, "period_ms": 3000, "phase": 0, "delay_ms": 0, "cycles": 0,
-            "palette": [], "direction": "right", "spacing": 20 if mode == "scanner" else 100,
-            "origin_x": 50, "origin_y": 50, "minimum": 0, "maximum": 100,
-            "easing": "sine", "duty": 50, "fade_ms": 750, "hit_color": "#000000",
-            "restore_reactive": False}
+    return {"mode": mode, "palette": [], "direction": "right", "spacing": 100,
+            "phase": 0, "origin_x": 50, "origin_y": 50, "maximum": 100,
+            "fade_ms": 750, "hit_color": "#000000", "speed": 50, "minimum": 0}
 
 
 def normalize(value):
@@ -36,28 +35,28 @@ def normalize(value):
         raise ValueError("An effect must be an object.")
     result = settings()
     result.update({key: val for key, val in value.items() if key in result})
-    if result["mode"] not in MODES or result["direction"] not in DIRECTIONS or result["easing"] not in EASINGS:
-        raise ValueError("Unknown effect, direction, or easing curve.")
-    ranges = {"period_ms": (100, 120000), "phase": (0, 100), "delay_ms": (0, 60000),
-              "cycles": (0, 1000), "spacing": (5, 400), "origin_x": (0, 100), "origin_y": (0, 100),
-              "minimum": (0, 100), "maximum": (0, 100), "duty": (1, 99), "fade_ms": (50, 2000)}
-    for key, (low, high) in ranges.items():
+    if result["mode"] not in MODES:
+        raise ValueError("Choose a supported onboard effect.")
+    if result["direction"] not in DIRECTIONS:
+        raise ValueError("Unknown gradient direction.")
+    if result["mode"] == "wave" and result["direction"] not in DIRECTIONS[:6]:
+        raise ValueError("Onboard waves support horizontal, vertical, or radial directions.")
+    for key, (low, high) in {"spacing": (5, 400), "phase": (0, 100), "origin_x": (0, 100),
+                              "origin_y": (0, 100), "maximum": (0, 100), "fade_ms": (50, 2000), "speed": (1, 100), "minimum": (0, 100)}.items():
         val = result[key]
         if type(val) not in (int, float) or not math.isfinite(val) or not low <= val <= high:
             raise ValueError(f"{key} must be between {low} and {high}.")
-    for key in ("period_ms", "delay_ms", "cycles", "fade_ms"):
-        if result[key] != int(result[key]):
-            raise ValueError(f"{key} must be a whole number.")
-        result[key] = int(result[key])
-    if result["minimum"] > result["maximum"]:
-        raise ValueError("Minimum brightness cannot exceed maximum brightness.")
-    palette = result["palette"]
-    if not isinstance(palette, list) or len(palette) > 16:
-        raise ValueError("A palette can contain up to 16 colors.")
-    result["palette"] = [color(c) for c in palette]
+    for name in ("fade_ms", "speed"):
+        if result[name] != int(result[name]):
+            raise ValueError(f"{name} must be a whole number.")
+        result[name] = int(result[name])
+    if not isinstance(result["palette"], list) or len(result["palette"]) > 16:
+        raise ValueError("A gradient palette can contain up to 16 colors.")
+    limit = palette_limit(result["mode"])
+    if len(result["palette"]) > limit:
+        raise ValueError(f"This effect supports up to {limit} colors.")
+    result["palette"] = [color(c) for c in result["palette"]]
     result["hit_color"] = color(result["hit_color"])
-    if type(result["restore_reactive"]) is not bool:
-        raise ValueError("Restore keypress fade must be true or false.")
     return result
 
 
@@ -70,33 +69,16 @@ def rgb(value):
 
 
 def hex_rgb(channels):
-    # Keep mathematical half steps stable across floating-point easing curves.
     return "#" + "".join(f"{max(0, min(255, round(c + 1e-9))):02X}" for c in channels)
 
 
-def mix(first, second, amount):
-    return tuple(a + (b - a) * amount for a, b in zip(first, second))
-
-
-def palette_color(palette, phase, base=None):
+def palette_color(palette, phase):
     if not palette:
-        return base if base is not None else tuple(c * 255 for c in colorsys.hsv_to_rgb(phase % 1, 1, 1))
+        return tuple(c * 255 for c in colorsys.hsv_to_rgb(phase % 1, 1, 1))
     position = ((phase % 1) * len(palette)) % len(palette)
     index = math.floor(position)
-    return mix(rgb(palette[index]), rgb(palette[(index + 1) % len(palette)]), position - index)
-
-
-def ease(value, curve):
-    value = max(0, min(1, value))
-    if curve == "sine":
-        return (1 - math.cos(math.pi * value)) / 2
-    if curve == "smooth":
-        return value * value * (3 - 2 * value)
-    if curve == "in":
-        return value * value
-    if curve == "out":
-        return 1 - (1 - value) ** 2
-    return value
+    fraction = position - index
+    return tuple(a + (b - a) * fraction for a, b in zip(rgb(palette[index]), rgb(palette[(index + 1) % len(palette)])))
 
 
 def position(code, spec):
@@ -116,92 +98,94 @@ def position(code, spec):
     return angle if direction == "clockwise" else -angle
 
 
-def one(code, base, spec, elapsed, preview_hit=None):
-    mode = spec["mode"]
-    base_rgb = rgb(base)
-    maximum = spec["maximum"] / 100
-    if mode == "reactive" and preview_hit is not None:
-        progress = max(0, min(1, (elapsed - preview_hit) * 1000 / spec["fade_ms"]))
-        return hex_rgb(c * maximum for c in mix(rgb(spec["hit_color"]), base_rgb, progress))
-    if mode in ("static", "reactive"):
-        return hex_rgb(c * maximum for c in base_rgb)
-    time = elapsed - spec["delay_ms"] / 1000
-    if mode in TIMED and (time < 0 or spec["cycles"] and time >= spec["cycles"] * spec["period_ms"] / 1000):
-        return hex_rgb(c * maximum for c in base_rgb)
-    phase = ((time * 1000 / spec["period_ms"] if mode in TIMED else 0) + spec["phase"] / 100) % 1
-    palette = spec["palette"]
-    intensity = 1
-    channels = palette_color(palette, phase, base_rgb)
-    if mode in ("wave", "gradient"):
-        offset = position(code, spec) * 100 / spec["spacing"] - phase
-        channels = palette_color(palette, offset)
-    elif mode == "cycle":
-        channels = palette_color(palette, phase)
-    elif mode == "breathing":
-        intensity = ease(abs(2 * phase - 1), spec["easing"])
-    elif mode == "pulse":
-        duty = spec["duty"] / 100
-        intensity = ease(1 - abs(2 * phase / duty - 1), spec["easing"]) if phase < duty else 0
-    elif mode == "blink":
-        intensity = float(phase < spec["duty"] / 100)
-    elif mode == "twinkle":
-        offset = ((code * 2654435761) % 1000) / 1000
-        intensity = max(0, math.cos(2 * math.pi * (phase + offset))) ** 4
-        channels = palette_color(palette, phase + offset, base_rgb)
-    elif mode == "scanner":
-        center = ease(1 - abs(2 * phase - 1), spec["easing"])
-        distance = abs(position(code, spec) - center)
-        intensity = max(0, 1 - distance / (spec["spacing"] / 100))
-    minimum = spec["minimum"] / 100
-    scale = minimum + (maximum - minimum) * intensity
-    return hex_rgb(c * scale for c in channels)
-
-
-def render(profile, elapsed, hits=None):
-    hits = hits or {}
-    return {code: one(code, base, resolved(profile, code), elapsed, hits.get(code))
-            for code, base in profile["colors"].items()}
-
-
 def base_frame(profile):
     output = {}
     for code, base in profile["colors"].items():
         spec = resolved(profile, code)
         if spec["mode"] == "gradient":
-            output[code] = one(code, base, spec, 0)
+            channels = palette_color(spec["palette"], position(code, spec) * 100 / spec["spacing"] - spec["phase"] / 100)
+        elif spec["mode"] in ANIMATED:
+            initial = struct.unpack_from("<HHH", program(code, dict(profile, brightness=100)), 128)
+            output[code] = hex_rgb(c / 16 for c in initial)
+            continue
         else:
-            output[code] = hex_rgb(c * spec["maximum"] / 100 for c in rgb(base))
+            channels = rgb(base)
+        output[code] = hex_rgb(c * spec["maximum"] / 100 for c in channels)
     return output
 
 
-def timed_codes(profile):
-    return {code for code in profile["colors"] if resolved(profile, code)["mode"] in TIMED}
-
-
-def active_codes(profile, elapsed):
-    return {code for code in timed_codes(profile)
-            if not (spec := resolved(profile, code))["cycles"]
-            or elapsed < (spec["delay_ms"] + spec["period_ms"] * spec["cycles"]) / 1000}
-
-
-def running(profile, elapsed):
-    return bool(active_codes(profile, elapsed))
-
-
-def reactive_configs(profile, restoring=False):
+def reactive_configs(profile):
     return {code: {"fade_ms": spec["fade_ms"],
                    "hit_color": hex_rgb(c * spec["maximum"] / 100 for c in rgb(spec["hit_color"]))}
-            for code in profile["colors"] if (spec := resolved(profile, code))["mode"] == "reactive"
-            or restoring and spec["mode"] in TIMED and spec["restore_reactive"]}
+            for code in profile["colors"] if (spec := resolved(profile, code))["mode"] == "reactive"}
 
 
-# Retain the simple renderer for CLI users of the first package version.
-def validate(effect, period_ms):
-    if effect not in ("none", "wave", "breathing") or type(period_ms) is not int or not 500 <= period_ms <= 30000:
-        raise ValueError("Choose a known effect and a period from 0.5 to 30 seconds.")
+def palette_limit(mode):
+    return 7 if mode == "breathing" else 14 if mode in ANIMATED else 16
 
 
-def frame(colors, effect, phase):
-    validate(effect, 3000)
-    spec = settings("static" if effect == "none" else effect)
-    return render({"colors": colors, "effect": spec, "key_effects": {}}, phase * 3)
+def program(code, profile):
+    """Build the 151-byte onboard ramp program, using fixed-point channel deltas."""
+    spec = resolved(profile, code)
+    palette = spec["palette"] or ([profile["colors"][code]] if spec["mode"] == "breathing" else RAINBOW)
+    scale = profile["brightness"] * spec["maximum"] / 10000
+    colors = [tuple(round(c * scale) for c in rgb(value)) for value in palette]
+    ticks = round(10000 / spec["speed"])
+    points = []
+    for i, first in enumerate(colors):
+        if spec["mode"] == "breathing":
+            low = tuple(round(c * spec["minimum"] / 100) for c in first)
+            points.extend([(first, low), (low, colors[(i + 1) % len(colors)])])
+        else:
+            points.append((first, colors[(i + 1) % len(colors)]))
+    duration = max(33, ticks // len(points))
+    sections = [(first, final, duration) for first, final in points]
+    # Shift the start within a ramp. One split section keeps the loop continuous.
+    shift = round(spec["phase"] / 100 * duration * len(sections)) % (duration * len(sections))
+    index, offset = divmod(shift, duration)
+    if offset:
+        first, final, length = sections[index]
+        initial = tuple(round(a + (b - a) * offset / length) for a, b in zip(first, final))
+        sections = [(initial, final, length - offset)] + sections[index + 1:] + sections[:index] + [(first, initial, offset)]
+    else:
+        sections = sections[index:] + sections[:index]
+    data = bytearray(151)
+    for i, (first, final, length) in enumerate(sections):
+        # Firmware's signed channel step is fixed-point /16, at most 127 per tick.
+        length = max(33, length)
+        delta = [int((b - a) * 16 / length) & 255 for a, b in zip(first, final)]
+        data[8*i:8*i+8] = bytes(delta + [0]) + struct.pack("<HBB", length, (i + 1) % len(sections), 0)
+    direction = spec["direction"]
+    wave = spec["mode"] == "wave"
+    x_scale = int(wave and direction not in ("up", "down"))
+    y_scale = int(wave and direction not in ("left", "right"))
+    # The firmware uses its own physical key-position table for propagation.
+    data[128:] = struct.pack("<HHHBBHHHHHHHB", *(c * 16 for c in sections[0][0]), 255, 0,
+                            0, 0,
+                            x_scale, y_scale, round(spec["spacing"]) if wave else 0,
+                            len(sections), sum(max(33, s[2]) for s in sections),
+                            int(direction in ("left", "up", "inward", "counterclockwise")))
+    return bytes(data)
+
+
+def onboard_programs(profile):
+    programs, assigned = [], {}
+    if not profile["enabled"] or not profile["brightness"]:
+        return programs, assigned
+    slots = {}
+    for code in profile["colors"]:
+        if resolved(profile, code)["mode"] not in ANIMATED:
+            continue
+        data = program(code, profile)
+        if data not in slots:
+            if len(slots) == MAX_PROGRAMS:
+                raise ValueError("The keyboard supports 14 different animated settings at once. Share settings between keys or groups.")
+            slots[data] = len(slots)
+            report = bytearray(525)
+            # Direct KLC command, verified on this Stealth 14. The older nested
+            # [0,12,0,11,...] header did not upload a program on this controller.
+            report[:5] = bytes([0, 11, 0, slots[data], 0])
+            report[5:156] = data
+            programs.append(report)
+        assigned[code] = slots[data]
+    return programs, assigned

@@ -1,6 +1,6 @@
 import copy
-import json
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,219 +11,194 @@ import keyboard
 import profiles
 
 
-class StudioEffectsTests(unittest.TestCase):
+class OnboardTests(unittest.TestCase):
     def setUp(self):
         self.profile = profiles.default()
 
-    def test_custom_palette_interpolates_and_wraps(self):
-        palette = ["#FF0000", "#0000FF"]
-        self.assertEqual(effects.hex_rgb(effects.palette_color(palette, 0)), "#FF0000")
-        self.assertEqual(effects.hex_rgb(effects.palette_color(palette, 0.25)), "#800080")
-        self.assertEqual(effects.hex_rgb(effects.palette_color(palette, 0.5)), "#0000FF")
-        self.assertEqual(effects.hex_rgb(effects.palette_color(palette, 1)), "#FF0000")
+    def test_cycle_matches_hardware_verified_vector_and_direct_upload(self):
+        self.profile['key_effects'][26] = dict(effects.settings('cycle'), palette=['#FF0000', '#00FF00'], speed=100)
+        data = effects.program(26, self.profile)
+        self.assertEqual(data[:16], bytes([175, 81, 0, 0, 50, 0, 1, 0, 81, 175, 0, 0, 50, 0, 0, 0]))
+        self.assertEqual(data[16:128], bytes(112))
+        self.assertEqual(data[128:136], struct.pack('<HHHBB', 4080, 0, 0, 255, 0))
+        self.assertEqual(data[146:151], bytes([2, 0, 100, 0, 0]))
+        reports, assigned = effects.onboard_programs(self.profile)
+        self.assertEqual(assigned, {26: 0})
+        self.assertEqual(reports[0][:5], bytes([0, 11, 0, 0, 0]))
+        self.assertEqual(reports[0][5:156], data)
+        self.assertEqual(reports[0][156:], bytes(369))
 
-    def test_keys_have_independent_periods_phases_and_modes(self):
-        self.profile["effect"] = effects.settings("static")
-        fast = effects.settings("breathing")
-        fast["period_ms"] = 1000
-        slow = copy.deepcopy(fast)
-        slow["period_ms"] = 2000
-        self.profile["key_effects"] = {4: fast, 26: slow}
-        colors = effects.render(self.profile, 0.5)
-        self.assertEqual(colors[4], "#000000")
-        self.assertEqual(colors[26], "#808080")
-        self.assertEqual(colors[44], "#FFFFFF")
-        self.profile["key_effects"][26] = dict(fast, phase=50)
-        self.assertEqual(effects.render(self.profile, 0)[26], "#000000")
+    def test_breathing_matches_hardware_verified_vector_and_adjustable_floor(self):
+        self.profile['colors'][4] = '#0000FF'
+        self.profile['key_effects'][4] = dict(effects.settings('breathing'), speed=100)
+        data = effects.program(4, self.profile)
+        self.assertEqual(data[:16], bytes([0, 0, 175, 0, 50, 0, 1, 0, 0, 0, 81, 0, 50, 0, 0, 0]))
+        self.assertEqual(data[128:136], struct.pack('<HHHBB', 0, 0, 4080, 255, 0))
+        self.profile['key_effects'][4]['minimum'] = 50
+        data = effects.program(4, self.profile)
+        self.assertEqual((data[2], data[10]), ((-40) & 255, 40))
 
-    def test_start_delay_repeat_count_and_restoration(self):
-        spec = effects.settings("breathing")
-        spec.update(period_ms=1000, delay_ms=500, cycles=2)
-        self.profile["effect"] = spec
-        self.assertEqual(effects.render(self.profile, 0.1)[4], "#FFFFFF")
-        self.assertEqual(effects.render(self.profile, 1)[4], "#000000")
-        self.assertTrue(effects.running(self.profile, 2.49))
-        self.assertFalse(effects.running(self.profile, 2.5))
-        self.assertEqual(effects.render(self.profile, 2.5)[4], "#FFFFFF")
+    def test_wave_program_uses_onboard_spatial_propagation(self):
+        self.profile['effect'] = effects.settings('wave')
+        self.assertEqual(effects.program(26, self.profile)[140:146], struct.pack('<HHH', 1, 0, 100))
+        self.profile['effect']['direction'] = 'up'
+        data = effects.program(26, self.profile)
+        self.assertEqual(data[140:146], struct.pack('<HHH', 0, 1, 100))
+        self.assertEqual(data[150], 1)
+        reports, assigned = effects.onboard_programs(self.profile)
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(set(assigned), set(keyboard.REPORT_KEYS))
 
-    def test_native_hit_color_preview_and_independent_fade(self):
-        self.profile["key_effects"][4] = dict(effects.settings("reactive"), hit_color="#FF0000", fade_ms=1000)
-        self.assertEqual(effects.render(self.profile, 1, {4: 1})[4], "#FF0000")
-        self.assertEqual(effects.render(self.profile, 1.5, {4: 1})[4], "#FF8080")
-        self.assertEqual(effects.render(self.profile, 2, {4: 1})[4], "#FFFFFF")
-        self.assertEqual(effects.render(self.profile, 1, {4: 1})[26], "#FFFFFF")
+    def test_shared_settings_reuse_slots_and_independent_speeds_get_separate_slots(self):
+        profiles.set_effect(self.profile, dict(effects.settings('cycle'), palette=['#FF0000', '#00FF00']), {4, 26})
+        reports, assigned = effects.onboard_programs(self.profile)
+        self.assertEqual(len(reports), 1)
+        self.assertEqual(assigned[4], assigned[26])
+        self.profile['key_effects'][26]['speed'] = 20
+        reports, assigned = effects.onboard_programs(self.profile)
+        self.assertEqual(len(reports), 2)
+        self.assertNotEqual(assigned[4], assigned[26])
 
-    def test_directions_reverse_axes_and_use_origin(self):
-        spec = effects.settings("wave")
-        self.assertAlmostEqual(effects.position(4, spec) + effects.position(4, dict(spec, direction="left")), 1)
-        self.assertAlmostEqual(effects.position(4, dict(spec, direction="down"))
-                               + effects.position(4, dict(spec, direction="up")), 1)
-        radial = dict(spec, direction="outward")
-        self.assertNotEqual(effects.position(4, radial), effects.position(4, dict(radial, origin_x=0)))
+    def test_slot_capacity_is_checked_before_hardware_access(self):
+        self.profile['effect'] = dict(effects.settings('cycle'), palette=['#FF0000', '#00FF00'])
+        for i, code in enumerate(keyboard.REPORT_KEYS[:15]):
+            self.profile['key_effects'][code] = dict(self.profile['effect'], speed=i+1)
+        with patch('keyboard.os.open') as opened:
+            with self.assertRaisesRegex(ValueError, '14 different'):
+                controller.apply(self.profile)
+            opened.assert_not_called()
 
-    def test_every_mode_produces_bounded_colors_without_changing_profile(self):
-        for mode in effects.MODES:
-            for direction in effects.DIRECTIONS:
-                self.profile["effect"] = effects.settings(mode)
-                self.profile["effect"].update(direction=direction, palette=["#00FF00", "#FF0000"], minimum=10, maximum=80)
-                original = copy.deepcopy(self.profile)
-                for elapsed in (0, 0.1, 1.5, 3, 100):
-                    colors = effects.render(self.profile, elapsed)
-                    self.assertEqual(set(colors), set(keyboard.REPORT_KEYS))
-                    for value in colors.values():
-                        self.assertEqual(value, effects.color(value))
-                self.assertEqual(self.profile, original)
+    def test_phase_changes_initial_state_and_preserves_a_closed_loop(self):
+        self.profile['key_effects'][26] = dict(effects.settings('cycle'), palette=['#FF0000', '#0000FF'], phase=25, speed=100)
+        data = effects.program(26, self.profile)
+        self.assertEqual(struct.unpack_from('<HHH', data, 128), (128*16, 0, 128*16))
+        count = struct.unpack_from('<H', data, 146)[0]
+        self.assertEqual(count, 3)
+        self.assertEqual(data[(count-1)*8+6], 0)
+        self.assertEqual(effects.base_frame(self.profile)[26], '#800080')
 
-    def test_bad_settings_are_rejected(self):
-        for change in ({"mode": "bogus"}, {"period_ms": float("nan")}, {"phase": True},
-                       {"cycles": 1.5}, {"palette": ["#FFFFFF"] * 17}, {"palette": ["invalid"]},
-                       {"minimum": 90, "maximum": 50}, {"direction": "sideways"}, {"restore_reactive": "yes"}):
+    def test_brightness_is_baked_into_palette(self):
+        self.profile['brightness'] = 50
+        self.profile['key_effects'][26] = dict(effects.settings('cycle'), palette=['#FF0000', '#00FF00'], maximum=50)
+        self.assertEqual(struct.unpack_from('<HHH', effects.program(26, self.profile), 128), (64*16, 0, 0))
+        self.profile['enabled'] = False
+        self.assertEqual(effects.onboard_programs(self.profile), ([], {}))
+
+    def test_program_tables_are_bounded_at_all_palette_limits(self):
+        for mode in effects.ANIMATED:
+            for phase in (0, 1, 25, 50, 99, 100):
+                for speed in (1, 50, 100):
+                    self.profile['effect'] = dict(effects.settings(mode), phase=phase, speed=speed,
+                                                palette=(effects.RAINBOW*2)[:effects.palette_limit(mode)])
+                    before = copy.deepcopy(self.profile)
+                    data = effects.program(4, self.profile)
+                    self.assertEqual(len(data), 151)
+                    count = struct.unpack_from('<H', data, 146)[0]
+                    self.assertLessEqual(count, 16)
+                    for i in range(count):
+                        self.assertGreaterEqual(struct.unpack_from('<H', data, i*8+4)[0], 33)
+                        self.assertLess(data[i*8+6], count)
+                    self.assertEqual(before, self.profile)
+
+    def test_invalid_effects_and_palette_overflows_are_rejected(self):
+        for change in ({'mode': 'scanner'}, {'speed': float('nan')}, {'speed': True}, {'speed': 0},
+                       {'phase': True}, {'palette': ['invalid']},
+                       {'mode': 'breathing', 'palette': ['#FFFFFF']*8}, {'mode': 'wave', 'direction': 'clockwise'}):
             with self.assertRaises(ValueError):
                 effects.normalize(dict(effects.settings(), **change))
 
+    def test_static_gradient_is_a_one_time_color_frame(self):
+        self.profile['effect'] = dict(effects.settings('gradient'), palette=['#FF0000', '#0000FF'])
+        self.assertNotEqual(effects.base_frame(self.profile)[4], effects.base_frame(self.profile)[79])
+        self.assertEqual(effects.onboard_programs(self.profile), ([], {}))
 
-class StudioProfileTests(unittest.TestCase):
-    def test_migration_preserves_colors_brightness_and_native_restore(self):
-        legacy = {"colors": {str(c): "#123456" for c in keyboard.REPORT_KEYS}, "brightness": 42,
-                  "enabled": True, "reactive": True, "fade_ms": 1200, "animation": "wave", "period_ms": 4500}
-        profile = profiles.validate(legacy)
-        self.assertEqual(profile["effect"]["mode"], "wave")
-        self.assertEqual(profile["effect"]["period_ms"], 4500)
-        self.assertEqual(profile["effect"]["fade_ms"], 1200)
-        self.assertTrue(profile["effect"]["restore_reactive"])
-        self.assertEqual(set(profile["colors"].values()), {"#123456"})
-        self.assertEqual(profile["brightness"], 42)
+    def test_one_shot_apply_sends_programs_then_groups_then_commit_and_closes(self):
+        profiles.set_effect(self.profile, dict(effects.settings('cycle'), palette=['#FF0000', '#00FF00'], speed=100), {26})
+        before = copy.deepcopy(self.profile)
+        with patch('keyboard.find_device', return_value=Path('/dev/hidraw0')), \
+             patch('keyboard.os.open', return_value=123), patch('keyboard.os.close') as closed, \
+             patch('keyboard.fcntl.ioctl', side_effect=lambda fd, req, report, mutate: len(report)) as sent, \
+             patch('keyboard.os.write', return_value=64) as commit, patch('keyboard.time.sleep'):
+            controller.apply(self.profile)
+            frames = [call.args[2] for call in sent.call_args_list]
+            self.assertEqual(len(frames), 8)
+            self.assertEqual(frames[0][:5], bytes([0, 11, 0, 0, 0]))
+            self.assertTrue(all(frame[1] == 14 for frame in frames[1:]))
+            entries = {r[16+i*12]: r[5+i*12:17+i*12] for r in frames[1:] for i in range(r[3])}
+            self.assertEqual(entries[26][8:10], bytes([0, 0]))
+            self.assertEqual(entries[4][9], 8)
+            commit.assert_called_once_with(123, bytes([0, 13, 0, 2])+bytes(60))
+            closed.assert_called_once_with(123)
+        self.assertEqual(self.profile, before)
+        self.assertFalse(hasattr(keyboard, 'stream'))
+        self.assertFalse(hasattr(controller, 'run'))
 
-    def test_roundtrip_preserves_per_key_options_and_background_preference(self):
+    def test_invalid_effect_uploads_are_rejected_before_opening_device(self):
+        with patch('keyboard.os.open') as opened:
+            for report in (bytes(524), bytes([0, 9, 0, 0, 0])+bytes(520), bytes([0, 11, 0, 14, 0])+bytes(520)):
+                with self.assertRaises(ValueError):
+                    keyboard.apply(self.profile['colors'], 100, effect_reports=[report])
+            with self.assertRaises(ValueError):
+                keyboard.apply(self.profile['colors'], 100, key_effects={26: 14})
+            with self.assertRaises(ValueError):
+                controller.apply(dict(self.profile, brightness=101))
+            opened.assert_not_called()
+
+
+class NativeProfilesTests(unittest.TestCase):
+    def test_old_profiles_migrate_to_native_effects_and_drop_background_flags(self):
         profile = profiles.default()
-        profiles.set_effect(profile, dict(effects.settings("wave"), palette=["#FF0000", "#0000FF"], phase=25, cycles=4), {4, 26})
-        profile["keep_running"] = True
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "profile.json"
+        profile.update(version=3, keep_running=True)
+        profile['effect'] = dict(effects.settings('wave'), period_ms=4500, cycles=2, delay_ms=500, restore_reactive=True)
+        profile['colors'][4] = '#123456'
+        profile['key_effects'][4] = dict(effects.settings(), mode='scanner', restore_reactive=True)
+        result = profiles.validate(profile)
+        self.assertEqual(result['version'], 4)
+        self.assertEqual(result['effect']['mode'], 'wave')
+        self.assertEqual(result['effect']['speed'], 7)
+        self.assertEqual(result['key_effects'][4]['mode'], 'reactive')
+        self.assertEqual(result['colors'][4], '#123456')
+        self.assertNotIn('keep_running', result)
+        self.assertNotIn('cycles', result['effect'])
+        self.assertNotIn('delay_ms', result['effect'])
+
+    def test_malformed_legacy_periods_are_rejected_cleanly(self):
+        for period in (0, 'fast', True, float('nan')):
+            profile = profiles.default()
+            profile['version'] = 3
+            profile['effect'] = dict(effects.settings('wave'), period_ms=period)
+            with self.assertRaises(ValueError):
+                profiles.validate(profile)
+
+    def test_native_profile_roundtrip_and_failed_save_preserve_data(self):
+        profile = profiles.default()
+        profiles.set_effect(profile, dict(effects.settings('cycle'), palette=['#FF0000', '#0000FF'], phase=25, speed=75), {4, 26})
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'profile.json'
             profiles.save(profile, path)
             self.assertEqual(profiles.load(path), profile)
-            self.assertEqual(list(Path(directory).glob(".profile-*")), [])
+            self.assertEqual(list(Path(folder).glob('.profile-*')), [])
+            before = path.read_bytes()
+            with self.assertRaises(ValueError):
+                profiles.save(dict(profile, brightness=-1), path)
+            self.assertEqual(path.read_bytes(), before)
 
     def test_invalid_imports_and_large_files(self):
-        for change in ({"brightness": True}, {"enabled": "yes"}, {"version": 99},
-                       {"key_effects": {999: effects.settings()}}, {"key_effects": {4.5: effects.settings()}},
-                       {"key_effects": {True: effects.settings()}}, {"colors": {}}):
+        for change in ({'brightness': True}, {'enabled': 'yes'}, {'version': 99}, {'key_effects': {999: effects.settings()}},
+                       {'key_effects': {4.5: effects.settings()}}, {'key_effects': {True: effects.settings()}}, {'colors': {}}):
             with self.assertRaises(ValueError):
                 profiles.validate(dict(profiles.default(), **change))
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "large.json"
-            path.write_bytes(b"x" * (profiles.MAX_BYTES + 1))
-            with self.assertRaisesRegex(ValueError, "too large"):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/'large.json'
+            path.write_bytes(b'x'*(profiles.MAX_BYTES+1))
+            with self.assertRaisesRegex(ValueError, 'too large'):
                 profiles.load(path)
 
-    def test_invalid_save_does_not_replace_existing_profile(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "profile.json"
-            profiles.save(profiles.default(), path)
-            original = path.read_bytes()
-            with self.assertRaises(ValueError):
-                profiles.save(dict(profiles.default(), brightness=-1), path)
-            self.assertEqual(path.read_bytes(), original)
-
     def test_profile_names_cannot_escape_library(self):
-        for name in ("../escape", "/etc/file", "a/b", "", "..", "x" * 65):
+        for name in ('../escape', '/etc/file', 'a/b', '', '..', 'x'*65):
             with self.assertRaises(ValueError):
                 profiles.named_path(name)
-        self.assertEqual(profiles.named_path("Game night", Path("/tmp/library")), Path("/tmp/library/Game night.json"))
 
 
-class StudioControllerTests(unittest.TestCase):
-    def setUp(self):
-        self.directory = tempfile.TemporaryDirectory()
-        self.addCleanup(self.directory.cleanup)
-        self.lock = Path(self.directory.name) / "controller.lock"
-
-    def test_partial_reports_do_not_address_unselected_keys(self):
-        report = keyboard.make_report({4: "#FF0000", 26: "#00FF00"}, 100, partial=True)
-        self.assertEqual(report[:5], bytes([0, 12, 0, 2, 0]))
-        self.assertEqual(report[5:13], bytes([4, 255, 0, 0, 26, 0, 255, 0]))
-        self.assertTrue(all(report[5 + i * 4] == 255 for i in range(2, 130)))
-        with self.assertRaises(ValueError):
-            keyboard.make_report({999: "#FFFFFF"}, 100, partial=True)
-
-    def test_per_key_native_packet_encodes_color_and_duration(self):
-        colors = {c: "#FFFFFF" for c in keyboard.REPORT_KEYS}
-        reports = keyboard.make_group_reports(colors, 50, key_reactive={4: {"hit_color": "#FF0000", "fade_ms": 1200}})
-        entries = {report[16 + i * 12]: report[5 + i * 12:17 + i * 12]
-                   for report in reports for i in range(report[3])}
-        self.assertEqual(entries[4], bytes([128, 128, 128, 128, 0, 0, 176, 4, 0, 8, 0, 4]))
-        self.assertEqual(entries[26][9], 1)
-
-    def test_mixed_timed_and_native_keys_then_stop(self):
-        profile = profiles.default()
-        profiles.set_effect(profile, effects.settings("breathing"), {4, 26})
-        ctl = controller.Controller(self.lock)
-        with patch("keyboard.apply") as native, patch("keyboard.stream") as stream:
-            ctl.apply(profile)
-            self.assertEqual(set(native.call_args.kwargs["key_reactive"]), set(keyboard.REPORT_KEYS) - {4, 26})
-            ctl.tick(1.5)
-            self.assertEqual(set(stream.call_args.args[0]), {4, 26})
-            self.assertEqual(set(stream.call_args.args[0].values()), {"#000000"})
-            ctl.stop()
-            self.assertFalse(ctl.codes)
-            self.assertEqual(native.call_count, 2)
-
-    def test_finite_animation_restores_native_fallback(self):
-        profile = profiles.default()
-        profile["effect"] = dict(effects.settings("breathing"), cycles=1, period_ms=1000, restore_reactive=True)
-        ctl = controller.Controller(self.lock)
-        with patch("keyboard.apply") as native, patch("keyboard.stream"):
-            ctl.apply(profile)
-            self.assertFalse(native.call_args.kwargs["key_reactive"])
-            self.assertFalse(ctl.tick(1))
-            self.assertEqual(set(native.call_args.kwargs["key_reactive"]), set(keyboard.REPORT_KEYS))
-
-    def test_invalid_profile_never_touches_hardware(self):
-        with patch("keyboard.apply") as native, patch("keyboard.stream") as stream:
-            with self.assertRaises(ValueError):
-                controller.Controller(self.lock).apply(dict(profiles.default(), brightness=101))
-            native.assert_not_called()
-            stream.assert_not_called()
-
-    def test_completed_key_restores_reactivity_while_other_keys_keep_running(self):
-        profile = profiles.default()
-        profile["key_effects"][4] = dict(effects.settings("breathing"), cycles=1, period_ms=1000, restore_reactive=True)
-        profile["key_effects"][26] = effects.settings("wave")
-        ctl = controller.Controller(self.lock)
-        with patch("keyboard.apply") as native, patch("keyboard.stream") as stream:
-            ctl.apply(profile)
-            self.assertTrue(ctl.tick(1))
-            self.assertEqual(ctl.codes, {26})
-            self.assertIn(4, native.call_args.kwargs["key_reactive"])
-            self.assertNotIn(26, native.call_args.kwargs["key_reactive"])
-            self.assertEqual(set(stream.call_args.args[0]), {26})
-            ctl.stop()
-
-    def test_applied_profile_is_a_snapshot(self):
-        profile = profiles.default()
-        profile["effect"] = effects.settings("wave")
-        ctl = controller.Controller(self.lock)
-        with patch("keyboard.apply"), patch("keyboard.stream"):
-            ctl.apply(profile)
-            profile["effect"]["direction"] = "left"
-            profile["colors"][4] = "#FF0000"
-            self.assertEqual(ctl.profile["effect"]["direction"], "right")
-            self.assertEqual(ctl.profile["colors"][4], "#FFFFFF")
-            ctl.stop()
-
-    def test_second_controller_cannot_overwrite_active_effects(self):
-        profile = profiles.default()
-        profile["effect"] = effects.settings("wave")
-        first, second = controller.Controller(self.lock), controller.Controller(self.lock)
-        with patch("keyboard.apply") as native, patch("keyboard.stream"):
-            first.apply(profile)
-            with self.assertRaisesRegex(OSError, "Another"):
-                second.apply(profile)
-            self.assertEqual(native.call_count, 1)
-            first.stop()
-            second.apply(profile)
-            second.stop()
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()

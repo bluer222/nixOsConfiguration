@@ -1,6 +1,5 @@
 import unittest
 
-import effects
 import layout
 
 
@@ -42,30 +41,6 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual(layout.text_color((0, 0, 0)), "#FFFFFF")
         self.assertEqual(layout.text_color((255, 255, 255)), "#000000")
         self.assertEqual(layout.text_color((0, 255, 255)), "#000000")
-
-
-class EffectTests(unittest.TestCase):
-    def setUp(self):
-        self.colors = {4: "#FFFFFF", 44: "#123456", 79: "#FF0000"}
-
-    def test_breathing_preserves_palette_and_repeats(self):
-        self.assertEqual(effects.frame(self.colors, "breathing", 0), self.colors)
-        self.assertEqual(set(effects.frame(self.colors, "breathing", 0.5).values()), {"#000000"})
-        self.assertEqual(effects.frame(self.colors, "breathing", 1), self.colors)
-        self.assertEqual(effects.frame(self.colors, "breathing", 0.25)[44], "#091A2B")
-
-    def test_wave_moves_and_repeats_without_changing_base_colors(self):
-        original = dict(self.colors)
-        frame = effects.frame(self.colors, "wave", 0)
-        self.assertNotEqual(frame[4], frame[79])
-        self.assertNotEqual(frame, effects.frame(self.colors, "wave", 0.25))
-        self.assertEqual(frame, effects.frame(self.colors, "wave", 1))
-        self.assertEqual(original, self.colors)
-
-    def test_validate_period_and_effect(self):
-        for mode, period in [("unknown", 3000), ("wave", 0), ("wave", 30001), ("breathing", True)]:
-            with self.assertRaises(ValueError):
-                effects.validate(mode, period)
 
 
 if __name__ == "__main__":

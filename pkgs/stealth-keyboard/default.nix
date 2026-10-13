@@ -5,14 +5,14 @@ let
   desktop = makeDesktopItem {
     name = "stealth-keyboard";
     desktopName = "Stealth Keyboard";
-    comment = "Per-key colors, keypress fades, and timed keyboard effects";
+    comment = "Per-key colors and onboard keyboard effects";
     exec = "stealth-keyboard";
     icon = "input-keyboard";
     categories = [ "Settings" "HardwareSettings" ];
   };
 in stdenvNoCC.mkDerivation {
   pname = "stealth-keyboard";
-  version = "0.3.0";
+  version = "0.4.0";
   src = ./.;
   nativeBuildInputs = [ gobject-introspection wrapGAppsHook4 makeWrapper ];
   buildInputs = [ gtk4 ];

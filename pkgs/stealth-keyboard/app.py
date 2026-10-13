@@ -6,7 +6,6 @@ import copy
 import argparse
 from pathlib import Path
 import math
-import time
 
 import gi
 gi.require_version("Gtk", "4.0")
@@ -97,11 +96,7 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         self.selected = set()
         self.selecting = False
         self.updating = True
-        self.pending = False
         self.editor_error = False
-        self.ctl = controller.Controller()
-        self.preview_started = time.monotonic()
-        self.preview_hits = {}
         self.preview_style = None
         error = None
         try:
@@ -127,7 +122,7 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         title = Gtk.Label(label="Stealth Keyboard", xalign=0)
         title.add_css_class("title")
         titles.append(title)
-        sub = Gtk.Label(label="SteelSeries RGB · per-key lighting studio", xalign=0)
+        sub = Gtk.Label(label="SteelSeries RGB · onboard lighting controls", xalign=0)
         sub.add_css_class("muted")
         titles.append(sub)
         header.append(titles)
@@ -192,19 +187,19 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         editor.append(self.effect_info)
 
         timing = WrappingRow()
-        self.add_spin(timing, "Period", "period_ms", 0.1, 120, 0.1, factor=1000, digits=1, suffix="s")
-        self.add_spin(timing, "Phase", "phase", 0, 100, 1, suffix="%")
-        self.add_spin(timing, "Fade back", "fade_ms", 50, 2000, 50, suffix="ms")
+        self.speed_group = self.add_spin(timing, "Speed", "speed", 1, 100, 1, suffix="%")
+        self.add_spin(timing, "Start phase", "phase", 0, 100, 1, suffix="%")
+        self.timing_row = timing
         editor.append(timing)
 
-        native = Gtk.Box(spacing=10)
-        native.append(Gtk.Label(label="Keypress color"))
+        native = WrappingRow()
+        self.add_spin(native, "Fade back", "fade_ms", 50, 2000, 50, suffix="ms")
+        hit = Gtk.Box(spacing=8)
+        hit.append(Gtk.Label(label="Keypress color"))
         self.hit_picker = Gtk.ColorButton(title="Color on keypress", use_alpha=False)
         self.hit_picker.connect("color-set", lambda picker: self.edit("hit_color", self.picker_color(picker)))
-        native.append(self.hit_picker)
-        self.preview_hit_button = self.add_button(native, "Preview keypress", self.preview_press)
-        self.native_note = Gtk.Label(xalign=0, hexpand=True, wrap=True)
-        native.append(self.native_note)
+        hit.append(self.hit_picker)
+        native.append(hit)
         self.native_row = native
         editor.append(native)
 
@@ -223,51 +218,25 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         spatial.append(Gtk.Label(label="Direction"))
         direction = Gtk.DropDown.new_from_strings(effects.DIRECTION_LABELS)
         direction.set_hexpand(True)
-        direction.connect("notify::selected", lambda control, _: self.edit("direction", effects.DIRECTIONS[control.get_selected()]))
+        direction.connect("notify::selected", lambda control, _: self.edit("direction", effects.DIRECTIONS[control.get_selected()])
+                          if not self.updating and control.get_selected() < len(effects.DIRECTIONS) else None)
         self.controls["direction"] = direction
         spatial.append(direction)
-        self.add_spin(spatial, "Spacing / width", "spacing", 5, 400, 5, suffix="%")
+        self.add_spin(spatial, "Spacing", "spacing", 5, 400, 5, suffix="%")
         self.spatial_row = spatial
         editor.append(spatial)
 
-        advanced = Gtk.Expander(label="Timing, brightness, and origin")
-        advanced_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        start = WrappingRow()
-        self.add_spin(start, "Start delay", "delay_ms", 0, 60, 0.1, factor=1000, digits=1, suffix="s")
-        self.add_spin(start, "Repeat", "cycles", 0, 1000, 1)
-        start.append(Gtk.Label(label="0 repeats forever", xalign=0, hexpand=True))
-        advanced_box.append(start)
-        restore = Gtk.CheckButton(label="Restore keypress fade when timed effects stop")
-        restore.connect("toggled", lambda control: self.edit("restore_reactive", control.get_active()))
-        self.controls["restore_reactive"] = restore
-        advanced_box.append(restore)
-        brightness = WrappingRow()
-        self.add_spin(brightness, "Minimum", "minimum", 0, 100, 1, suffix="%")
-        self.add_spin(brightness, "Maximum", "maximum", 0, 100, 1, suffix="%")
-        self.add_spin(brightness, "On time", "duty", 1, 99, 1, suffix="%")
-        advanced_box.append(brightness)
-        curve = WrappingRow()
-        curve_choice = Gtk.Box(spacing=8)
-        curve_choice.append(Gtk.Label(label="Fade curve"))
-        easing = Gtk.DropDown.new_from_strings(effects.EASING_LABELS)
-        easing.set_hexpand(True)
-        easing.connect("notify::selected", lambda control, _: self.edit("easing", effects.EASINGS[control.get_selected()]))
-        self.controls["easing"] = easing
-        curve_choice.append(easing)
-        curve.append(curve_choice)
-        self.add_spin(curve, "Origin X", "origin_x", 0, 100, 1, suffix="%")
-        self.add_spin(curve, "Y", "origin_y", 0, 100, 1, suffix="%")
-        advanced_box.append(curve)
-        stagger = Gtk.Box(spacing=10)
-        stagger.append(Gtk.Label(label="Stagger selected keys"))
-        self.stagger_control = Gtk.SpinButton.new_with_range(0, 100, 5)
-        self.stagger_control.set_value(15)
-        stagger.append(self.stagger_control)
-        stagger.append(Gtk.Label(label="% per key"))
-        self.stagger_button = self.add_button(stagger, "Set phase offsets", self.stagger)
-        advanced_box.append(stagger)
-        advanced.set_child(advanced_box)
-        editor.append(advanced)
+        origin = WrappingRow()
+        self.add_spin(origin, "Origin X", "origin_x", 0, 100, 1, suffix="%")
+        self.add_spin(origin, "Origin Y", "origin_y", 0, 100, 1, suffix="%")
+        self.origin_row = origin
+        editor.append(origin)
+
+        key_level = WrappingRow()
+        self.add_spin(key_level, "Per-key brightness", "maximum", 0, 100, 1, suffix="%")
+        self.minimum_group = self.add_spin(key_level, "Dimmest level", "minimum", 0, 100, 1, suffix="% of peak")
+        self.key_level_row = key_level
+        editor.append(key_level)
         content.append(editor)
 
         global_row = Gtk.Box(spacing=12)
@@ -281,15 +250,6 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         self.level = Gtk.Label(label=f'{self.profile["brightness"]}%', width_chars=4)
         global_row.append(self.level)
         content.append(global_row)
-        preview_row = WrappingRow()
-        self.preview_check = Gtk.CheckButton(label="Animate preview", active=True)
-        preview_row.append(self.preview_check)
-        self.add_button(preview_row, "Restart preview", self.restart_preview)
-        self.keep_running = Gtk.CheckButton(label="Keep effects running when window closes", active=self.profile["keep_running"])
-        self.keep_running.connect("toggled", self.on_keep_running)
-        preview_row.append(self.keep_running)
-        content.append(preview_row)
-
         library = Gtk.Expander(label="Saved profiles and import / export")
         library_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
         saved_row = Gtk.Box(spacing=10)
@@ -312,20 +272,18 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         footer = Gtk.Box(spacing=10)
         self.status = Gtk.Label(xalign=0, wrap=True, hexpand=True)
         footer.append(self.status)
-        self.stop_button = self.add_button(footer, "Stop timed effects", self.stop_effects)
-        self.stop_button.set_sensitive(False)
         apply = self.add_button(footer, "Apply to keyboard", self.apply)
         apply.add_css_class("suggested-action")
         for side in ("top", "bottom", "start", "end"):
             getattr(footer, f"set_margin_{side}")(16 if side in ("top", "bottom") else 24)
         root.append(footer)
-        note = Gtk.Label(label="Previewing and loading profiles leave your keyboard unchanged until Apply. Timed effects use this app; keypress fade runs on the keyboard.", xalign=0, wrap=True)
+        note = Gtk.Label(label="Apply programs the keyboard once. All effects keep working after this app closes. Up to 14 different animated settings can run together.", xalign=0, wrap=True)
         note.add_css_class("muted")
         content.append(note)
         self.updating = False
         self.refresh_library()
         self.load_editor()
-        self.update_preview(0)
+        self.update_preview()
         if error:
             self.message(error, "error")
         else:
@@ -333,7 +291,6 @@ class KeyboardWindow(Gtk.ApplicationWindow):
                 self.message(f"Connected · {keyboard.find_device().name}. Preview ready to apply.")
             except OSError as exc:
                 self.message(str(exc), "error")
-        self.timer = GLib.timeout_add(50, self.tick)
 
     @staticmethod
     def add_button(box, text, callback):
@@ -365,6 +322,7 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         if suffix:
             group.append(Gtk.Label(label=suffix))
         box.append(group)
+        return group
 
     def message(self, text, style=None):
         self.status.set_label(text)
@@ -406,8 +364,8 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         spec = self.first_spec()
         self.editor_error = False
         self.controls["mode"].set_selected(effects.MODES.index(spec["mode"]))
+        self.controls["direction"].set_model(Gtk.StringList.new(effects.DIRECTION_LABELS[:6] if spec["mode"] == "wave" else effects.DIRECTION_LABELS))
         self.controls["direction"].set_selected(effects.DIRECTIONS.index(spec["direction"]))
-        self.controls["easing"].set_selected(effects.EASINGS.index(spec["easing"]))
         for name, control in self.controls.items():
             if isinstance(control, Gtk.SpinButton):
                 control.set_value(spec[name] / control._effect_factor)
@@ -427,34 +385,23 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         self.updating = False
 
     def update_sensitivity(self, mode):
-        timed = mode in effects.TIMED
-        spatial = mode in ("wave", "gradient", "scanner")
-        native = mode == "reactive" or timed and self.first_spec()["restore_reactive"]
-        self.controls["period_ms"].set_sensitive(timed)
-        self.controls["phase"].set_sensitive(timed or spatial)
-        self.controls["fade_ms"].set_sensitive(native)
-        self.native_row.set_visible(native)
-        self.preview_hit_button.set_sensitive(mode == "reactive")
-        self.native_note.set_label("The keyboard handles this effect itself." if mode == "reactive"
-                                  else "Keypress fade to restore when timed effects stop.")
-        self.palette_title.set_visible(mode not in ("reactive", "static"))
-        self.palette_box.set_visible(mode not in ("reactive", "static"))
-        self.spatial_row.set_visible(spatial)
-        for name in ("delay_ms", "cycles"):
-            self.controls[name].set_sensitive(timed)
-        self.controls["restore_reactive"].set_sensitive(timed)
-        for name in ("origin_x", "origin_y"):
-            self.controls[name].set_sensitive(spatial)
-        self.controls["minimum"].set_sensitive(timed)
-        self.controls["duty"].set_sensitive(mode in ("pulse", "blink"))
-        self.controls["easing"].set_sensitive(mode in ("breathing", "pulse", "scanner"))
-        self.stagger_button.set_sensitive(len(self.selected) > 1 and (timed or spatial))
-        notes = {"static": "Selected keys hold their base color.",
-                 "reactive": "Each key reacts independently, using its own hit color and fade duration.",
-                 "gradient": "A stationary palette spread across the selected keys.",
-                 "wave": "Empty palette uses a rainbow. Direction, origin, phase, and spacing shape the wave.",
-                 "scanner": "A moving band. Spacing controls its width; direction and origin control its path."}
-        self.effect_info.set_label(notes.get(mode, "Empty palette uses each key's base color, or a rainbow for color cycle. Timing can differ per key."))
+        self.native_row.set_visible(mode == "reactive")
+        self.timing_row.set_visible(mode in effects.ANIMATED or mode == "gradient")
+        self.controls["speed"].set_sensitive(mode in effects.ANIMATED)
+        self.controls["minimum"].set_sensitive(mode == "breathing")
+        self.speed_group.set_visible(mode in effects.ANIMATED)
+        self.minimum_group.set_visible(mode == "breathing")
+        self.palette_title.set_visible(mode in effects.ANIMATED or mode == "gradient")
+        self.palette_box.set_visible(mode in effects.ANIMATED or mode == "gradient")
+        self.spatial_row.set_visible(mode in ("gradient", "wave"))
+        self.origin_row.set_visible(mode == "gradient")
+        notes = {"static": "Selected keys hold their base color after the app closes.",
+                 "reactive": "Each key reacts on the keyboard itself, using its own hit color and fade duration.",
+                 "gradient": "A stationary palette written once to the keyboard.",
+                 "cycle": "The keyboard loops through this palette itself. Empty palette uses a rainbow.",
+                 "breathing": "The keyboard fades between each palette color and its dimmest level. Empty palette uses base colors.",
+                 "wave": "The keyboard runs this wave itself. Empty palette uses a rainbow."}
+        self.effect_info.set_label(notes[mode])
 
     def edit(self, name, value):
         if self.updating:
@@ -462,13 +409,9 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         changes = []
         for code in self.selected or (None,):
             spec = copy.deepcopy(effects.resolved(self.profile, code) if code is not None else self.profile["effect"])
-            if name == "mode" and spec["mode"] == "reactive" and value in effects.TIMED:
-                spec["restore_reactive"] = True
             spec[name] = value
-            if name == "minimum":
-                spec["maximum"] = max(value, spec["maximum"])
-            elif name == "maximum":
-                spec["minimum"] = min(value, spec["minimum"])
+            if name == "mode" and value == "wave" and spec["direction"] not in effects.DIRECTIONS[:6]:
+                spec["direction"] = "outward"
             try:
                 spec = effects.normalize(spec)
             except ValueError as exc:
@@ -482,7 +425,7 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             else:
                 self.profile["key_effects"][code] = spec
         self.editor_error = False
-        if name in ("mode", "palette", "hit_color", "restore_reactive", "minimum", "maximum"):
+        if name in ("mode", "palette", "hit_color", "maximum"):
             self.load_editor()
         self.changed()
 
@@ -498,16 +441,6 @@ class KeyboardWindow(Gtk.ApplicationWindow):
     def reset_overrides(self):
         for code in self.selected or set(self.profile["key_effects"]):
             self.profile["key_effects"].pop(code, None)
-        self.load_editor()
-        self.changed()
-
-    def stagger(self):
-        step = self.stagger_control.get_value()
-        start = self.first_spec()["phase"]
-        for i, code in enumerate(self.ordered_selection()):
-            spec = copy.deepcopy(effects.resolved(self.profile, code))
-            spec["phase"] = (start + i * step) % 100
-            self.profile["key_effects"][code] = spec
         self.load_editor()
         self.changed()
 
@@ -551,26 +484,14 @@ class KeyboardWindow(Gtk.ApplicationWindow):
 
     def add_palette_color(self):
         palette = list(self.first_spec()["palette"])
-        if len(palette) >= 16:
-            self.message("The palette already has 16 colors.", "error")
+        limit = effects.palette_limit(self.first_spec()["mode"])
+        if len(palette) >= limit:
+            self.message(f"This effect supports up to {limit} colors.", "error")
             return
         self.edit("palette", palette + [self.picker_color(self.picker)])
 
-    def preview_press(self):
-        elapsed = time.monotonic() - self.preview_started
-        for code in self.selected or self.profile["colors"]:
-            if effects.resolved(self.profile, code)["mode"] == "reactive":
-                self.preview_hits[code] = elapsed
-        self.update_preview(elapsed)
-
-    def restart_preview(self):
-        self.preview_started = time.monotonic()
-        self.preview_hits.clear()
-        self.update_preview(0)
-
     def changed(self):
-        self.pending = True
-        self.update_preview(time.monotonic() - self.preview_started)
+        self.update_preview()
         self.message("Preview changed · Apply updates the keyboard.")
 
     def on_power(self, control, _):
@@ -584,13 +505,8 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             self.level.set_label(f'{self.profile["brightness"]}%')
             self.changed()
 
-    def on_keep_running(self, control):
-        if not self.updating:
-            self.profile["keep_running"] = control.get_active()
-            self.changed()
-
-    def update_preview(self, elapsed):
-        colors = effects.render(self.profile, elapsed, self.preview_hits)
+    def update_preview(self):
+        colors = effects.base_frame(self.profile)
         scale = self.profile["brightness"] / 100 if self.profile["enabled"] else 0
         rules = []
         for code, button in self.buttons.items():
@@ -606,25 +522,12 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             spec = effects.resolved(self.profile, code)
             override = code in self.profile["key_effects"]
             border = "#c89bff" if override else "#526074"
-            button.set_tooltip_text(f'{key.label.replace(chr(10), " / ")} · {effects.LABELS[effects.MODES.index(spec["mode"])]}\nPeriod {spec["period_ms"] / 1000:g}s · phase {spec["phase"]:g}% · ' + ("custom effect" if override else "default effect"))
+            button.set_tooltip_text(f'{key.label.replace(chr(10), " / ")} · {effects.LABELS[effects.MODES.index(spec["mode"])]}\n' + ("custom effect" if override else "default effect"))
             rules.append(f"button.key-{code}, button.key-{code}:hover, button.key-{code}:checked, button.key-{code}:active {{ background-image: none; background-color: {background}; color: {foreground}; border: 1px solid {border}; }}")
         style = CSS + "\n".join(rules).encode()
         if style != self.preview_style:
             self.provider.load_from_data(style)
             self.preview_style = style
-
-    def tick(self):
-        if self.ctl.codes:
-            try:
-                if not self.ctl.tick():
-                    self.message("Timed effects completed · base colors restored.", "success")
-            except OSError as exc:
-                self.ctl.stop(restore=False)
-                self.message(f"Timed effects stopped: {exc}", "error")
-        self.stop_button.set_sensitive(bool(self.ctl.codes))
-        if self.get_visible() and self.preview_check.get_active():
-            self.update_preview(time.monotonic() - self.preview_started)
-        return GLib.SOURCE_CONTINUE
 
     def apply(self):
         if self.editor_error:
@@ -632,29 +535,16 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             return
         try:
             self.profile = profiles.validate(self.profile)
-            self.ctl.apply(self.profile)
+            controller.apply(self.profile)
         except (OSError, ValueError) as exc:
             self.message(str(exc), "error")
             return
-        self.pending = False
-        self.preview_started = self.ctl.started
-        self.preview_hits.clear()
         try:
             profiles.save(self.profile)
         except OSError as exc:
             self.message(f"Applied, but could not save the profile: {exc}", "error")
             return
-        count = len(self.ctl.codes)
-        self.stop_button.set_sensitive(bool(count))
-        self.message(f"Applied and saved · {count} keys animating." if count else "Applied and saved.", "success")
-
-    def stop_effects(self):
-        try:
-            self.ctl.stop()
-            self.message("Timed effects stopped · base colors restored.", "success")
-        except OSError as exc:
-            self.message(str(exc), "error")
-        self.stop_button.set_sensitive(False)
+        self.message("Applied and saved · lighting continues after you close the app.", "success")
 
     def refresh_library(self):
         self.saved_names = profiles.names()
@@ -699,10 +589,8 @@ class KeyboardWindow(Gtk.ApplicationWindow):
         self.power.set_active(self.profile["enabled"])
         self.slider.set_value(self.profile["brightness"])
         self.level.set_label(f'{self.profile["brightness"]}%')
-        self.keep_running.set_active(self.profile["keep_running"])
         self.updating = False
         self.select_keys(set())
-        self.restart_preview()
         self.changed()
 
     def choose_file(self, exporting):
@@ -737,20 +625,10 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             self.file_chooser = None
 
     def on_close(self, _):
-        if self.profile["keep_running"] and self.ctl.codes:
-            self.hide()
-            return True
         self.quit()
         return True
 
     def quit(self):
-        if self.timer:
-            GLib.source_remove(self.timer)
-            self.timer = None
-        try:
-            self.ctl.stop()
-        except OSError as exc:
-            print(f"Could not restore base colors: {exc}", file=sys.stderr)
         self.get_application().quit()
 
 
@@ -769,43 +647,39 @@ class App(Gtk.Application):
         if self.smoke and not getattr(self, "smoke_started", False):
             self.smoke_started = True
             from unittest.mock import patch
-            import os
             import tempfile
-            window.ctl = controller.Controller(Path(tempfile.gettempdir()) / f"stealth-keyboard-test-{os.getpid()}.lock")
-            with patch("keyboard.apply") as sent, patch("keyboard.stream") as streamed, patch("profiles.save"):
+            with patch("keyboard.apply") as sent, patch("profiles.save"):
                 window.load_draft(profiles.default())
                 window.select_keys({26, 4, 22, 7})
                 window.paint("#123456")
                 assert all(window.profile["colors"][c] == "#123456" for c in window.selected)
                 assert 'foreground="#FFFFFF"' in window.buttons[4].get_child().get_label()
-                window.controls["mode"].set_selected(effects.MODES.index("breathing"))
-                window.controls["period_ms"].set_value(1)
-                window.controls["phase"].set_value(25)
-                window.edit("palette", ["#FF0000", "#0000FF"])
-                assert window.palette_title.get_visible()
-                window.stagger()
-                assert len({window.profile["key_effects"][c]["phase"] for c in window.selected}) == 4
+                window.edit("fade_ms", 1200)
+                window.edit("hit_color", "#0000FF")
                 window.apply()
-                assert window.ctl.codes == {26, 4, 22, 7}
-                assert set(streamed.call_args.args[0]) == window.ctl.codes
-                assert set(sent.call_args.kwargs["key_reactive"]) == set(keyboard.REPORT_KEYS) - window.ctl.codes
-                window.stop_effects()
-                assert not window.ctl.codes
+                assert all(sent.call_args.kwargs["key_reactive"][c] == {"fade_ms": 1200, "hit_color": "#0000FF"} for c in window.selected)
                 window.reset_overrides()
                 assert not window.profile["key_effects"]
+                window.select_keys({26, 4})
+                window.edit("mode", "cycle")
+                window.edit("palette", ["#FF0000", "#00FF00"])
+                window.edit("speed", 100)
+                window.apply()
+                assert len(sent.call_args.kwargs["effect_reports"]) == 1
+                assert set(sent.call_args.kwargs["key_effects"]) == {26, 4}
+                window.edit("mode", "breathing")
+                window.edit("minimum", 10)
+                window.apply()
+                assert sent.call_args.kwargs["effect_reports"][0][1] == 11
+                window.edit("mode", "wave")
+                window.controls["direction"].set_selected(1)
+                window.apply()
+                assert sent.call_args.kwargs["effect_reports"][0][155] == 1
+                assert not hasattr(window, "timer")
                 window.load_draft(profiles.default())
-                window.controls["mode"].set_selected(effects.MODES.index("wave"))
+                window.controls["mode"].set_selected(effects.MODES.index("gradient"))
                 window.controls["direction"].set_selected(4)
                 window.controls["spacing"].set_value(50)
-                def expand_all(widget):
-                    if isinstance(widget, Gtk.Expander):
-                        widget.set_expanded(True)
-                    child = widget.get_first_child()
-                    while child:
-                        expand_all(child)
-                        child = child.get_next_sibling()
-                expand_all(window.get_child())
-                assert window.get_child().measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= 650
                 window.add_palette_color()
                 window.palette_color(0, "#00FF00")
                 window.remove_palette_color(0)
@@ -820,13 +694,7 @@ class App(Gtk.Application):
                         assert ok
                         actual = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
                         assert all(abs(a - e) < 1 for a, e in zip(actual, expected)), (code, actual, expected)
-                window.profile["keep_running"] = True
-                window.apply()
-                assert window.on_close(window)
-                assert not window.get_visible() and window.ctl.codes
-                self.do_activate()
-                assert self.get_windows() == [window] and window.get_visible()
-                window.stop_effects()
+                assert window.get_child().measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= 650
             with tempfile.TemporaryDirectory() as directory:
                 original_names, original_path = profiles.names, profiles.named_path
                 with patch("profiles.names", lambda: original_names(Path(directory))), \
@@ -841,18 +709,18 @@ class App(Gtk.Application):
                     window.saved_control.set_selected(1)
                     window.delete_named()
                     assert not list(Path(directory).glob("*.json"))
-            print("GTK smoke check passed: per-key editing, palettes, mixed native/timed effects, phase offsets, restore, contrast, resizing.", flush=True)
+            print("GTK smoke check passed: onboard cycle/breathing/wave, native per-key fades, palettes, profiles, contrast, resizing; no recurring timer.", flush=True)
             GLib.timeout_add(150, lambda: window.quit())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stealth Keyboard lighting controls")
     parser.add_argument("--smoke-test", action="store_true")
     parser.add_argument("--profile", type=Path, help="Load a lighting profile")
-    parser.add_argument("--headless", action="store_true", help="Apply a profile without opening the editor")
+    parser.add_argument("--headless", action="store_true", help="Apply once and exit, without opening the editor")
     args = parser.parse_args()
     if args.headless:
         try:
-            controller.run(profiles.load(args.profile) if args.profile else profiles.current())
+            controller.apply(profiles.load(args.profile) if args.profile else profiles.current())
         except (OSError, ValueError) as exc:
             parser.exit(1, f"{exc}\n")
     else:

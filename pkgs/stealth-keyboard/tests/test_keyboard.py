@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import keyboard
+import profiles
 
 
 class KeyboardTests(unittest.TestCase):
@@ -38,25 +39,29 @@ class KeyboardTests(unittest.TestCase):
     def test_profile_roundtrip_and_reject_incomplete_profile(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "profile.json"
-            keyboard.save_profile(self.colors, 42, False, True, 1200, "wave", 4500, path)
-            self.assertEqual(keyboard.load_profile(path), (self.colors, 42, False, True, 1200, "wave", 4500))
+            profile = profiles.default()
+            profile.update(colors=self.colors, brightness=42, enabled=False)
+            profiles.save(profile, path)
+            self.assertEqual(profiles.load(path), profile)
             path.write_text(json.dumps({"colors": {}, "brightness": 70, "enabled": True}))
             with self.assertRaises(ValueError):
-                keyboard.load_profile(path)
+                profiles.load(path)
 
     def test_previous_profile_loads_without_timed_effect(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "profile.json"
             path.write_text(json.dumps({"colors": self.colors, "brightness": 70, "enabled": True,
                                         "reactive": True, "fade_ms": 750}))
-            self.assertEqual(keyboard.load_profile(path)[5:], ("none", 3000))
+            profile = profiles.load(path)
+            self.assertEqual(profile["effect"]["mode"], "reactive")
+            self.assertEqual(profile["effect"]["fade_ms"], 750)
 
-    def test_stream_uses_one_ram_report_and_closes_on_error(self):
+    def test_native_apply_closes_device_on_error(self):
         with patch("keyboard.find_device", return_value=Path("/dev/hidraw0")), \
              patch("keyboard.os.open", return_value=123), patch("keyboard.os.close") as closed, \
              patch("keyboard.fcntl.ioctl", side_effect=OSError("disconnected")), patch("keyboard.os.write") as written:
             with self.assertRaises(OSError):
-                keyboard.stream(self.colors, 70)
+                keyboard.apply(self.colors, 70)
             closed.assert_called_once_with(123)
             written.assert_not_called()
 
