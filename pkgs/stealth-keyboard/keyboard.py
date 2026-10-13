@@ -49,29 +49,36 @@ def find_device(sysfs=Path("/sys/class/hidraw"), devices=Path("/dev")):
     raise FileNotFoundError("The SteelSeries KLC keyboard is not connected.")
 
 
-def make_report(colors, brightness, enabled=True):
+def make_report(colors, brightness, enabled=True, partial=False):
     if type(brightness) is not int or not 0 <= brightness <= 100:
         raise ValueError("Brightness must be between 0 and 100.")
     if type(enabled) is not bool:
         raise ValueError("Lighting must be on or off.")
-    if set(colors) != set(REPORT_KEYS):
+    if not colors or not set(colors) <= set(REPORT_KEYS) or not partial and set(colors) != set(REPORT_KEYS):
         raise ValueError("The profile must contain every keyboard key.")
     report = bytearray(525)
     # The leading zero is the HID report ID; the 524-byte payload follows.
-    report[1:5] = bytes([0x0C, 0, len(REPORT_KEYS), 0])
+    report[1:5] = bytes([0x0C, 0, len(colors), 0])
     for i in range(130):
         report[5 + 4 * i] = 0xFF
     scale = brightness / 100 if enabled else 0
-    for i, code in enumerate(REPORT_KEYS):
+    for i, code in enumerate(sorted(colors)):
         rgb = bytes.fromhex(color(colors[code])[1:])
         report[5 + 4 * i:9 + 4 * i] = bytes([code, *(round(channel * scale) for channel in rgb)])
     return report
 
 
-def make_group_reports(colors, brightness, enabled=True, reactive=False, fade_ms=750):
+def make_group_reports(colors, brightness, enabled=True, reactive=False, fade_ms=750, key_reactive=None):
     make_report(colors, brightness, enabled)
     if type(reactive) is not bool or type(fade_ms) is not int or not 50 <= fade_ms <= 2000:
         raise ValueError("Fade time must be between 50 and 2000 ms.")
+    key_reactive = key_reactive or {}
+    if not isinstance(key_reactive, dict) or not set(key_reactive) <= set(REPORT_KEYS):
+        raise ValueError("Unknown reactive key.")
+    for entry in key_reactive.values():
+        if not isinstance(entry, dict) or type(entry.get("fade_ms")) is not int or not 50 <= entry["fade_ms"] <= 2000:
+            raise ValueError("Invalid per-key fade time.")
+        color(entry.get("hit_color"))
     reports = []
     scale = brightness / 100 if enabled else 0
     # Each entry contains base RGB, hit RGB, fade time, effect index, mask,
@@ -83,15 +90,18 @@ def make_group_reports(colors, brightness, enabled=True, reactive=False, fade_ms
             base = 5 + 12 * i
             rgb = bytes.fromhex(color(colors[code])[1:])
             report[base:base + 3] = bytes(round(channel * scale) for channel in rgb)
-            report[base + 6:base + 8] = fade_ms.to_bytes(2, "little")
-            report[base + 9] = 8 if reactive and enabled else 1
+            entry = key_reactive.get(code)
+            hit = bytes.fromhex(color(entry["hit_color"])[1:]) if entry else (0, 0, 0)
+            report[base + 3:base + 6] = bytes(round(channel * scale) for channel in hit)
+            report[base + 6:base + 8] = (entry["fade_ms"] if entry else fade_ms).to_bytes(2, "little")
+            report[base + 9] = 8 if (entry or reactive) and enabled else 1
             report[base + 11] = code
         reports.append(report)
     return reports
 
 
-def apply(colors, brightness, enabled=True, reactive=False, fade_ms=750):
-    reports = make_group_reports(colors, brightness, enabled, reactive, fade_ms)
+def apply(colors, brightness, enabled=True, reactive=False, fade_ms=750, key_reactive=None):
+    reports = make_group_reports(colors, brightness, enabled, reactive, fade_ms, key_reactive)
     device = find_device()
     try:
         fd = os.open(device, os.O_RDWR | os.O_CLOEXEC)
@@ -112,7 +122,7 @@ def apply(colors, brightness, enabled=True, reactive=False, fade_ms=750):
 
 
 def stream(colors, brightness):
-    report = make_report(colors, brightness)
+    report = make_report(colors, brightness, partial=True)
     device = find_device()
     fd = os.open(device, os.O_RDWR | os.O_CLOEXEC)
     try:

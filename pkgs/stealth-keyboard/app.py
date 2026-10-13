@@ -2,6 +2,9 @@
 """Native GTK controls for the Stealth 14 Studio keyboard."""
 
 import sys
+import copy
+import argparse
+from pathlib import Path
 import math
 import time
 
@@ -16,6 +19,8 @@ from gi.repository import Gdk, GLib, Graphene, Gsk, Gtk, Pango
 import keyboard
 import effects
 import layout
+import profiles
+import controller
 
 
 PRESETS = [("Warm white", "#FFDDB0"), ("White", "#FFFFFF"), ("Ice", "#72D8FF"),
@@ -32,9 +37,19 @@ button.key { padding: 0; min-width: 0; min-height: 0; font-size: 11px; }
 button.key label { color: inherit; }
 button.key:checked { outline: 2px solid #8bd5ff; outline-offset: -2px; }
 button.suggested-action { background: #8bd5ff; color: #10212f; font-weight: 600; }
+flowboxchild { padding: 0; }
 .error { color: #ff9f9f; }
 .success { color: #9ae6bb; }
 """
+
+
+class WrappingRow(Gtk.FlowBox):
+    def __init__(self):
+        super().__init__(selection_mode=Gtk.SelectionMode.NONE, column_spacing=10,
+                         row_spacing=8, min_children_per_line=1, max_children_per_line=8)
+
+    def append(self, child):
+        self.insert(child, -1)
 
 
 class KeyboardBoard(Gtk.Fixed):
@@ -76,165 +91,280 @@ class KeyboardBoard(Gtk.Fixed):
 
 
 class KeyboardWindow(Gtk.ApplicationWindow):
-    def __init__(self, application):
+    def __init__(self, application, profile_path=None):
         super().__init__(application=application, title="Stealth Keyboard")
-        self.set_default_size(980, 710)
+        self.set_default_size(980, 1000)
         self.selected = set()
-        self.buttons = {}
-        self.loaded = False
-        self.animation_source = None
-        self.applied_profile = None
+        self.selecting = False
+        self.updating = True
         self.pending = False
-        self.connect("close-request", self.on_close)
-        profile_error = None
+        self.editor_error = False
+        self.ctl = controller.Controller()
+        self.preview_started = time.monotonic()
+        self.preview_hits = {}
+        self.preview_style = None
+        error = None
         try:
-            (self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms,
-             self.animation, self.period_ms) = keyboard.load_profile()
+            self.profile = profiles.load(profile_path) if profile_path else profiles.current()
         except (OSError, ValueError, TypeError) as exc:
-            self.colors = {code: "#FFDDB0" for code in keyboard.REPORT_KEYS}
-            self.brightness, self.enabled = 70, True
-            self.reactive, self.fade_ms = False, 750
-            self.animation, self.period_ms = "none", 3000
-            profile_error = f"Could not load the saved profile: {exc}"
-
+            self.profile = profiles.default()
+            error = f"Could not load the saved profile: {exc}"
+        self.connect("close-request", self.on_close)
         self.provider = Gtk.CssProvider()
-        # RGB previews need their literal colors, including under a user theme.
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self.provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 1)
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         content.add_css_class("content")
         for side in ("top", "bottom", "start", "end"):
             getattr(content, f"set_margin_{side}")(24)
-        scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        scroll = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
         scroll.set_child(content)
-        self.set_child(scroll)
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        root.append(scroll)
+        self.set_child(root)
 
         header = Gtk.Box(spacing=12)
-        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5, hexpand=True)
+        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, hexpand=True)
         title = Gtk.Label(label="Stealth Keyboard", xalign=0)
         title.add_css_class("title")
         titles.append(title)
-        subtitle = Gtk.Label(label="SteelSeries RGB · Stealth 14 Studio", xalign=0)
-        subtitle.add_css_class("muted")
-        titles.append(subtitle)
+        sub = Gtk.Label(label="SteelSeries RGB · per-key lighting studio", xalign=0)
+        sub.add_css_class("muted")
+        titles.append(sub)
         header.append(titles)
         header.append(Gtk.Label(label="Lighting"))
-        self.power = Gtk.Switch(active=self.enabled, valign=Gtk.Align.CENTER)
+        self.power = Gtk.Switch(active=self.profile["enabled"], valign=Gtk.Align.CENTER)
         self.power.connect("notify::active", self.on_power)
         header.append(self.power)
+        self.add_button(header, "Quit", lambda: self.quit())
         content.append(header)
-
-        instruction = Gtk.Label(label="Select keys, then choose a color. Clear the selection to color the whole keyboard.", xalign=0, wrap=True)
-        instruction.add_css_class("muted")
-        content.append(instruction)
+        info = Gtk.Label(label="Select keys to edit their colors and effects. Clear selection to edit the default effect.", xalign=0, wrap=True)
+        info.add_css_class("muted")
+        content.append(info)
         self.board = KeyboardBoard(self.on_selection)
         self.buttons = self.board.buttons
         content.append(self.board)
 
-        selection = Gtk.Box(spacing=10)
-        self.scope = Gtk.Label(label="Whole keyboard", xalign=0, hexpand=True)
+        selection = Gtk.Box(spacing=8)
+        self.scope = Gtk.Label(xalign=0, hexpand=True)
         self.scope.add_css_class("section")
         selection.append(self.scope)
-        clear = Gtk.Button(label="Clear selection")
-        clear.connect("clicked", lambda _: self.clear_selection())
-        selection.append(clear)
-        wasd = Gtk.Button(label="Select WASD")
-        wasd.connect("clicked", lambda _: self.select_wasd())
-        selection.append(wasd)
+        self.groups = [set(self.buttons), {26, 4, 22, 7}, {79, 80, 81, 82}, set(range(58, 70)),
+                       set(range(30, 40)), set(range(4, 30)), {224, 225, 226, 227, 228, 229, 230, 240},
+                       {70, 75, 76, 78, 102}]
+        self.group_control = Gtk.DropDown.new_from_strings(["Select group…", "All keys", "WASD", "Arrows", "Function keys", "Numbers", "Letters", "Modifiers", "Navigation"])
+        self.group_control.connect("notify::selected", self.on_group)
+        selection.append(self.group_control)
+        self.add_button(selection, "Clear selection", lambda: self.select_keys(set()))
         content.append(selection)
 
-        presets = Gtk.Box(spacing=8)
+        presets = WrappingRow()
         for name, value in PRESETS:
             button = Gtk.Button(label=name, hexpand=True)
             button.connect("clicked", lambda _, value=value: self.paint(value))
             presets.append(button)
         content.append(presets)
-
         custom = Gtk.Box(spacing=10)
-        custom.append(Gtk.Label(label="Custom color", xalign=0))
-        rgba = Gdk.RGBA()
-        rgba.parse("#FFDDB0")
-        self.picker = Gtk.ColorButton(rgba=rgba, title="Choose a keyboard color", use_alpha=False)
-        self.picker.connect("color-set", self.on_color_picked)
+        custom.append(Gtk.Label(label="Base color"))
+        self.picker = Gtk.ColorButton(title="Base color", use_alpha=False)
+        self.set_picker(self.picker, "#FFFFFF")
+        self.picker.connect("color-set", lambda picker: self.paint(self.picker_color(picker)))
         custom.append(self.picker)
-        self.hex_entry = Gtk.Entry(text="#FFDDB0", max_length=7, hexpand=True)
-        self.hex_entry.set_placeholder_text("#RRGGBB")
-        self.hex_entry.set_tooltip_text("Enter a six-digit hex color")
-        self.hex_entry.connect("activate", lambda _: self.paint_entry())
+        self.hex_entry = Gtk.Entry(text="#FFFFFF", max_length=7, hexpand=True)
+        self.hex_entry.connect("activate", lambda _: self.paint(self.hex_entry.get_text()))
         custom.append(self.hex_entry)
-        paint = Gtk.Button(label="Set color")
-        paint.connect("clicked", lambda _: self.paint_entry())
-        custom.append(paint)
+        self.add_button(custom, "Set color", lambda: self.paint(self.hex_entry.get_text()))
         content.append(custom)
 
-        brightness_row = Gtk.Box(spacing=12)
-        brightness_row.append(Gtk.Label(label="Brightness"))
+        editor = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        self.controls = {}
+        mode_row = Gtk.Box(spacing=10)
+        mode_row.append(Gtk.Label(label="Effect"))
+        mode = Gtk.DropDown.new_from_strings(effects.LABELS)
+        mode.set_hexpand(True)
+        mode.connect("notify::selected", lambda control, _: self.edit("mode", effects.MODES[control.get_selected()]))
+        self.controls["mode"] = mode
+        mode_row.append(mode)
+        self.add_button(mode_row, "Use on all keys", self.effect_on_all)
+        self.add_button(mode_row, "Reset overrides", self.reset_overrides)
+        editor.append(mode_row)
+        self.effect_info = Gtk.Label(xalign=0, wrap=True)
+        self.effect_info.add_css_class("muted")
+        editor.append(self.effect_info)
+
+        timing = WrappingRow()
+        self.add_spin(timing, "Period", "period_ms", 0.1, 120, 0.1, factor=1000, digits=1, suffix="s")
+        self.add_spin(timing, "Phase", "phase", 0, 100, 1, suffix="%")
+        self.add_spin(timing, "Fade back", "fade_ms", 50, 2000, 50, suffix="ms")
+        editor.append(timing)
+
+        native = Gtk.Box(spacing=10)
+        native.append(Gtk.Label(label="Keypress color"))
+        self.hit_picker = Gtk.ColorButton(title="Color on keypress", use_alpha=False)
+        self.hit_picker.connect("color-set", lambda picker: self.edit("hit_color", self.picker_color(picker)))
+        native.append(self.hit_picker)
+        self.preview_hit_button = self.add_button(native, "Preview keypress", self.preview_press)
+        self.native_note = Gtk.Label(xalign=0, hexpand=True, wrap=True)
+        native.append(self.native_note)
+        self.native_row = native
+        editor.append(native)
+
+        palette_title = Gtk.Box(spacing=8)
+        palette_title.append(Gtk.Label(label="Effect palette", xalign=0, hexpand=True))
+        self.add_button(palette_title, "Add picked color", self.add_palette_color)
+        self.add_button(palette_title, "Rainbow", lambda: self.edit("palette", list(effects.RAINBOW)))
+        self.add_button(palette_title, "Use base colors", lambda: self.edit("palette", []))
+        self.palette_title = palette_title
+        editor.append(palette_title)
+        self.palette_box = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, column_spacing=8, row_spacing=6,
+                                       max_children_per_line=8, min_children_per_line=1)
+        editor.append(self.palette_box)
+
+        spatial = Gtk.Box(spacing=10)
+        spatial.append(Gtk.Label(label="Direction"))
+        direction = Gtk.DropDown.new_from_strings(effects.DIRECTION_LABELS)
+        direction.set_hexpand(True)
+        direction.connect("notify::selected", lambda control, _: self.edit("direction", effects.DIRECTIONS[control.get_selected()]))
+        self.controls["direction"] = direction
+        spatial.append(direction)
+        self.add_spin(spatial, "Spacing / width", "spacing", 5, 400, 5, suffix="%")
+        self.spatial_row = spatial
+        editor.append(spatial)
+
+        advanced = Gtk.Expander(label="Timing, brightness, and origin")
+        advanced_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        start = WrappingRow()
+        self.add_spin(start, "Start delay", "delay_ms", 0, 60, 0.1, factor=1000, digits=1, suffix="s")
+        self.add_spin(start, "Repeat", "cycles", 0, 1000, 1)
+        start.append(Gtk.Label(label="0 repeats forever", xalign=0, hexpand=True))
+        advanced_box.append(start)
+        restore = Gtk.CheckButton(label="Restore keypress fade when timed effects stop")
+        restore.connect("toggled", lambda control: self.edit("restore_reactive", control.get_active()))
+        self.controls["restore_reactive"] = restore
+        advanced_box.append(restore)
+        brightness = WrappingRow()
+        self.add_spin(brightness, "Minimum", "minimum", 0, 100, 1, suffix="%")
+        self.add_spin(brightness, "Maximum", "maximum", 0, 100, 1, suffix="%")
+        self.add_spin(brightness, "On time", "duty", 1, 99, 1, suffix="%")
+        advanced_box.append(brightness)
+        curve = WrappingRow()
+        curve_choice = Gtk.Box(spacing=8)
+        curve_choice.append(Gtk.Label(label="Fade curve"))
+        easing = Gtk.DropDown.new_from_strings(effects.EASING_LABELS)
+        easing.set_hexpand(True)
+        easing.connect("notify::selected", lambda control, _: self.edit("easing", effects.EASINGS[control.get_selected()]))
+        self.controls["easing"] = easing
+        curve_choice.append(easing)
+        curve.append(curve_choice)
+        self.add_spin(curve, "Origin X", "origin_x", 0, 100, 1, suffix="%")
+        self.add_spin(curve, "Y", "origin_y", 0, 100, 1, suffix="%")
+        advanced_box.append(curve)
+        stagger = Gtk.Box(spacing=10)
+        stagger.append(Gtk.Label(label="Stagger selected keys"))
+        self.stagger_control = Gtk.SpinButton.new_with_range(0, 100, 5)
+        self.stagger_control.set_value(15)
+        stagger.append(self.stagger_control)
+        stagger.append(Gtk.Label(label="% per key"))
+        self.stagger_button = self.add_button(stagger, "Set phase offsets", self.stagger)
+        advanced_box.append(stagger)
+        advanced.set_child(advanced_box)
+        editor.append(advanced)
+        content.append(editor)
+
+        global_row = Gtk.Box(spacing=12)
+        global_row.append(Gtk.Label(label="Overall brightness"))
         self.slider = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 100, 1)
         self.slider.set_hexpand(True)
         self.slider.set_draw_value(False)
-        self.slider.set_value(self.brightness)
-        self.slider.set_tooltip_text("Keyboard brightness, from 0 to 100 percent")
+        self.slider.set_value(self.profile["brightness"])
         self.slider.connect("value-changed", self.on_brightness)
-        brightness_row.append(self.slider)
-        self.level = Gtk.Label(label=f"{self.brightness}%", width_chars=4)
-        brightness_row.append(self.level)
-        content.append(brightness_row)
+        global_row.append(self.slider)
+        self.level = Gtk.Label(label=f'{self.profile["brightness"]}%', width_chars=4)
+        global_row.append(self.level)
+        content.append(global_row)
+        preview_row = WrappingRow()
+        self.preview_check = Gtk.CheckButton(label="Animate preview", active=True)
+        preview_row.append(self.preview_check)
+        self.add_button(preview_row, "Restart preview", self.restart_preview)
+        self.keep_running = Gtk.CheckButton(label="Keep effects running when window closes", active=self.profile["keep_running"])
+        self.keep_running.connect("toggled", self.on_keep_running)
+        preview_row.append(self.keep_running)
+        content.append(preview_row)
 
-        effect_row = Gtk.Box(spacing=12)
-        self.reactive_check = Gtk.CheckButton(label="Fade on keypress", active=self.reactive, hexpand=True)
-        self.reactive_check.connect("toggled", self.on_reactive)
-        effect_row.append(self.reactive_check)
-        effect_row.append(Gtk.Label(label="Fade back"))
-        self.fade_control = Gtk.SpinButton.new_with_range(50, 2000, 50)
-        self.fade_control.set_value(self.fade_ms)
-        self.fade_control.set_sensitive(self.reactive)
-        self.fade_control.connect("value-changed", self.on_fade)
-        effect_row.append(self.fade_control)
-        effect_row.append(Gtk.Label(label="ms"))
-        content.append(effect_row)
+        library = Gtk.Expander(label="Saved profiles and import / export")
+        library_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        saved_row = Gtk.Box(spacing=10)
+        self.saved_control = Gtk.DropDown.new_from_strings(["Choose a profile…"])
+        self.saved_control.set_hexpand(True)
+        saved_row.append(self.saved_control)
+        self.add_button(saved_row, "Load", self.load_named)
+        self.add_button(saved_row, "Delete", self.delete_named)
+        library_box.append(saved_row)
+        save_row = Gtk.Box(spacing=10)
+        self.profile_name = Gtk.Entry(placeholder_text="Profile name", hexpand=True)
+        save_row.append(self.profile_name)
+        self.add_button(save_row, "Save profile", self.save_named)
+        self.add_button(save_row, "Import…", lambda: self.choose_file(False))
+        self.add_button(save_row, "Export…", lambda: self.choose_file(True))
+        library_box.append(save_row)
+        library.set_child(library_box)
+        content.append(library)
 
-        timed_row = Gtk.Box(spacing=12)
-        timed_row.append(Gtk.Label(label="Timed effect"))
-        self.effect_control = Gtk.DropDown.new_from_strings(["None", "Rainbow wave", "Breathing"])
-        self.effect_control.set_selected(effects.NAMES.index(self.animation))
-        self.effect_control.set_hexpand(True)
-        self.effect_control.connect("notify::selected", self.on_animation)
-        timed_row.append(self.effect_control)
-        timed_row.append(Gtk.Label(label="Period"))
-        self.period_control = Gtk.SpinButton.new_with_range(0.5, 30, 0.5)
-        self.period_control.set_digits(1)
-        self.period_control.set_value(self.period_ms / 1000)
-        self.period_control.connect("value-changed", self.on_period)
-        timed_row.append(self.period_control)
-        timed_row.append(Gtk.Label(label="seconds"))
-        content.append(timed_row)
-        timed_note = Gtk.Label(label="Wave and breathing run while this app is open. Closing restores your base colors.", xalign=0, wrap=True)
-        timed_note.add_css_class("muted")
-        content.append(timed_note)
-
-        footer = Gtk.Box(spacing=12)
+        footer = Gtk.Box(spacing=10)
         self.status = Gtk.Label(xalign=0, wrap=True, hexpand=True)
-        self.status.add_css_class("muted")
         footer.append(self.status)
-        self.apply_button = Gtk.Button(label="Apply to keyboard", valign=Gtk.Align.CENTER)
-        self.apply_button.add_css_class("suggested-action")
-        self.apply_button.connect("clicked", lambda _: self.apply())
-        footer.append(self.apply_button)
-        content.append(footer)
-        note = Gtk.Label(label="Your last applied colors are remembered. Opening the app leaves the lighting as it is.", xalign=0, wrap=True)
+        self.stop_button = self.add_button(footer, "Stop timed effects", self.stop_effects)
+        self.stop_button.set_sensitive(False)
+        apply = self.add_button(footer, "Apply to keyboard", self.apply)
+        apply.add_css_class("suggested-action")
+        for side in ("top", "bottom", "start", "end"):
+            getattr(footer, f"set_margin_{side}")(16 if side in ("top", "bottom") else 24)
+        root.append(footer)
+        note = Gtk.Label(label="Previewing and loading profiles leave your keyboard unchanged until Apply. Timed effects use this app; keypress fade runs on the keyboard.", xalign=0, wrap=True)
         note.add_css_class("muted")
         content.append(note)
-
-        self.loaded = True
-        self.update_effect_controls()
-        self.update_preview()
-        if profile_error:
-            self.message(profile_error, "error")
+        self.updating = False
+        self.refresh_library()
+        self.load_editor()
+        self.update_preview(0)
+        if error:
+            self.message(error, "error")
         else:
             try:
-                device = keyboard.find_device()
-                self.message(f"Connected · {device.name}. Preview ready to apply.")
+                self.message(f"Connected · {keyboard.find_device().name}. Preview ready to apply.")
             except OSError as exc:
                 self.message(str(exc), "error")
+        self.timer = GLib.timeout_add(50, self.tick)
+
+    @staticmethod
+    def add_button(box, text, callback):
+        button = Gtk.Button(label=text)
+        button.connect("clicked", lambda _: callback())
+        box.append(button)
+        return button
+
+    @staticmethod
+    def set_picker(picker, value):
+        rgba = Gdk.RGBA()
+        rgba.parse(value)
+        picker.set_rgba(rgba)
+
+    @staticmethod
+    def picker_color(picker):
+        value = picker.get_rgba()
+        return effects.hex_rgb(c * 255 for c in (value.red, value.green, value.blue))
+
+    def add_spin(self, box, title, name, low, high, step, factor=1, digits=0, suffix=None):
+        group = Gtk.Box(spacing=8)
+        group.append(Gtk.Label(label=title))
+        spin = Gtk.SpinButton.new_with_range(low, high, step)
+        spin.set_digits(digits)
+        spin.connect("value-changed", lambda control: self.edit(name, round(control.get_value() * factor, 6)))
+        self.controls[name] = spin
+        spin._effect_factor = factor
+        group.append(spin)
+        if suffix:
+            group.append(Gtk.Label(label=suffix))
+        box.append(group)
 
     def message(self, text, style=None):
         self.status.set_label(text)
@@ -242,224 +372,488 @@ class KeyboardWindow(Gtk.ApplicationWindow):
             self.status.remove_css_class(name)
         self.status.add_css_class(style or "muted")
 
+    def first_spec(self):
+        if self.selected:
+            return effects.resolved(self.profile, self.ordered_selection()[0])
+        return self.profile["effect"]
+
+    def ordered_selection(self):
+        return sorted(self.selected, key=lambda code: (layout.BY_CODE[code].y, layout.BY_CODE[code].x))
+
     def on_selection(self, button, code):
         if button.get_active():
             self.selected.add(code)
         else:
             self.selected.discard(code)
-        self.scope.set_label(f"{len(self.selected)} keys selected" if self.selected else "Whole keyboard")
+        if not self.selecting:
+            self.load_editor()
 
-    def clear_selection(self):
-        for button in self.buttons.values():
-            button.set_active(False)
+    def select_keys(self, keys):
+        self.selecting = True
+        for code, button in self.buttons.items():
+            button.set_active(code in keys)
+        self.selecting = False
+        self.load_editor()
 
-    def select_wasd(self):
-        self.clear_selection()
-        for code in (26, 4, 22, 7):
-            self.buttons[code].set_active(True)
+    def on_group(self, control, _):
+        index = control.get_selected()
+        if index:
+            self.select_keys(self.groups[index - 1])
+            control.set_selected(0)
+
+    def load_editor(self):
+        self.updating = True
+        spec = self.first_spec()
+        self.editor_error = False
+        self.controls["mode"].set_selected(effects.MODES.index(spec["mode"]))
+        self.controls["direction"].set_selected(effects.DIRECTIONS.index(spec["direction"]))
+        self.controls["easing"].set_selected(effects.EASINGS.index(spec["easing"]))
+        for name, control in self.controls.items():
+            if isinstance(control, Gtk.SpinButton):
+                control.set_value(spec[name] / control._effect_factor)
+            elif isinstance(control, Gtk.CheckButton):
+                control.set_active(spec[name])
+        self.set_picker(self.hit_picker, spec["hit_color"])
+        base = self.profile["colors"][self.ordered_selection()[0] if self.selected else keyboard.REPORT_KEYS[0]]
+        self.set_picker(self.picker, base)
+        self.hex_entry.set_text(base)
+        self.refresh_palette(spec)
+        if self.selected:
+            mixed = any(effects.resolved(self.profile, c) != spec for c in self.selected)
+            self.scope.set_label(f'{len(self.selected)} keys selected' + (" · mixed settings" if mixed else ""))
+        else:
+            self.scope.set_label(f'Default effect · {len(self.profile["key_effects"])} overrides')
+        self.update_sensitivity(spec["mode"])
+        self.updating = False
+
+    def update_sensitivity(self, mode):
+        timed = mode in effects.TIMED
+        spatial = mode in ("wave", "gradient", "scanner")
+        native = mode == "reactive" or timed and self.first_spec()["restore_reactive"]
+        self.controls["period_ms"].set_sensitive(timed)
+        self.controls["phase"].set_sensitive(timed or spatial)
+        self.controls["fade_ms"].set_sensitive(native)
+        self.native_row.set_visible(native)
+        self.preview_hit_button.set_sensitive(mode == "reactive")
+        self.native_note.set_label("The keyboard handles this effect itself." if mode == "reactive"
+                                  else "Keypress fade to restore when timed effects stop.")
+        self.palette_title.set_visible(mode not in ("reactive", "static"))
+        self.palette_box.set_visible(mode not in ("reactive", "static"))
+        self.spatial_row.set_visible(spatial)
+        for name in ("delay_ms", "cycles"):
+            self.controls[name].set_sensitive(timed)
+        self.controls["restore_reactive"].set_sensitive(timed)
+        for name in ("origin_x", "origin_y"):
+            self.controls[name].set_sensitive(spatial)
+        self.controls["minimum"].set_sensitive(timed)
+        self.controls["duty"].set_sensitive(mode in ("pulse", "blink"))
+        self.controls["easing"].set_sensitive(mode in ("breathing", "pulse", "scanner"))
+        self.stagger_button.set_sensitive(len(self.selected) > 1 and (timed or spatial))
+        notes = {"static": "Selected keys hold their base color.",
+                 "reactive": "Each key reacts independently, using its own hit color and fade duration.",
+                 "gradient": "A stationary palette spread across the selected keys.",
+                 "wave": "Empty palette uses a rainbow. Direction, origin, phase, and spacing shape the wave.",
+                 "scanner": "A moving band. Spacing controls its width; direction and origin control its path."}
+        self.effect_info.set_label(notes.get(mode, "Empty palette uses each key's base color, or a rainbow for color cycle. Timing can differ per key."))
+
+    def edit(self, name, value):
+        if self.updating:
+            return
+        changes = []
+        for code in self.selected or (None,):
+            spec = copy.deepcopy(effects.resolved(self.profile, code) if code is not None else self.profile["effect"])
+            if name == "mode" and spec["mode"] == "reactive" and value in effects.TIMED:
+                spec["restore_reactive"] = True
+            spec[name] = value
+            if name == "minimum":
+                spec["maximum"] = max(value, spec["maximum"])
+            elif name == "maximum":
+                spec["minimum"] = min(value, spec["minimum"])
+            try:
+                spec = effects.normalize(spec)
+            except ValueError as exc:
+                self.editor_error = True
+                self.message(str(exc), "error")
+                return
+            changes.append((code, spec))
+        for code, spec in changes:
+            if code is None:
+                self.profile["effect"] = spec
+            else:
+                self.profile["key_effects"][code] = spec
+        self.editor_error = False
+        if name in ("mode", "palette", "hit_color", "restore_reactive", "minimum", "maximum"):
+            self.load_editor()
+        self.changed()
+
+    def effect_on_all(self):
+        if self.editor_error:
+            self.message("Correct the invalid effect setting first.", "error")
+            return
+        self.profile["effect"] = copy.deepcopy(self.first_spec())
+        self.profile["key_effects"].clear()
+        self.select_keys(set())
+        self.changed()
+
+    def reset_overrides(self):
+        for code in self.selected or set(self.profile["key_effects"]):
+            self.profile["key_effects"].pop(code, None)
+        self.load_editor()
+        self.changed()
+
+    def stagger(self):
+        step = self.stagger_control.get_value()
+        start = self.first_spec()["phase"]
+        for i, code in enumerate(self.ordered_selection()):
+            spec = copy.deepcopy(effects.resolved(self.profile, code))
+            spec["phase"] = (start + i * step) % 100
+            self.profile["key_effects"][code] = spec
+        self.load_editor()
+        self.changed()
 
     def paint(self, value):
         try:
-            value = keyboard.color(value)
+            value = effects.color(value)
         except ValueError as exc:
             self.message(str(exc), "error")
             return
-        for code in self.selected or keyboard.REPORT_KEYS:
-            self.colors[code] = value
+        for code in self.selected or self.profile["colors"]:
+            self.profile["colors"][code] = value
         self.hex_entry.set_text(value)
-        rgba = Gdk.RGBA()
-        rgba.parse(value)
-        self.picker.set_rgba(rgba)
-        self.mark_changed()
+        self.set_picker(self.picker, value)
+        self.changed()
 
-    def paint_entry(self):
-        self.paint(self.hex_entry.get_text())
+    def refresh_palette(self, spec):
+        child = self.palette_box.get_first_child()
+        while child:
+            self.palette_box.remove(child)
+            child = self.palette_box.get_first_child()
+        if not spec["palette"]:
+            self.palette_box.insert(Gtk.Label(label="Using base colors / automatic rainbow"), -1)
+        for i, value in enumerate(spec["palette"]):
+            box = Gtk.Box(spacing=2)
+            picker = Gtk.ColorButton(title=f"Palette color {i + 1}", use_alpha=False)
+            self.set_picker(picker, value)
+            picker.connect("color-set", lambda control, i=i: self.palette_color(i, self.picker_color(control)))
+            box.append(picker)
+            self.add_button(box, "×", lambda i=i: self.remove_palette_color(i))
+            self.palette_box.insert(box, -1)
 
-    def on_color_picked(self, picker):
-        rgba = picker.get_rgba()
-        self.paint("#" + "".join(f"{round(channel * 255):02X}" for channel in (rgba.red, rgba.green, rgba.blue)))
+    def palette_color(self, index, value):
+        palette = list(self.first_spec()["palette"])
+        palette[index] = value
+        self.edit("palette", palette)
 
-    def on_brightness(self, slider):
-        self.brightness = round(slider.get_value())
-        self.level.set_label(f"{self.brightness}%")
-        self.mark_changed()
+    def remove_palette_color(self, index):
+        palette = list(self.first_spec()["palette"])
+        palette.pop(index)
+        self.edit("palette", palette)
 
-    def on_power(self, switch, _):
-        self.enabled = switch.get_active()
-        if self.loaded:
-            self.mark_changed()
+    def add_palette_color(self):
+        palette = list(self.first_spec()["palette"])
+        if len(palette) >= 16:
+            self.message("The palette already has 16 colors.", "error")
+            return
+        self.edit("palette", palette + [self.picker_color(self.picker)])
 
-    def on_reactive(self, button):
-        self.reactive = button.get_active()
-        self.update_effect_controls()
-        self.mark_changed()
+    def preview_press(self):
+        elapsed = time.monotonic() - self.preview_started
+        for code in self.selected or self.profile["colors"]:
+            if effects.resolved(self.profile, code)["mode"] == "reactive":
+                self.preview_hits[code] = elapsed
+        self.update_preview(elapsed)
 
-    def on_fade(self, control):
-        self.fade_ms = control.get_value_as_int()
-        self.mark_changed()
+    def restart_preview(self):
+        self.preview_started = time.monotonic()
+        self.preview_hits.clear()
+        self.update_preview(0)
 
-    def on_animation(self, control, _):
-        self.animation = effects.NAMES[control.get_selected()]
-        self.update_effect_controls()
-        self.mark_changed()
-
-    def on_period(self, control):
-        self.period_ms = round(control.get_value() * 1000)
-        self.mark_changed()
-
-    def update_effect_controls(self):
-        timed = self.animation != "none"
-        self.reactive_check.set_sensitive(not timed)
-        self.fade_control.set_sensitive(self.reactive and not timed)
-        self.period_control.set_sensitive(timed)
-
-    def mark_changed(self):
+    def changed(self):
         self.pending = True
-        self.update_preview()
-        self.message("Preview changed · press Apply to update the keyboard.")
+        self.update_preview(time.monotonic() - self.preview_started)
+        self.message("Preview changed · Apply updates the keyboard.")
 
-    def update_preview(self, colors=None, brightness=None, enabled=None):
-        colors = effects.frame(self.colors, self.animation, 0) if colors is None else colors
-        brightness = self.brightness if brightness is None else brightness
-        enabled = self.enabled if enabled is None else enabled
+    def on_power(self, control, _):
+        if not self.updating:
+            self.profile["enabled"] = control.get_active()
+            self.changed()
+
+    def on_brightness(self, control):
+        if not self.updating:
+            self.profile["brightness"] = round(control.get_value())
+            self.level.set_label(f'{self.profile["brightness"]}%')
+            self.changed()
+
+    def on_keep_running(self, control):
+        if not self.updating:
+            self.profile["keep_running"] = control.get_active()
+            self.changed()
+
+    def update_preview(self, elapsed):
+        colors = effects.render(self.profile, elapsed, self.preview_hits)
+        scale = self.profile["brightness"] / 100 if self.profile["enabled"] else 0
         rules = []
-        for code in self.buttons:
-            rgb = bytes.fromhex(colors[code][1:])
-            scale = brightness / 100 if enabled else 0
-            rgb = tuple(round(channel * scale) for channel in rgb)
-            background = "#" + "".join(f"{channel:02x}" for channel in rgb)
-            foreground = layout.text_color(rgb)
-            # A Pango foreground attribute keeps user theme label rules from
-            # replacing the contrast color on the key's child label.
+        for code, button in self.buttons.items():
+            channels = tuple(round(c * scale) for c in effects.rgb(colors[code]))
+            background = effects.hex_rgb(channels)
+            foreground = layout.text_color(channels)
             key = layout.BY_CODE[code]
             size = 5120 if "\n" in key.label else 8192
             label = GLib.markup_escape_text(key.label)
             markup = f'<span foreground="{foreground}" size="{size}" weight="bold">{label}</span>'
-            if self.buttons[code].get_child().get_label() != markup:
-                self.buttons[code].get_child().set_markup(markup)
-            rules.append(f"button.key-{code}, button.key-{code}:hover, button.key-{code}:checked, button.key-{code}:active {{ background-image: none; background-color: {background}; color: {foreground}; border: 1px solid #526074; }}")
-        self.provider.load_from_data(CSS + "\n".join(rules).encode())
+            if button.get_child().get_label() != markup:
+                button.get_child().set_markup(markup)
+            spec = effects.resolved(self.profile, code)
+            override = code in self.profile["key_effects"]
+            border = "#c89bff" if override else "#526074"
+            button.set_tooltip_text(f'{key.label.replace(chr(10), " / ")} · {effects.LABELS[effects.MODES.index(spec["mode"])]}\nPeriod {spec["period_ms"] / 1000:g}s · phase {spec["phase"]:g}% · ' + ("custom effect" if override else "default effect"))
+            rules.append(f"button.key-{code}, button.key-{code}:hover, button.key-{code}:checked, button.key-{code}:active {{ background-image: none; background-color: {background}; color: {foreground}; border: 1px solid {border}; }}")
+        style = CSS + "\n".join(rules).encode()
+        if style != self.preview_style:
+            self.provider.load_from_data(style)
+            self.preview_style = style
+
+    def tick(self):
+        if self.ctl.codes:
+            try:
+                if not self.ctl.tick():
+                    self.message("Timed effects completed · base colors restored.", "success")
+            except OSError as exc:
+                self.ctl.stop(restore=False)
+                self.message(f"Timed effects stopped: {exc}", "error")
+        self.stop_button.set_sensitive(bool(self.ctl.codes))
+        if self.get_visible() and self.preview_check.get_active():
+            self.update_preview(time.monotonic() - self.preview_started)
+        return GLib.SOURCE_CONTINUE
 
     def apply(self):
-        self.stop_animation()
+        if self.editor_error:
+            self.message("Correct the invalid effect setting before applying.", "error")
+            return
         try:
-            effects.validate(self.animation, self.period_ms)
-            if self.animation == "none" or not self.enabled or self.brightness == 0:
-                keyboard.apply(self.colors, self.brightness, self.enabled, self.reactive, self.fade_ms)
-            else:
-                keyboard.apply(self.colors, self.brightness, self.enabled, False, self.fade_ms)
-                keyboard.stream(effects.frame(self.colors, self.animation, 0), self.brightness)
+            self.profile = profiles.validate(self.profile)
+            self.ctl.apply(self.profile)
         except (OSError, ValueError) as exc:
             self.message(str(exc), "error")
             return
         self.pending = False
-        self.applied_profile = (dict(self.colors), self.brightness, self.enabled, self.reactive,
-                                self.fade_ms, self.animation, self.period_ms)
-        if self.animation != "none" and self.enabled and self.brightness:
-            self.animation_start = time.monotonic()
-            # ponytail: stream the tested color report until onboard effect
-            # uploads have been checked against this model's Windows capture.
-            self.animation_source = GLib.timeout_add(50, self.animate)
+        self.preview_started = self.ctl.started
+        self.preview_hits.clear()
         try:
-            keyboard.save_profile(self.colors, self.brightness, self.enabled, self.reactive,
-                                  self.fade_ms, self.animation, self.period_ms)
+            profiles.save(self.profile)
         except OSError as exc:
-            self.message(f"Lighting applied, but the profile could not be saved: {exc}", "error")
+            self.message(f"Applied, but could not save the profile: {exc}", "error")
             return
-        text = "Timed effect running · keep this app open." if self.animation_source else "Applied and saved."
-        self.message(text if self.enabled and self.brightness else "Lighting off · colors saved.", "success")
+        count = len(self.ctl.codes)
+        self.stop_button.set_sensitive(bool(count))
+        self.message(f"Applied and saved · {count} keys animating." if count else "Applied and saved.", "success")
 
-    def animate(self):
-        colors, brightness, enabled, _, _, effect, period = self.applied_profile
-        phase = (time.monotonic() - self.animation_start) * 1000 / period
-        frame = effects.frame(colors, effect, phase)
+    def stop_effects(self):
         try:
-            keyboard.stream(frame, brightness)
+            self.ctl.stop()
+            self.message("Timed effects stopped · base colors restored.", "success")
         except OSError as exc:
-            self.animation_source = None
-            self.message(f"Timed effect stopped: {exc}", "error")
-            return GLib.SOURCE_REMOVE
-        if not self.pending:
-            self.update_preview(frame, brightness, enabled)
-        return GLib.SOURCE_CONTINUE
+            self.message(str(exc), "error")
+        self.stop_button.set_sensitive(False)
 
-    def stop_animation(self):
-        if self.animation_source is not None:
-            GLib.source_remove(self.animation_source)
-            self.animation_source = None
+    def refresh_library(self):
+        self.saved_names = profiles.names()
+        self.saved_control.set_model(Gtk.StringList.new(["Choose a profile…", *self.saved_names]))
+        self.saved_control.set_selected(0)
+
+    def save_named(self):
+        try:
+            path = profiles.named_path(self.profile_name.get_text())
+            profiles.save(self.profile, path)
+            self.refresh_library()
+            self.message(f"Saved '{path.stem}'. Keyboard unchanged.", "success")
+        except (OSError, ValueError) as exc:
+            self.message(str(exc), "error")
+
+    def selected_profile_name(self):
+        index = self.saved_control.get_selected()
+        if not 1 <= index <= len(self.saved_names):
+            raise ValueError("Choose a saved profile first.")
+        return self.saved_names[index - 1]
+
+    def load_named(self):
+        try:
+            name = self.selected_profile_name()
+            self.load_draft(profiles.load(profiles.named_path(name)))
+            self.profile_name.set_text(name)
+        except (OSError, ValueError) as exc:
+            self.message(str(exc), "error")
+
+    def delete_named(self):
+        try:
+            name = self.selected_profile_name()
+            profiles.named_path(name).unlink()
+            self.refresh_library()
+            self.message(f"Deleted saved profile '{name}'. Current preview and keyboard unchanged.")
+        except (OSError, ValueError) as exc:
+            self.message(str(exc), "error")
+
+    def load_draft(self, profile):
+        self.profile = profiles.validate(profile)
+        self.updating = True
+        self.power.set_active(self.profile["enabled"])
+        self.slider.set_value(self.profile["brightness"])
+        self.level.set_label(f'{self.profile["brightness"]}%')
+        self.keep_running.set_active(self.profile["keep_running"])
+        self.updating = False
+        self.select_keys(set())
+        self.restart_preview()
+        self.changed()
+
+    def choose_file(self, exporting):
+        chooser = Gtk.FileChooserNative(title="Export profile" if exporting else "Import profile", transient_for=self,
+                                        action=Gtk.FileChooserAction.SAVE if exporting else Gtk.FileChooserAction.OPEN,
+                                        accept_label="Export" if exporting else "Import", cancel_label="Cancel")
+        filter = Gtk.FileFilter()
+        filter.set_name("Lighting profiles")
+        filter.add_pattern("*.json")
+        chooser.add_filter(filter)
+        if exporting:
+            chooser.set_current_name("stealth-keyboard.json")
+        chooser.connect("response", self.file_chosen, exporting)
+        chooser.show()
+        self.file_chooser = chooser
+
+    def file_chosen(self, chooser, response, exporting):
+        try:
+            if response == Gtk.ResponseType.ACCEPT:
+                path = chooser.get_file().get_path()
+                if not path:
+                    raise ValueError("Choose a local file.")
+                if exporting:
+                    profiles.save(self.profile, path)
+                    self.message("Profile exported.", "success")
+                else:
+                    self.load_draft(profiles.load(path))
+        except (OSError, ValueError) as exc:
+            self.message(str(exc), "error")
+        finally:
+            chooser.destroy()
+            self.file_chooser = None
 
     def on_close(self, _):
-        was_running = self.animation_source is not None
-        self.stop_animation()
-        if was_running and self.applied_profile:
-            try:
-                keyboard.apply(*self.applied_profile[:5])
-            except OSError as exc:
-                print(f"Could not restore base colors: {exc}", file=sys.stderr)
-        return False
+        if self.profile["keep_running"] and self.ctl.codes:
+            self.hide()
+            return True
+        self.quit()
+        return True
+
+    def quit(self):
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = None
+        try:
+            self.ctl.stop()
+        except OSError as exc:
+            print(f"Could not restore base colors: {exc}", file=sys.stderr)
+        self.get_application().quit()
 
 
 class App(Gtk.Application):
-    def __init__(self, smoke=False):
+    def __init__(self, smoke=False, profile_path=None):
         super().__init__(application_id="local.stealth.Keyboard.Test" if smoke else "local.stealth.Keyboard")
         self.smoke = smoke
+        self.profile_path = profile_path
 
     def do_activate(self):
-        window = self.get_active_window()
+        windows = self.get_windows()
+        window = windows[0] if windows else None
         if window is None:
-            window = KeyboardWindow(self)
+            window = KeyboardWindow(self, self.profile_path)
         window.present()
-        if self.smoke:
+        if self.smoke and not getattr(self, "smoke_started", False):
+            self.smoke_started = True
             from unittest.mock import patch
-            window.select_wasd()
-            window.paint("#123456")
-            assert window.selected == {26, 4, 22, 7}
-            assert all(window.colors[c] == "#123456" for c in window.selected)
-            assert 'foreground="#FFFFFF"' in window.buttons[4].get_child().get_label()
-            window.clear_selection()
-            window.paint("#FFFFFF")
-            assert set(window.colors.values()) == {"#FFFFFF"}
-            assert len(window.buttons) == 83
-            window.slider.set_value(42)
-            window.power.set_active(True)
-            window.effect_control.set_selected(0)
-            window.reactive_check.set_active(True)
-            window.fade_control.set_value(1200)
-            with patch("keyboard.apply") as sent, patch("keyboard.save_profile") as saved:
+            import os
+            import tempfile
+            window.ctl = controller.Controller(Path(tempfile.gettempdir()) / f"stealth-keyboard-test-{os.getpid()}.lock")
+            with patch("keyboard.apply") as sent, patch("keyboard.stream") as streamed, patch("profiles.save"):
+                window.load_draft(profiles.default())
+                window.select_keys({26, 4, 22, 7})
+                window.paint("#123456")
+                assert all(window.profile["colors"][c] == "#123456" for c in window.selected)
+                assert 'foreground="#FFFFFF"' in window.buttons[4].get_child().get_label()
+                window.controls["mode"].set_selected(effects.MODES.index("breathing"))
+                window.controls["period_ms"].set_value(1)
+                window.controls["phase"].set_value(25)
+                window.edit("palette", ["#FF0000", "#0000FF"])
+                assert window.palette_title.get_visible()
+                window.stagger()
+                assert len({window.profile["key_effects"][c]["phase"] for c in window.selected}) == 4
                 window.apply()
-                sent.assert_called_once_with(window.colors, 42, True, True, 1200)
-                saved.assert_called_once_with(window.colors, 42, True, True, 1200, "none", window.period_ms)
-                window.power.set_active(False)
+                assert window.ctl.codes == {26, 4, 22, 7}
+                assert set(streamed.call_args.args[0]) == window.ctl.codes
+                assert set(sent.call_args.kwargs["key_reactive"]) == set(keyboard.REPORT_KEYS) - window.ctl.codes
+                window.stop_effects()
+                assert not window.ctl.codes
+                window.reset_overrides()
+                assert not window.profile["key_effects"]
+                window.load_draft(profiles.default())
+                window.controls["mode"].set_selected(effects.MODES.index("wave"))
+                window.controls["direction"].set_selected(4)
+                window.controls["spacing"].set_value(50)
+                def expand_all(widget):
+                    if isinstance(widget, Gtk.Expander):
+                        widget.set_expanded(True)
+                    child = widget.get_first_child()
+                    while child:
+                        expand_all(child)
+                        child = child.get_next_sibling()
+                expand_all(window.get_child())
+                assert window.get_child().measure(Gtk.Orientation.HORIZONTAL, -1)[0] <= 650
+                window.add_palette_color()
+                window.palette_color(0, "#00FF00")
+                window.remove_palette_color(0)
+                assert window.profile["effect"]["direction"] == "outward"
+                for factor in (1, 0.5):
+                    width, height = round(layout.NATURAL_WIDTH * factor), round(layout.NATURAL_HEIGHT * factor)
+                    window.board.measure(Gtk.Orientation.HORIZONTAL, -1)
+                    window.board.measure(Gtk.Orientation.VERTICAL, width)
+                    window.board.allocate(width, height, -1, None)
+                    for code, expected in layout.rectangles(width, height).items():
+                        ok, bounds = window.buttons[code].compute_bounds(window.board)
+                        assert ok
+                        actual = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
+                        assert all(abs(a - e) < 1 for a, e in zip(actual, expected)), (code, actual, expected)
+                window.profile["keep_running"] = True
                 window.apply()
-                assert sent.call_args.args[2] is False
-            window.power.set_active(True)
-            window.effect_control.set_selected(1)
-            window.period_control.set_value(4)
-            with patch("keyboard.stream") as streamed, patch("keyboard.apply") as restored, patch("keyboard.save_profile"):
-                window.apply()
-                assert window.animation_source is not None
-                window.animate()
-                assert streamed.call_count == 2
-                window.on_close(None)
-                assert restored.call_args.args == (window.colors, 42, True, True, 1200)
-                assert restored.call_args_list[0].args == (window.colors, 42, True, False, 1200)
-                assert window.animation_source is None
-            for factor in (1, 0.5):
-                width, height = round(layout.NATURAL_WIDTH * factor), round(layout.NATURAL_HEIGHT * factor)
-                window.board.measure(Gtk.Orientation.HORIZONTAL, -1)
-                window.board.measure(Gtk.Orientation.VERTICAL, width)
-                window.board.allocate(width, height, -1, None)
-                for code, expected in layout.rectangles(width, height).items():
-                    ok, bounds = window.buttons[code].compute_bounds(window.board)
-                    assert ok
-                    actual = (bounds.get_x(), bounds.get_y(), bounds.get_width(), bounds.get_height())
-                    assert all(abs(a - e) < 1 for a, e in zip(actual, expected)), (code, actual, expected)
-            print("GTK smoke check passed: contrast, uniform resizing, selection, effects, apply, restore, save.", flush=True)
-            GLib.timeout_add(150, lambda: self.quit())
-
+                assert window.on_close(window)
+                assert not window.get_visible() and window.ctl.codes
+                self.do_activate()
+                assert self.get_windows() == [window] and window.get_visible()
+                window.stop_effects()
+            with tempfile.TemporaryDirectory() as directory:
+                original_names, original_path = profiles.names, profiles.named_path
+                with patch("profiles.names", lambda: original_names(Path(directory))), \
+                     patch("profiles.named_path", lambda name: original_path(name, Path(directory))):
+                    window.profile_name.set_text("Smoke profile")
+                    original = copy.deepcopy(window.profile)
+                    window.save_named()
+                    window.load_draft(profiles.default())
+                    window.saved_control.set_selected(1)
+                    window.load_named()
+                    assert window.profile == original
+                    window.saved_control.set_selected(1)
+                    window.delete_named()
+                    assert not list(Path(directory).glob("*.json"))
+            print("GTK smoke check passed: per-key editing, palettes, mixed native/timed effects, phase offsets, restore, contrast, resizing.", flush=True)
+            GLib.timeout_add(150, lambda: window.quit())
 
 if __name__ == "__main__":
-    smoke = "--smoke-test" in sys.argv
-    if smoke:
-        sys.argv.remove("--smoke-test")
-    App(smoke).run(sys.argv)
+    parser = argparse.ArgumentParser(description="Stealth Keyboard lighting controls")
+    parser.add_argument("--smoke-test", action="store_true")
+    parser.add_argument("--profile", type=Path, help="Load a lighting profile")
+    parser.add_argument("--headless", action="store_true", help="Apply a profile without opening the editor")
+    args = parser.parse_args()
+    if args.headless:
+        try:
+            controller.run(profiles.load(args.profile) if args.profile else profiles.current())
+        except (OSError, ValueError) as exc:
+            parser.exit(1, f"{exc}\n")
+    else:
+        App(args.smoke_test, args.profile).run([sys.argv[0]])

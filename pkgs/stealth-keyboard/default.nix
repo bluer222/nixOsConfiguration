@@ -5,14 +5,14 @@ let
   desktop = makeDesktopItem {
     name = "stealth-keyboard";
     desktopName = "Stealth Keyboard";
-    comment = "Control the Stealth 14 Studio keyboard colors and brightness";
+    comment = "Per-key colors, keypress fades, and timed keyboard effects";
     exec = "stealth-keyboard";
     icon = "input-keyboard";
     categories = [ "Settings" "HardwareSettings" ];
   };
 in stdenvNoCC.mkDerivation {
   pname = "stealth-keyboard";
-  version = "0.2.0";
+  version = "0.3.0";
   src = ./.;
   nativeBuildInputs = [ gobject-introspection wrapGAppsHook4 makeWrapper ];
   buildInputs = [ gtk4 ];
@@ -23,13 +23,13 @@ in stdenvNoCC.mkDerivation {
   '';
   installPhase = ''
     mkdir -p $out/bin $out/share/stealth-keyboard
-    cp app.py keyboard.py layout.py effects.py $out/share/stealth-keyboard/
+    cp app.py keyboard.py layout.py effects.py profiles.py controller.py $out/share/stealth-keyboard/
     makeWrapper ${python}/bin/python $out/bin/stealth-keyboard \
       --add-flags $out/share/stealth-keyboard/app.py
     cp -r ${desktop}/share/applications $out/share/
   '';
   meta = {
-    description = "Native color and brightness controls for the MSI Stealth 14 Studio keyboard";
+    description = "Per-key RGB and effect controls for the MSI Stealth 14 Studio keyboard";
     mainProgram = "stealth-keyboard";
     platforms = lib.platforms.linux;
   };
