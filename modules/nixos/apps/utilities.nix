@@ -2,7 +2,7 @@
 
 {
 programs.zoom-us.enable = true;
-programs.qgroundcontrol.enable = true;
+#programs.qgroundcontrol.enable = true;
   # Utilities and system tools
   environment.systemPackages = with pkgs; [
     wget
@@ -31,8 +31,6 @@ programs.qgroundcontrol.enable = true;
     v4l-utils
     aspell
     aspellDicts.en
-    aspellDicts.en-computers
-    aspellDicts.en-science
     nicotine-plus
     fastfetch
     converseen
@@ -53,6 +51,7 @@ programs.qgroundcontrol.enable = true;
     signal-desktop
     kdePackages.gwenview
     llama-cpp-cuda
+    proton-vpn
   ];
 
 }
