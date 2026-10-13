@@ -32,6 +32,12 @@ func readFileTrim(path string) (string, error) {
 	return strings.TrimSpace(string(b)), nil
 }
 
+// writeFile best-effort-writes a sysfs/proc value; failures are ignored
+// because these paths come and go with hardware and kernel modules.
+func writeFile(path, value string) {
+	_ = os.WriteFile(path, []byte(value), 0o644)
+}
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

@@ -2,29 +2,17 @@ package main
 
 import (
 	"bufio"
-	"os"
 	"os/exec"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
-	"unicode"
 )
 
 var (
 	wpctlNodeRE = regexp.MustCompile(`^\s*\*?\s*(\d+)\.\s+(.+?)\s*(?:\[|$)`)
-	wpctlMuteRE = regexp.MustCompile(`(?i)\[MUTED\]`)
 	// Match sink/source/server only — not sink-input / source-output.
 	pactlAudioRE = regexp.MustCompile(`\bon (sink|source|server)(?:\s|#|$)`)
 )
-
-func writeLED(path string, on bool) {
-	v := "0"
-	if on {
-		v = "1"
-	}
-	_ = os.WriteFile(path, []byte(v), 0o644)
-}
 
 func wpctlVolumeLine(node string) (string, bool) {
 	out, err := runCmdOutput("wpctl", "get-volume", node)
@@ -36,30 +24,23 @@ func wpctlVolumeLine(node string) (string, bool) {
 
 func wpctlMuted(node string) bool {
 	out, ok := wpctlVolumeLine(node)
-	if !ok {
-		return false
-	}
-	return wpctlMuteRE.MatchString(out)
+	return ok && mutedOut(out)
+}
+
+func mutedOut(out string) bool {
+	return strings.Contains(strings.ToLower(out), "[muted]")
 }
 
 func syncMuteLEDs() {
-	writeLED("/sys/class/leds/platform::mute/brightness", wpctlMuted("@DEFAULT_AUDIO_SINK@"))
-	writeLED("/sys/class/leds/platform::micmute/brightness", wpctlMuted("@DEFAULT_AUDIO_SOURCE@"))
-}
-
-// stripTreePrefix drops wpctl's box-drawing indent ("│", "├─", …).
-func stripTreePrefix(s string) string {
-	return strings.TrimLeftFunc(s, func(r rune) bool {
-		if unicode.IsSpace(r) {
-			return true
-		}
-		switch r {
-		case '│', '├', '└', '─', '┌', '┐', '┘', '┬', '┴', '┼':
-			return true
-		default:
-			return false
-		}
-	})
+	mute, mic := "0", "0"
+	if wpctlMuted("@DEFAULT_AUDIO_SINK@") {
+		mute = "1"
+	}
+	if wpctlMuted("@DEFAULT_AUDIO_SOURCE@") {
+		mic = "1"
+	}
+	writeFile("/sys/class/leds/platform::mute/brightness", mute)
+	writeFile("/sys/class/leds/platform::micmute/brightness", mic)
 }
 
 func listAudioDevices() map[string]struct{} {
@@ -72,7 +53,8 @@ func listAudioDevices() map[string]struct{} {
 	inAudio := false
 	section := ""
 	for _, line := range strings.Split(out, "\n") {
-		trimmed := stripTreePrefix(strings.TrimSpace(line))
+		// Drop wpctl's box-drawing indent ("│", "├─", …).
+		trimmed := strings.Trim(line, " \t│├└─┌┐┘┬┴┼─")
 		switch {
 		case trimmed == "Audio":
 			inAudio = true
@@ -115,7 +97,8 @@ func listAudioDevices() map[string]struct{} {
 
 func runAudioMonitor() {
 	for {
-		var mu sync.Mutex
+		// known/lastSink/lastSource are only touched by the consumer
+		// goroutine below, so no lock needed around them.
 		known := listAudioDevices()
 		lastSink, sinkOK := wpctlVolumeLine("@DEFAULT_AUDIO_SINK@")
 		lastSource, sourceOK := wpctlVolumeLine("@DEFAULT_AUDIO_SOURCE@")
@@ -152,7 +135,6 @@ func runAudioMonitor() {
 						}
 					}
 
-					mu.Lock()
 					current := listAudioDevices()
 					added, removed := false, false
 					for k := range current {
@@ -181,13 +163,12 @@ func runAudioMonitor() {
 					}
 					if source, ok := wpctlVolumeLine("@DEFAULT_AUDIO_SOURCE@"); ok {
 						if sourceOK && source != lastSource &&
-							wpctlMuteRE.MatchString(source) != wpctlMuteRE.MatchString(lastSource) {
+							mutedOut(source) != mutedOut(lastSource) {
 							playSound(oxygen("dialog-information.ogg"))
 						}
 						lastSource, sourceOK = source, true
 					}
 					syncMuteLEDs()
-					mu.Unlock()
 				}
 			}
 		}()

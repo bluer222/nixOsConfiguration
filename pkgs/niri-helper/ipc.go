@@ -45,8 +45,10 @@ func serveCommands(ln net.Listener) {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
+			// A dead listener never recovers: exit and let systemd restart
+			// a fresh daemon rather than running deaf.
 			fmt.Fprintf(os.Stderr, "ipc accept: %v\n", err)
-			return
+			os.Exit(1)
 		}
 		go handleClient(conn)
 	}

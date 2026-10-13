@@ -5,17 +5,13 @@ import (
 	"strings"
 )
 
-func writeSys(path, value string) {
-	_ = os.WriteFile(path, []byte(value), 0o644)
-}
-
 func applyMSIBootDefaults() {
-	writeSys("/sys/devices/platform/msi-ec/win_key", "right")
-	writeSys("/sys/devices/platform/msi-ec/fn_key", "left")
-	writeSys("/sys/devices/platform/msi-ec/webcam_block", "off")
-	writeSys("/sys/devices/platform/msi-ec/webcam", "on")
-	writeSys("/sys/devices/platform/msi-ec/cooler_boost", "off")
-	writeSys("/sys/class/leds/platform::stealth/brightness", "0")
+	writeFile("/sys/devices/platform/msi-ec/win_key", "right")
+	writeFile("/sys/devices/platform/msi-ec/fn_key", "left")
+	writeFile("/sys/devices/platform/msi-ec/webcam_block", "off")
+	writeFile("/sys/devices/platform/msi-ec/webcam", "on")
+	writeFile("/sys/devices/platform/msi-ec/cooler_boost", "off")
+	writeFile("/sys/class/leds/platform::stealth/brightness", "0")
 	applyActivePowerProfile()
 }
 
@@ -24,22 +20,17 @@ func applyPowerProfile(profile string) {
 	profile = strings.TrimSpace(strings.ToLower(profile))
 	switch profile {
 	case "performance":
-		writeSys("/sys/devices/platform/msi-ec/shift_mode", "turbo")
-		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
-		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
-	case "balanced":
-		writeSys("/sys/devices/platform/msi-ec/shift_mode", "comfort")
-		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
-		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
+		writeFile("/sys/devices/platform/msi-ec/shift_mode", "turbo")
+		writeFile("/sys/devices/platform/msi-ec/fan_mode", "auto")
+		writeFile("/sys/devices/platform/msi-ec/super_battery", "off")
 	case "power-saver", "powersave", "power_saver":
-		writeSys("/sys/devices/platform/msi-ec/shift_mode", "eco")
-		writeSys("/sys/devices/platform/msi-ec/fan_mode", "silent")
-		writeSys("/sys/devices/platform/msi-ec/super_battery", "on")
-	default:
-		// Default to balanced if unrecognized
-		writeSys("/sys/devices/platform/msi-ec/shift_mode", "comfort")
-		writeSys("/sys/devices/platform/msi-ec/fan_mode", "auto")
-		writeSys("/sys/devices/platform/msi-ec/super_battery", "off")
+		writeFile("/sys/devices/platform/msi-ec/shift_mode", "eco")
+		writeFile("/sys/devices/platform/msi-ec/fan_mode", "silent")
+		writeFile("/sys/devices/platform/msi-ec/super_battery", "on")
+	default: // "balanced" and anything unrecognized
+		writeFile("/sys/devices/platform/msi-ec/shift_mode", "comfort")
+		writeFile("/sys/devices/platform/msi-ec/fan_mode", "auto")
+		writeFile("/sys/devices/platform/msi-ec/super_battery", "off")
 	}
 }
 
