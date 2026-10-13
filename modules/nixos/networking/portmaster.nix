@@ -60,6 +60,10 @@ let
   allowInternetInbound = mkRule {
     internet = true;
     inbound = true;
+  };
+  allowInternetInboundP2P = mkRule {
+    internet = true;
+    inbound = true;
     p2p = true;
   };
   allowInternetLANInbound = mkRule {
@@ -113,7 +117,7 @@ in
       geoclue = {
         name = "Geoclue";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-geoclue(-[^/]+)?/libexec/.geoclue-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-geoclue(-[^/]+)?/libexec/\\.geoclue-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -128,7 +132,7 @@ in
         name = "fwupd";
         fingerprints = [
           # /nix/store/yhdklphh417r1g4cg34h4xw9bwvl194h-fwupd-2.1.6/bin/.fwupdmgr-wrapped
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-fwupd(-[^/]+)?/bin/.fwupdmgr-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-fwupd(-[^/]+)?/bin/\\.fwupdmgr-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -136,19 +140,26 @@ in
       flatpak = {
         name = "Flatpak";
         packages = [ pkgs.flatpak ];
-        settings = allowInternet;
+        fingerprints = [
+          (mkPathRegex "^/nix/store/1lqd4p641h1hn4gn43qjnb1v5w2iy12l-flatpak(-[^/]+)?/bin/\.flatpak-wrapped$")
+        ];
+        settings = allowInternetP2P;
       };
+
 
       cups = {
         name = "CUPS";
         packages = [ pkgs.cups ];
-        settings = allowInternetLANInbound;
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-cups(-[^/]+)?/lib/cups/backend/ipp$")
+        ];
+        settings =  allowLANInbound;
       };
 
       cups-browsed = {
         name = "CUPS Browsed";
         packages = [ pkgs.cups-browsed ];
-        settings = allowLAN;
+        settings = allowLANInbound;
       };
 
       ssh = {
@@ -166,9 +177,14 @@ in
       cursor-agent = {
         name = "Cursor Agent";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[^/]+-cursor-cli-[^/]+/share/cursor-agent/node$")
-          # /home/samm/.local/share/cursor-agent/versions/2026.08.11-e8db854/node
-          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/cursor-agent/versions/[^/]+/node$")
+          (mkPathRegex "^/nix/store/[^/]+-cursor-agent-[^/]+/share/cursor-agent/node$")
+        ];
+        settings = allowInternetP2P;
+      };
+      claude-code = {
+        name = "Claude Code";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-claude-code-[^/]+/bin/\\.claude-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -176,16 +192,24 @@ in
       opencode = {
         name = "Opencode";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[^/]+-opencode-[^/]+/bin/.opencode-wrapped$")
+          (mkPathRegex "^/nix/store/[^/]+-opencode-[^/]+/bin/\\.opencode-wrapped$")
         ];
         settings = allowInternetP2P;
       };
 
       codex = {
         name = "Codex";
-        packages = [ pkgs.codex ];
         fingerprints = [
-          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.vscode/extensions/openai.chatgpt.*")
+          (mkPathRegex "^/nix/store/[^/]+-codex-[^/]+/libexec/codex/bin/codex$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.vscode/extensions/openai.chatgpt-[^/]+-linux-x64/bin/linux-x86_64/codex$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      t3-code = {
+        name = "T3 Code";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-nodejs-slim-[^/]+/bin/node$")
         ];
         settings = allowInternetP2P;
       };
@@ -198,15 +222,40 @@ in
         ];
         settings = allowInternetP2P;
       };
+
+      vmware-natd = {
+        name = "VMware NATD";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-vmware-workstation-[^/]+/bin/vmnet-natd$")
+        ];
+        settings = allowInternetLANP2P;
+      };
+
+      muse = {
+        name = "Muse Code";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-muse-code-[^/]+/bin/muse$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      grok-bot = {
+        name = "Grok Bot";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-grok-bot-[^/]+/lib/grok-bot/grok-bot$")
+        ];
+        settings = allowInternetP2P;
+      };
       
       sober = {
         name = "Sober";
         fingerprints = [
           (mkFlatpakEquals "org.vinegarhq.Sober")
+          (mkPathRegex "^/app/bin/sober$")
         ];
         settings = allowInternetP2P;
       };
-
+       
       git = {
         name = "Git";
         fingerprints = [
@@ -230,7 +279,7 @@ in
       brave = {
         name = "Brave Browser";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave(-[^/]+)?/opt/brave.com/brave/brave$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave(-[^/]+)?/opt/brave\\.com/brave/brave$")
         ];
         settings = allowInternetLANP2P;
       };
@@ -238,7 +287,7 @@ in
       brave-origin = {
         name = "Brave Origin";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave-origin(-[^/]+)?/opt/brave.com/brave-origin/brave$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-brave-origin(-[^/]+)?/opt/brave\\.com/brave-origin/brave$")
         ];
         settings = allowInternetLANP2P;
       };
@@ -254,7 +303,7 @@ in
       zoom = {
         name = "Zoom";
         packages = [ pkgs.zoom-us ];
-        settings = allowInternetInbound;
+        settings = allowInternetInboundP2P;
       };
 
       signal = {
@@ -309,6 +358,15 @@ in
         settings = allowInternet;
       };
 
+      wine = {
+        name = "Wine";
+        #wineWow64Packages.stableFull for fusion
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[^/]+-wine-wow64-[^/]+/bin/wineserver$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       obs-studio = {
         name = "OBS Studio";
         packages = [ pkgs.obs-studio ];
@@ -318,8 +376,8 @@ in
       discover = {
         name = "Discover";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-discover(-[^/]+)?/bin/.plasma-discover-wrapped$")
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6/.kioworker-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-discover(-[^/]+)?/bin/\\.plasma-discover-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kio(-[^/]+)?/libexec/kf6/\\.kioworker-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -339,7 +397,7 @@ in
       kdeconnect = {
         name = "KDE Connect";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kdeconnect-kde(-[^/]+)?/bin/.kdeconnectd-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-kdeconnect-kde(-[^/]+)?/bin/\\.kdeconnectd-wrapped$")
         ];
         settings = allowLANInbound;
       };
@@ -361,13 +419,17 @@ in
       proton-vpn = {
         name = "Proton VPN";
         packages = [ pkgs.proton-vpn ];
-        settings = allowInternet;
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-python3-[^/]+/bin/python3\\.[0-9]+$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-openvpn-[^/]+/bin/openvpn$")
+        ];
+        settings = allowInternetP2P;
       };
 
       nicotine-plus = {
         name = "Nicotine+";
         packages = [ pkgs.nicotine-plus ];
-        settings = allowInternetInbound;
+        settings = allowInternetInboundP2P;
       };
 
       immich-go = {
@@ -392,6 +454,15 @@ in
         name = "VS Code";
         fingerprints = [
           (mkPathRegex "^/nix/store/[a-z0-9]{32}-vscode(-[^/]+)?/lib/vscode/code$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      zed = {
+        name = "Zed";
+        fingerprints = [
+          # FHS wrapper execs this; Portmaster sees the unwrapped binary.
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-zed-editor(-[^/]+)?/libexec/\\.zed-editor-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -434,7 +505,9 @@ in
 
       antigravity-cli = {
         name = "Antigravity CLI";
-        packages = [ pkgs.antigravity-cli ];
+        fingerprints = [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.gemini/bin/agy$")
+        ];
         settings = allowInternetP2P;
       };
 
@@ -463,7 +536,7 @@ in
       github = {
         name = "GitHub CLI";
         fingerprints = [
-          (mkPathRegex "^/nix/store/[a-z0-9]{32}-gh(-[^/]+)?/bin/.gh-wrapped$")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-gh(-[^/]+)?/bin/\\.gh-wrapped$")
         ];
         settings = allowInternetP2P;
       };
@@ -570,7 +643,7 @@ in
         name = "Twintail Launcher";
         fingerprints = [
           (mkPathEquals "/app/bin/twintaillauncher")
-          (mkPathRegex "^/home/samm/.var/app/app.twintaillauncher.ttl/.*")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.var/app/app\\.twintaillauncher\\.ttl/.*")
         ];
         settings = allowInternet;
       };
@@ -578,7 +651,7 @@ in
       android-java = {
         name = "Java for android studio";
         fingerprints = [
-          (mkPathRegex "^/home/samm/.jdks/.*")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.jdks/.*")
         ];
         settings = allowInternet;
       };
