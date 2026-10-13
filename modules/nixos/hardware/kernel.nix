@@ -9,7 +9,7 @@
           owner = "bluer222";
           repo = "msi-ec";
           rev = "main";
-          sha256 = "sha256-ECWLV3Yd8ISJtHoKOfo5esWoHUKwKyGCrjQEAIkjleM=";
+          sha256 = "sha256-ITsM9irWUqlZp/jRnj7ArVIEZ0LyKt3ubY3suf+ArtQ=";
         };
       }))
     ];
@@ -29,7 +29,6 @@
       "zswap.shrinker_enabled=1"
       "zswap.compressor=zstd"
       "zswap.max_pool_percent=60"
-      "zswap.zpool=zsmalloc"
     ];
   };
 }

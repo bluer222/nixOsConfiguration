@@ -39,7 +39,6 @@
     "vm.watermark_scale_factor" = 125;
     
     # Improve multitasking under heavy load
-    "kernel.sched_child_runs_first" = 0;
     "kernel.sched_autogroup_enabled" = 1;
     "kernel.sched_cfs_bandwidth_slice_us" = 3000;
 
