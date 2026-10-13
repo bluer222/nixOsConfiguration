@@ -1,5 +1,14 @@
 { config, inputs, pkgs, ... }:
 
+let
+  opencode-cli-latest =
+    inputs.nixpkgs-opencode.legacyPackages.${pkgs.stdenv.hostPlatform.system}.opencode;
+  opencode-desktop-fixed = pkgs.opencode-desktop.overrideAttrs (oldAttrs: {
+    env = (oldAttrs.env or { }) // {
+      OPENCODE_VERSION = oldAttrs.version;
+    };
+  });
+in
 {
   # Development tools and IDEs
   programs.java.enable = true;
@@ -16,19 +25,25 @@
     arduino-ide
     kdePackages.umbrello
     gnumake
-    cursor-cli
     python3
     antigravity-ide-fhs
-    antigravity-cli
     kdePackages.konsole
     ntfs3g
     gpsd
-    github-copilot-cli
     moonlight-qt
-    opencode
-    opencode-desktop
     gcc
-    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode
     gh
+    zed-editor-fhs
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.muse-code
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.grok-bot
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.t3code
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.t3code-desktop
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.antigravity-cli
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.cursor-agent
+    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
+    opencode-cli-latest
+    opencode-desktop-fixed
   ];
 }
