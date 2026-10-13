@@ -16,6 +16,9 @@
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
 
+  #temp
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
   # Howdy facial authentication
   services.howdy.enable = true;
   services.howdy = {
