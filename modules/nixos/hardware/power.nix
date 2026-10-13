@@ -48,29 +48,29 @@
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
-      # Energy Performance Preference (EPP): This is the primary driver for Raptor Lake efficiency
+      # Energy Performance Preference (EPP): Primary driver for Raptor Lake efficiency.
+      # balance_performance enables fast race-to-halt; balance_power prevents latency walls while saving power.
       CPU_ENERGY_PERF_POLICY_ON_AC = "performance";
-      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance"; # Better responsiveness/efficiency than balance_power
-      CPU_ENERGY_PERF_POLICY_ON_SAV = "power";
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance";
+      CPU_ENERGY_PERF_POLICY_ON_SAV = "balance_power";
 
       # Hardware HWP Dynamic Boost: Allows quicker frequency ramp-up
       CPU_HWP_DYN_BOOST_ON_AC = 1;
       CPU_HWP_DYN_BOOST_ON_BAT = 0;
       CPU_HWP_DYN_BOOST_ON_SAV = 0;
 
-      # Turbo Boost: On 13th Gen, it's usually better to keep this ON even on battery
-      # but use EPP to control the behavior. We only disable it for 'Power Saver'.
+      # Turbo Boost: Keep ON even in power saving so bursty tasks finish fast and cores return to deep C-states (C8/C10)
       CPU_BOOST_ON_AC = 1;
       CPU_BOOST_ON_BAT = 1;
-      CPU_BOOST_ON_SAV = 0;
+      CPU_BOOST_ON_SAV = 1;
 
       # Minimum/Maximum performance percentages
+      # Avoid heavy downclocking caps which prolong uncore/DRAM active state and prevent package C-states
       CPU_MIN_PERF_ON_AC = 0;
       CPU_MAX_PERF_ON_AC = 100;
       CPU_MIN_PERF_ON_BAT = 0;
-      CPU_MAX_PERF_ON_BAT = 80; # Cap P-cores slightly on battery to avoid heat
-      # CPU_MAX_PERF_ON_SAV = 50; # previous
-      CPU_MAX_PERF_ON_SAV = 20; # crippled — maximize battery in Power Saver
+      CPU_MAX_PERF_ON_BAT = 100;
+      CPU_MAX_PERF_ON_SAV = 80;
 
       # Platform profile (firmware) — only SAV is forced low-power
       PLATFORM_PROFILE_ON_SAV = "low-power";
@@ -78,16 +78,8 @@
       # ========================================================================
       # Graphics (iGPU)
       # ========================================================================
-      #100 is the minimum
-      INTEL_GPU_MIN_FREQ_ON_AC = 0;
-      INTEL_GPU_MIN_FREQ_ON_BAT = 0;
-      INTEL_GPU_MIN_FREQ_ON_SAV = 0;
-
-      INTEL_GPU_MAX_FREQ_ON_AC = 0; # 0 means unlimited in this case
-      INTEL_GPU_MAX_FREQ_ON_BAT = 1000; # Cap iGPU to 1GHz on battery
-      # INTEL_GPU_MAX_FREQ_ON_SAV = 600; # previous
-      INTEL_GPU_MAX_FREQ_ON_SAV = 100; # crippled — Intel floor
-      INTEL_GPU_BOOST_FREQ_ON_SAV = 100;
+      # Leave frequency limits to the driver. TLP requires valid MHz values;
+      # zero is outside this GPU's supported range.
 
       # ========================================================================
       # Networking & Radio
@@ -109,8 +101,7 @@
       RUNTIME_PM_ON_AC = "on";   # 'on' means PM is disabled (safer for AC)
       RUNTIME_PM_ON_BAT = "auto";
       RUNTIME_PM_ON_SAV = "auto";
-      # Exclude Nvidia as it handles its own PM via the driver (HDMI / PRIME)
-      RUNTIME_PM_DENYLIST = "nvidia nouveau";
+      # TLP's default driver denylist already includes nvidia and nouveau.
 
       # USB autosuspend — SAV only via defaults; keep global gentle
       # (TLP has no USB_AUTOSUSPEND_ON_SAV; leave unset so AC/BAT unchanged)
