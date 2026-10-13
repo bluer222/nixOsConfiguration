@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -48,14 +47,8 @@ func runOCR() error {
 }
 
 func killFocused() error {
-	raw, err := niriMsgJSON("focused-window")
+	win, err := focusedWindow()
 	if err != nil {
-		return err
-	}
-	var win struct {
-		PID *int `json:"pid"`
-	}
-	if err := json.Unmarshal(raw, &win); err != nil {
 		return err
 	}
 	if win.PID == nil || *win.PID <= 1 {

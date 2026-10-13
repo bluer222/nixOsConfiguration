@@ -295,9 +295,15 @@ in {
       };
 
       widget.workspaces = {
-        #optimally hide #4 only but not an option
-        hide_when_empty = false;
-        label_source = "id";
+        # Niri always keeps a trailing empty workspace (the show-desktop
+        # target), so with this false the switcher permanently shows a 4th
+        # pill. True hides it — and any other empty desk — until occupied.
+        # Noctalia has no per-workspace exclude list; this is the only lever.
+        # Labels come from workspace NAMES, not positions: Niri indices shift
+        # as dynamic workspaces come and go (notably the pinned empty
+        # workspace above the first), so id labels would read 2,3,4.
+        hide_when_empty = true;
+        label_source = "name";
       };
 
       widget.taskbar = {

@@ -29,7 +29,7 @@ func runDaemon() error {
 }
 
 func runEventLoop() error {
-	byID := map[uint64]workspaceInfo{}
+	byID := map[uint64]workspace{}
 
 	for {
 		conn, dec, err := openEventStream()
@@ -62,22 +62,14 @@ func runEventLoop() error {
 
 			if payload, ok := ev["WorkspacesChanged"]; ok {
 				var body struct {
-					Workspaces []struct {
-						ID   uint64  `json:"id"`
-						Idx  uint8   `json:"idx"`
-						Name *string `json:"name"`
-					} `json:"workspaces"`
+					Workspaces []workspace `json:"workspaces"`
 				}
 				if err := json.Unmarshal(payload, &body); err != nil {
 					continue
 				}
-				byID = map[uint64]workspaceInfo{}
+				byID = map[uint64]workspace{}
 				for _, ws := range body.Workspaces {
-					name := ""
-					if ws.Name != nil {
-						name = *ws.Name
-					}
-					byID[ws.ID] = workspaceInfo{ID: ws.ID, Idx: ws.Idx, Name: name}
+					byID[ws.ID] = ws
 				}
 			}
 

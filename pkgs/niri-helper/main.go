@@ -14,13 +14,6 @@ func main() {
 	cmd := os.Args[1]
 	args := os.Args[2:]
 
-	// Noctalia hooks set NOCTALIA_POWER_PROFILE in the CLI process, not the daemon.
-	if cmd == "power-profile" && len(args) == 0 {
-		if env := os.Getenv("NOCTALIA_POWER_PROFILE"); env != "" {
-			args = []string{env}
-		}
-	}
-
 	switch cmd {
 	case "daemon":
 		if err := runDaemon(); err != nil {
@@ -41,6 +34,14 @@ func dispatch(cmd string, args []string) error {
 	switch cmd {
 	case "show-desktop":
 		return showDesktop()
+	case "goto-desk":
+		return gotoDesk(args)
+	case "move-to-desk":
+		return moveToDesk(args)
+	case "soft-close":
+		return softClose()
+	case "undo-close":
+		return undoClose()
 	case "dim":
 		return dimBrightness()
 	case "restore":
@@ -74,6 +75,10 @@ daemon:
 
 commands (forwarded to the running daemon):
   show-desktop    toggle empty "desktop" workspace
+  goto-desk N     focus numbered desk N by name (Mod+E/R/F)
+  move-to-desk N  move focused window to numbered desk N (Mod+Shift+E/R/F)
+  soft-close      hide focused window, really close it after 30s
+  undo-close      bring back the most recently hidden window
   dim | restore   idle brightness helpers
   wake            post-sleep hooks
   ocr             region OCR to clipboard

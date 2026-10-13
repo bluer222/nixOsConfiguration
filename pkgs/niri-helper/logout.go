@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -42,12 +41,12 @@ type procInfo struct {
 	Comm string
 }
 
-func listKillCandidates() ([]procInfo, error) {
+func listKillCandidates() []procInfo {
 	uid := os.Getuid()
 	self := os.Getpid()
 	entries, err := os.ReadDir("/proc")
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	var out []procInfo
 	for _, e := range entries {
@@ -88,7 +87,7 @@ func listKillCandidates() ([]procInfo, error) {
 		}
 		out = append(out, procInfo{PID: pid, Comm: comm})
 	}
-	return out, nil
+	return out
 }
 
 func signalAll(procs []procInfo, sig syscall.Signal) {
@@ -120,7 +119,7 @@ func waitGone(procs []procInfo, timeout time.Duration) []procInfo {
 	return stillAlive(live)
 }
 
-func notifyActions(summary, body string, actions []string) (string, error) {
+func notifyActions(summary, body string, actions []string) string {
 	args := []string{"--wait", "-a", "niri-helper", "-u", "critical", summary}
 	if body != "" {
 		args = append(args, body)
@@ -128,26 +127,17 @@ func notifyActions(summary, body string, actions []string) (string, error) {
 	for i := 0; i+1 < len(actions); i += 2 {
 		args = append(args, "--action="+actions[i]+"="+actions[i+1])
 	}
-	cmd := exec.Command("notify-send", args...)
-	out, err := cmd.Output()
-	return strings.TrimSpace(string(out)), err
-}
-
-type niriWindowEntry struct {
-	ID uint64 `json:"id"`
+	out, _ := exec.Command("notify-send", args...).Output()
+	return strings.TrimSpace(string(out))
 }
 
 func closeAllWindows() {
-	raw, err := niriMsgJSON("windows")
+	wins, err := listWindows()
 	if err != nil {
 		return
 	}
-	var wins []niriWindowEntry
-	if err := json.Unmarshal(raw, &wins); err != nil {
-		return
-	}
 	for _, w := range wins {
-		_ = niriMsg("action", "close-window", "--id", strconv.FormatUint(w.ID, 10))
+		_ = closeWindowByID(w.ID)
 	}
 }
 
@@ -167,10 +157,7 @@ func runLogout(args []string) error {
 	// Wait up to 2 seconds for windows to close gracefully before checking processes
 	time.Sleep(2 * time.Second)
 
-	procs, err := listKillCandidates()
-	if err != nil {
-		return err
-	}
+	procs := listKillCandidates()
 	if len(procs) > 0 {
 		signalAll(procs, syscall.SIGTERM)
 		leftover := waitGone(procs, 10*time.Second)
@@ -180,16 +167,12 @@ func runLogout(args []string) error {
 			for _, p := range leftover {
 				names = append(names, p.Comm)
 			}
-			action, err := notifyActions(
+			// A failed/empty prompt counts as "don't kill".
+			if action := notifyActions(
 				"Apps still running",
 				joinNames(names, 8),
 				[]string{"kill", "Kill remaining", "cancel", "Cancel"},
-			)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "notification failed (%v); cancelling logout\n", err)
-				return nil
-			}
-			if action != "kill" {
+			); action != "kill" {
 				notify("low", "Logout cancelled", "")
 				return nil
 			}

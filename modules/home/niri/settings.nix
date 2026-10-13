@@ -48,6 +48,7 @@ in {
 
       outputs."eDP-1" = {
         scale = 1.0;
+        variable-refresh-rate = true;
       };
 
       cursor = {
@@ -57,6 +58,11 @@ in {
 
       layout = {
         gaps = 4;
+        # NOTE: do NOT enable empty-workspace-above-first. Niri exposes
+        # unnamed workspaces to the bar with an index-derived name, so the
+        # dynamic above-first desk also calls itself "1" — duplicating real
+        # desk "1" and breaking Noctalia's workspace matching (ghost pill).
+        # The persistent "0" desk below plays the same role with a unique name.
         focus-ring = {
           enable = false;
         };
@@ -79,9 +85,27 @@ in {
       };
 
       workspaces = {
+        # "0" is the top wraparound slot (swipe down from 1 lands here and
+        # bounces to 3). Persistent with a unique name so it never collides
+        # in Noctalia's matching; hidden via hide_when_empty. "1"-"3" are
+        # the everyday desks. Utility desks (persistent so references always
+        # resolve):
+        # "desktop" is the show-desktop target, "trash" stages windows for
+        # delayed close. Non-numeric names keep them unambiguous as
+        # references — Niri resolves numeric references by POSITION, which
+        # shifts as dynamic workspaces come and go ("0" is only ever
+        # compared/resolved by exact name inside niri-helper, never passed
+        # to Niri as a positional reference). All stay hidden via
+        # hide_when_empty.
+        # Never navigate to utility desks directly; wrap.go and show-desktop
+        # own them. Numbered desks are addressed through
+        # `niri-helper goto-desk|move-to-desk`, never bare strings.
+        "0" = { };
         "1" = { };
         "2" = { };
         "3" = { };
+        "desktop" = { };
+        "trash" = { };
       };
 
       screenshot-path = "${home}/Pictures/Screenshots/%Y-%m-%d %H-%M-%S.png";
@@ -95,8 +119,12 @@ in {
         "Mod+Space".action.toggle-window-floating = { };
 
         # Windows
-        "Mod+Escape".action.close-window = { };
-        "Mod+Shift+Escape".action.spawn = [ helper "kill-focused" ];
+        # Soft-close: hide + queue a real close in 30s, Super+Z undoes.
+        # Shift+Escape is instant graceful close, Ctrl+Escape is SIGKILL.
+        "Mod+Escape".action.spawn = [ helper "soft-close" ];
+        "Mod+Z".action.spawn = [ helper "undo-close" ];
+        "Mod+Shift+Escape".action.close-window = { };
+        "Mod+Ctrl+Escape".action.spawn = [ helper "kill-focused" ];
 
         "Mod+W".action.move-window-up = { };
         "Mod+S".action.move-window-down = { };
@@ -104,13 +132,16 @@ in {
         "Mod+D".action.move-column-right = { };
 
         "Mod+M".action.maximize-column = { };
-        "Mod+E".action.focus-workspace = "1";
-        "Mod+R".action.focus-workspace = "2";
-        "Mod+F".action.focus-workspace = "3";
+        # Desk jumps go through the helper: Niri resolves numeric references
+        # by position (shifted by the pinned above-first workspace), so the
+        # daemon resolves each desk NAME to its current index first.
+        "Mod+E".action.spawn = [ helper "goto-desk" "1" ];
+        "Mod+R".action.spawn = [ helper "goto-desk" "2" ];
+        "Mod+F".action.spawn = [ helper "goto-desk" "3" ];
 
-        "Mod+Shift+E".action.move-window-to-workspace = "1";
-        "Mod+Shift+R".action.move-window-to-workspace = "2";
-        "Mod+Shift+F".action.move-window-to-workspace = "3";
+        "Mod+Shift+E".action.spawn = [ helper "move-to-desk" "1" ];
+        "Mod+Shift+R".action.spawn = [ helper "move-to-desk" "2" ];
+        "Mod+Shift+F".action.spawn = [ helper "move-to-desk" "3" ];
 
         "Mod+Grave".action.spawn = [ helper "show-desktop" ];
         "Mod+Tab".action.toggle-overview = { };
