@@ -11,6 +11,7 @@ in
       WorkingDirectory = config.home.homeDirectory;
       Environment = [
         "PATH=${config.home.homeDirectory}/.local/bin:${config.home.profileDirectory}/bin:/run/wrappers/bin:/run/current-system/sw/bin"
+        "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
       ];
       Restart = "on-failure";
       RestartSec = 5;
