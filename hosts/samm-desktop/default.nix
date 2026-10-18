@@ -7,6 +7,7 @@
     # Hardware and boot configuration
     ../../modules/nixos/boot.nix
     ../../modules/nixos/hardware/gpu.nix
+    ../../modules/nixos/hardware/nvidia-reset.nix
     ../../modules/nixos/hardware/kernel.nix
     ../../modules/nixos/hardware/power.nix
     ../../modules/nixos/hardware/keyboard-rgb.nix
