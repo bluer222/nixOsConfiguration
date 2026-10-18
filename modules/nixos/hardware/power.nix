@@ -98,7 +98,7 @@
       PCIE_ASPM_ON_SAV = "powersupersave";
 
       # Runtime Power Management for devices
-      RUNTIME_PM_ON_AC = "on";   # 'on' means PM is disabled (safer for AC)
+      RUNTIME_PM_ON_AC = "auto";
       RUNTIME_PM_ON_BAT = "auto";
       RUNTIME_PM_ON_SAV = "auto";
       # TLP's default driver denylist already includes nvidia and nouveau.
