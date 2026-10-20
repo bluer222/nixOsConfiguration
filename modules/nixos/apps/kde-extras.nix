@@ -5,7 +5,7 @@
   environment.systemPackages = with pkgs; [
     kdePackages.filelight
     kdePackages.keysmith
-    mailspring  # replaces Kmail/Akonadi
+    (aerion.override { withOAuth = true; })
     kdePackages.ghostwriter
     kdePackages.kate
     kdePackages.oxygen-sounds
