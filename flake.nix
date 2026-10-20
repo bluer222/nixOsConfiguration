@@ -3,6 +3,8 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Keep Audacity on Qt 6.11 until nixpkgs#572942 is fixed.
+    nixpkgs-audacity.url = "github:NixOS/nixpkgs/7fd4004d0511991fff3a0524856a9be09e28c5f0";
 
     home-manager = {
       url = "github:nix-community/home-manager/master";

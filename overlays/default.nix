@@ -1,6 +1,8 @@
 { inputs, nixpkgs, ... }:
 
 final: prev: {
+  audacity = inputs.nixpkgs-audacity.legacyPackages.${prev.stdenv.hostPlatform.system}.audacity;
+
   t3code =
     let
       upstream = inputs.llm-agents.packages.${prev.stdenv.hostPlatform.system}.t3code;

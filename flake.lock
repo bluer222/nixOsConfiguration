@@ -381,6 +381,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-audacity": {
+      "locked": {
+        "lastModified": 1791734076,
+        "narHash": "sha256-i5qk1kLiit98rRbh1AXmWBNT9QXC/y4l5Wk/u5EdpDQ=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "7fd4004d0511991fff3a0524856a9be09e28c5f0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "7fd4004d0511991fff3a0524856a9be09e28c5f0",
+        "type": "github"
+      }
+    },
     "nixpkgs-lib": {
       "locked": {
         "lastModified": 1790477367,
@@ -614,6 +630,7 @@
         "niri": "niri",
         "nixos-secrets": "nixos-secrets",
         "nixpkgs": "nixpkgs_6",
+        "nixpkgs-audacity": "nixpkgs-audacity",
         "nixpkgs-msi-ec": "nixpkgs-msi-ec",
         "noctalia": "noctalia",
         "plymouth-luks-subtle": "plymouth-luks-subtle",
