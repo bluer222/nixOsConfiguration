@@ -427,22 +427,6 @@
         "type": "github"
       }
     },
-    "nixpkgs-opencode": {
-      "locked": {
-        "lastModified": 1789773315,
-        "narHash": "sha256-b9WYPcvLWrXtVNzVxnc/ZJOWlAg5Lm7N++lfsQv96xo=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "12591e3ecd85c3d4636f1f523e34ae4165914730",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "12591e3ecd85c3d4636f1f523e34ae4165914730",
-        "type": "github"
-      }
-    },
     "nixpkgs-stable": {
       "locked": {
         "lastModified": 1791662279,
@@ -525,11 +509,11 @@
     },
     "nixpkgs_6": {
       "locked": {
-        "lastModified": 1791734076,
-        "narHash": "sha256-i5qk1kLiit98rRbh1AXmWBNT9QXC/y4l5Wk/u5EdpDQ=",
+        "lastModified": 1792210252,
+        "narHash": "sha256-Mh0PUaIv4nFY+8wAGonaEh8iBzwsmdNlwjVHmFg1Biw=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "7fd4004d0511991fff3a0524856a9be09e28c5f0",
+        "rev": "09063bd1f2b36fd9fd793c36dfade7bd40a93dfc",
         "type": "github"
       },
       "original": {
@@ -631,7 +615,6 @@
         "nixos-secrets": "nixos-secrets",
         "nixpkgs": "nixpkgs_6",
         "nixpkgs-msi-ec": "nixpkgs-msi-ec",
-        "nixpkgs-opencode": "nixpkgs-opencode",
         "noctalia": "noctalia",
         "plymouth-luks-subtle": "plymouth-luks-subtle",
         "secure-suspend": "secure-suspend"

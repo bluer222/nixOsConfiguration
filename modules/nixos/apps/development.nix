@@ -1,14 +1,5 @@
 { config, inputs, pkgs, ... }:
 
-let
-  opencode-cli-latest =
-    inputs.nixpkgs-opencode.legacyPackages.${pkgs.stdenv.hostPlatform.system}.opencode;
-  opencode-desktop-fixed = pkgs.opencode-desktop.overrideAttrs (oldAttrs: {
-    env = (oldAttrs.env or { }) // {
-      OPENCODE_VERSION = oldAttrs.version;
-    };
-  });
-in
 {
   # Development tools and IDEs
   programs.java.enable = true;
@@ -43,7 +34,7 @@ in
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.antigravity-cli
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.cursor-agent
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
-    opencode-cli-latest
-    opencode-desktop-fixed
+    opencode
+    opencode-desktop
   ];
 }
