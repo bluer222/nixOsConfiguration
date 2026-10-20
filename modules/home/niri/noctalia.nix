@@ -193,7 +193,7 @@ in {
       };
 
       lockscreen = {
-        enabled = true;
+        enabled = false;
         blurred_desktop = true;
         lock_before_suspend = true;
         # for howdy face recognition

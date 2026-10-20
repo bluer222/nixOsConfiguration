@@ -1,5 +1,11 @@
-{ config, pkgs, ... }:
+{ config, inputs, pkgs, ... }:
 {
+  imports = [ "${inputs.secure-suspend}/secure-suspend.nix" ];
+  security.secureSuspend.enable = true;
+
+  # Save VRAM before secure-suspend locks the disk.
+  hardware.nvidia.powerManagement.kernelSuspendNotifier = false;
+
   # Power management core
   # powertop tunables removed: conflict with TLP (double-apply runtime PM and
   # re-enable devices TLP denylists, e.g. nvidia)
