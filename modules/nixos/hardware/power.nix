@@ -54,11 +54,10 @@
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_SAV = "powersave";
 
-      # Energy Performance Preference (EPP): Primary driver for Raptor Lake efficiency.
-      # balance_performance enables fast race-to-halt; balance_power prevents latency walls while saving power.
+      # Avoid balance_power, which caused severe write slowdowns on this laptop.
       CPU_ENERGY_PERF_POLICY_ON_AC = "performance";
-      CPU_ENERGY_PERF_POLICY_ON_BAT = "balance_performance";
-      CPU_ENERGY_PERF_POLICY_ON_SAV = "balance_power";
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "performance";
+      CPU_ENERGY_PERF_POLICY_ON_SAV = "balance_performance";
 
       # Hardware HWP Dynamic Boost: Allows quicker frequency ramp-up
       CPU_HWP_DYN_BOOST_ON_AC = 1;
