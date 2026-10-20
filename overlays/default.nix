@@ -1,6 +1,19 @@
 { inputs, nixpkgs, ... }:
 
 final: prev: {
+  t3code =
+    let
+      upstream = inputs.llm-agents.packages.${prev.stdenv.hostPlatform.system}.t3code;
+    in
+    upstream.override {
+      t3code-unwrapped = upstream.unwrapped.overrideAttrs (oldAttrs: {
+        # T3 Connect sign-in is hidden unless the JWT template is set at build time.
+        env = (oldAttrs.env or { }) // {
+          T3CODE_CLERK_JWT_TEMPLATE = "t3-relay";
+        };
+      });
+    };
+
   # Backport nixpkgs#554373 (python3Packages.dlib after the 20.0.1 bump).
   pythonPackagesExtensions = prev.pythonPackagesExtensions ++ [
     (pythonFinal: pythonPrev: {

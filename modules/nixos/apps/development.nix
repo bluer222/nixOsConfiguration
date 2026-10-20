@@ -38,8 +38,8 @@ in
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.muse-code
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.grok-bot
-    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.t3code
-    inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.t3code-desktop
+    t3code
+    t3code.desktop
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.antigravity-cli
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.cursor-agent
     inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.copilot-cli
