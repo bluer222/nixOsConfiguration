@@ -5,6 +5,8 @@
 
   # Save VRAM before secure-suspend locks the disk.
   hardware.nvidia.powerManagement.kernelSuspendNotifier = false;
+  # NVIDIA 615 defaults this on unless the module parameter is explicitly disabled.
+  hardware.nvidia.moduleParams.nvidia.NVreg_UseKernelSuspendNotifiers = 0;
 
   # Power management core
   # powertop tunables removed: conflict with TLP (double-apply runtime PM and
