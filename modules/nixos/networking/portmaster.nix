@@ -668,8 +668,9 @@ in
         name = "WebKit Network Process";
         fingerprints = [
           (mkPathEquals "/usr/libexec/webkit2gtk-4.1/WebKitNetworkProcess")
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-webkitgtk(-[^/]+)?/libexec/webkit2gtk-4\\.1/WebKitNetworkProcess$")
         ];
-        settings = allowInternet;
+        settings = allowInternetP2P;
       };
 
       noctalia = {
