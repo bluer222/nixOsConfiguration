@@ -1,6 +1,14 @@
 { config, inputs, pkgs, ... }:
 {
-  imports = [ "${inputs.secure-suspend}/secure-suspend.nix" ];
+  # Keep the prompt on the kernel/NVIDIA suspend console, preserving upstream paths.
+  imports = [
+    (builtins.toFile "secure-suspend.nix" (
+      builtins.replaceStrings
+        [ "-ws -c8" "./" ]
+        [ "-wfs -c63" "${inputs.secure-suspend}/" ]
+        (builtins.readFile "${inputs.secure-suspend}/secure-suspend.nix")
+    ))
+  ];
   security.secureSuspend.enable = true;
 
   # Save VRAM before secure-suspend locks the disk.
