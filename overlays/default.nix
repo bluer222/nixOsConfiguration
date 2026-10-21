@@ -40,6 +40,15 @@ final: prev: {
   };
 
   linuxPackages_latest = prev.linuxPackages_latest.extend (lFinal: lPrev: {
+    # Backport nixpkgs#575861 until it reaches our nixpkgs pin.
+    v4l2loopback = lPrev.v4l2loopback.overrideAttrs {
+      preBuild = "";
+      installFlags = [
+        "DEPMOD=true"
+        "INSTALL_MOD_PATH=${placeholder "out"}"
+      ];
+    };
+
     msi-ec = lPrev.msi-ec.overrideAttrs (oldAttrs: {
       inherit (inputs.nixpkgs-msi-ec.legacyPackages.${prev.stdenv.hostPlatform.system}.linuxPackages_latest.msi-ec) version src patches;
     });

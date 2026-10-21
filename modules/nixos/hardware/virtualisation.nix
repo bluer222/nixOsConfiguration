@@ -2,7 +2,8 @@
 {
   #add quemu
   virtualisation = {
-    vmware.host.enable = true;
+    # Temporarily disabled until nixpkgs#575192 is fixed for VMware.
+    # vmware.host.enable = true;
     libvirtd.enable = true;
     spiceUSBRedirection.enable = true;
 
