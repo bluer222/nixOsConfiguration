@@ -621,6 +621,14 @@ in
         settings = allowInternetLAN;
       };
 
+      aerion = {
+        name = "Aerion";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-aerion(-[^/]+)?/bin/\\.aerion-wrapped$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       kmail = {
         name = "KMail";
         packages = [ pkgs.kdePackages.kmail ];
