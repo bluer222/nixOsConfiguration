@@ -214,6 +214,14 @@ in
         settings = allowInternetP2P;
       };
 
+      t3-browser = {
+        name = "T3 Browser";
+        fingerprints = [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.t3/tools/chrome-headless-shell/linux64/[^/]+/chrome-headless-shell$")
+        ];
+        settings = allowInternetLAN;
+      };
+
       zcode = {
         name = "ZCode";
         packages = [ inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.zcode ];
