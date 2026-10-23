@@ -65,6 +65,19 @@
         libice
         libxkbcommon
         libX11
+        # T3's downloaded Chromium headless shell.
+        alsa-lib
+        at-spi2-core
+        dbus
+        expat
+        libgbm
+        libxcomposite
+        libxdamage
+        libxfixes
+        libxrandr
+        nspr
+        nss
+        systemd
     ];
     direnv = {
       enable = true;
