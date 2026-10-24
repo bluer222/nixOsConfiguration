@@ -3,6 +3,9 @@
 final: prev: {
   audacity = inputs.nixpkgs-audacity.legacyPackages.${prev.stdenv.hostPlatform.system}.audacity;
 
+  # Use upstream's nixpkgs so Noctalia matches its binary cache.
+  noctalia = inputs.noctalia.packages.${prev.stdenv.hostPlatform.system}.default;
+
   t3code =
     let
       upstream = inputs.llm-agents.packages.${prev.stdenv.hostPlatform.system}.t3code;

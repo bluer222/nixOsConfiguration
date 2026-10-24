@@ -59,7 +59,6 @@
           ({
             nixpkgs.overlays = [
               comfyui-nix.overlays.default
-              noctalia.overlays.default
               affinity-nix.overlays.default
               fusion-nix.overlays.default
               (import ./overlays/default.nix { inherit inputs nixpkgs; })
