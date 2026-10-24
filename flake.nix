@@ -18,7 +18,7 @@
 
     affinity-nix.url = "github:mrshmllow/affinity-nix";
     fusion-nix = {
-      url = "path:/home/samm/Documents/GitHub/fusion-nix";
+      url = "github:bluer222/fusion-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     comfyui-nix.url = "github:utensils/comfyui-nix";
