@@ -1,0 +1,185 @@
+--- a/src/server/event.rs
++++ b/src/server/event.rs
+@@ -553,6 +553,13 @@
+ }
+
+ struct PendingEnter(client::wl_pointer::Event);
++
++struct PopupPointerGrab {
++    window: Entity,
++    x: i16,
++    y: i16,
++    buttons: Vec<u32>,
++}
+ enum CurrentSurface {
+     Xwayland(Entity),
+     Decoration(Entity),
+@@ -692,6 +699,7 @@
+             }
+             Self::Leave { serial, surface } => {
+                 let _ = state.world.remove_one::<PendingEnter>(target);
++                let _ = state.world.remove_one::<PopupPointerGrab>(target);
+                 if !surface.is_alive() {
+                     return;
+                 }
+@@ -735,6 +743,21 @@
+                         return;
+                     }
+                 }
++                // Niri's implicit click grab retains the surface origin from button-down.
++                // Xwayland adds the window's current X position, so cancel its movement.
++                let offset = state
++                    .world
++                    .get::<&PopupPointerGrab>(target)
++                    .ok()
++                    .and_then(|grab| {
++                        state.world.get::<&WindowData>(grab.window).ok().map(|win| {
++                            (
++                                (win.attrs.dims.x as i32 - grab.x as i32) as f64,
++                                (win.attrs.dims.y as i32 - grab.y as i32) as f64,
++                            )
++                        })
++                    })
++                    .unwrap_or_default();
+                 let (server, scale) = state
+                     .world
+                     .query_one_mut::<(&WlPointer, &SurfaceScaleFactor)>(target)
+@@ -745,7 +768,11 @@
+                     surface_x * scale.0,
+                     surface_y * scale.0
+                 );
+-                server.motion(time, surface_x * scale.0, surface_y * scale.0);
++                server.motion(
++                    time,
++                    surface_x * scale.0 - offset.0,
++                    surface_y * scale.0 - offset.1,
++                );
+             }
+             Self::Button {
+                 serial,
+@@ -793,6 +820,36 @@
+                     }
+                 }
+
++                if let CurrentSurface::Xwayland(entity) = current_surface {
++                    if let Ok(mut grab) = state.world.get::<&mut PopupPointerGrab>(target) {
++                        if button_state == WEnum::Value(client::wl_pointer::ButtonState::Pressed) {
++                            if !grab.buttons.contains(&button) {
++                                grab.buttons.push(button);
++                            }
++                        } else {
++                            grab.buttons.retain(|b| *b != button);
++                            if grab.buttons.is_empty() {
++                                cmd.remove_one::<PopupPointerGrab>(target);
++                            }
++                        }
++                    } else if button_state == WEnum::Value(client::wl_pointer::ButtonState::Pressed)
++                        && matches!(
++                            *state.world.get::<&SurfaceRole>(*entity).unwrap(),
++                            SurfaceRole::Popup(_)
++                        )
++                    {
++                        let dims = state.world.get::<&WindowData>(*entity).unwrap().attrs.dims;
++                        cmd.insert_one(
++                            target,
++                            PopupPointerGrab {
++                                window: *entity,
++                                x: dims.x,
++                                y: dims.y,
++                                buttons: vec![button],
++                            },
++                        );
++                    }
++                }
+                 server.button(serial, time, button, convert_wenum(button_state));
+                 drop(query);
+                 cmd.run_on(&mut state.world);
+--- a/src/server/tests.rs
++++ b/src/server/tests.rs
+@@ -3343,3 +3343,86 @@
+ /// See Pointer::handle_event for an explanation.
+ #[test]
+ fn popup_pointer_motion_workaround() {}
++
++#[test]
++fn popup_drag_keeps_pointer_root_position() {
++    use wayland_server::protocol::wl_pointer::ButtonState;
++    for scale in [1.0, 2.0] {
++        let (mut f, comp) = TestFixture::new_with_compositor();
++        let pointer =
++            TestObject::<WlPointer>::from_request(&comp.seat.obj, wl_seat::Request::GetPointer {});
++        let (_, output) = f.new_output(0, 0);
++        output.scale(scale as i32);
++        output.done();
++        f.run();
++        f.run();
++        let toplevel = Window::new(1);
++        let (_, t_id) = f.create_toplevel(&comp, toplevel);
++        f.testwl.move_surface_to_output(t_id, &output);
++        f.run();
++        let popup = Window::new(2);
++        let (_, p_id) =
++            f.create_popup(&comp, PopupBuilder::new(popup, toplevel, t_id).scale(scale));
++        f.testwl.move_pointer_to(p_id, 5.0, 5.0);
++        f.run();
++        f.testwl
++            .pointer()
++            .button(25, 0, 0x110, ButtonState::Pressed);
++        f.testwl.dispatch();
++        f.run();
++        f.run();
++
++        for delta in [4, 8, 12] {
++            let dims = WindowDims {
++                x: delta,
++                y: delta,
++                width: 50,
++                height: 50,
++            };
++            f.reconfigure_window(popup, dims, true);
++            f.run();
++            f.run();
++            // Smithay keeps motion relative to the popup's button-down position.
++            f.testwl
++                .pointer()
++                .motion(1, 5.0 + delta as f64 / scale, 5.0 + delta as f64 / scale);
++            f.testwl.dispatch();
++            f.run();
++            f.run();
++            let events = std::mem::take(&mut *pointer.data.events.lock().unwrap());
++            let coords = events
++                .into_iter()
++                .find_map(|e| match e {
++                    wayland_client::protocol::wl_pointer::Event::Motion {
++                        surface_x,
++                        surface_y,
++                        ..
++                    } => Some((surface_x, surface_y)),
++                    _ => None,
++                })
++                .expect("pointer motion missing");
++            assert_eq!(coords, (5.0 * scale, 5.0 * scale));
++        }
++        f.testwl
++            .pointer()
++            .button(26, 2, 0x110, ButtonState::Released);
++        f.testwl.dispatch();
++        f.run();
++        f.run();
++        f.testwl.pointer().motion(3, 5.0, 5.0);
++        f.testwl.dispatch();
++        f.run();
++        f.run();
++        assert!(
++            pointer
++                .data
++                .events
++                .lock()
++                .unwrap()
++                .iter()
++                .any(|e| matches!(e,
++            wayland_client::protocol::wl_pointer::Event::Motion { surface_x, surface_y, .. }
++            if *surface_x == 5.0 * scale && *surface_y == 5.0 * scale))
++        );
++    }
++}

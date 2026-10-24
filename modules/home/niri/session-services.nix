@@ -1,6 +1,21 @@
 { pkgs, ... }:
 
 {
+  # Isolate Fusion's niri popup-drag workaround from other X11 applications.
+  systemd.user.services.fusion360-xwayland = {
+    Unit = {
+      Description = "Xwayland bridge for Fusion 360";
+      PartOf = [ "niri.service" ];
+      After = [ "niri.service" ];
+    };
+    Service = {
+      Type = "notify";
+      ExecStart = "${pkgs.xwayland-satellite-fusion}/bin/xwayland-satellite :1";
+      Restart = "on-failure";
+    };
+    Install.WantedBy = [ "niri.service" ];
+  };
+
   systemd.user.services.niri-helper = {
     Unit = {
       Description = "Niri session helper daemon (wallpaper, idle dim, power, binds)";

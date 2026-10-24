@@ -219,17 +219,14 @@
         ]
       },
       "locked": {
-        "lastModified": 1790809839,
-        "narHash": "sha256-cM4T8aiDf9YzRwGpLI6u6Lp50iMcAi2fIc5SV+tbmT0=",
-        "owner": "bluer222",
-        "repo": "fusion-nix",
-        "rev": "b60b9d81e7f60785534c1887c60241a0d1fa0541",
-        "type": "github"
+        "lastModified": 1792802162,
+        "narHash": "sha256-C+lu+tn2e2zWxG4EqdomhxE5JF4gslS1T2rjB+hQdYg=",
+        "path": "/home/samm/Documents/GitHub/fusion-nix",
+        "type": "path"
       },
       "original": {
-        "owner": "bluer222",
-        "repo": "fusion-nix",
-        "type": "github"
+        "path": "/home/samm/Documents/GitHub/fusion-nix",
+        "type": "path"
       }
     },
     "git-hooks": {

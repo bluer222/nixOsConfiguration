@@ -6,6 +6,19 @@ final: prev: {
   # Use upstream's nixpkgs so Noctalia matches its binary cache.
   noctalia = inputs.noctalia.packages.${prev.stdenv.hostPlatform.system}.default;
 
+  # ponytail: remove this once niri updates moving surfaces during click grabs.
+  xwayland-satellite-fusion = prev.xwayland-satellite.overrideAttrs (oldAttrs: {
+    patches = (oldAttrs.patches or [ ]) ++ [ ./satellite-popup-drag.patch ];
+    doCheck = true;
+    cargoTestFlags = [ "--lib" ];
+  });
+
+  fusion360 = prev.fusion360.overrideAttrs (oldAttrs: {
+    postInstall = (oldAttrs.postInstall or "") + ''
+      wrapProgram $out/bin/fusion360 --set DISPLAY :1
+    '';
+  });
+
   t3code =
     let
       upstream = inputs.llm-agents.packages.${prev.stdenv.hostPlatform.system}.t3code;
