@@ -219,11 +219,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1792801959,
-        "narHash": "sha256-SmMJHYiAavZq+0GjfcXn4WdCiysRSnglyhIFbx6mXTo=",
+        "lastModified": 1793053828,
+        "narHash": "sha256-GkJfNzeedd7UKxr4/FflE3ZdbOIrmuzjJ0eMP+ZgM7w=",
         "owner": "bluer222",
         "repo": "fusion-nix",
-        "rev": "6b97367e8cf58063de1734310b146f85a285877c",
+        "rev": "e2b5e4a19759778c7c08548188843c0e1581fd7a",
         "type": "github"
       },
       "original": {
