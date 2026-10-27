@@ -211,6 +211,7 @@ in
         fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-nodejs-slim-[^/]+/bin/node$")
           (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.t3/tools/cloudflared/[^/]+/linux-x64/cloudflared$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.t3/runtime/versions/[^/]+/t3$")
         ];
         settings = allowInternetP2P;
       };
