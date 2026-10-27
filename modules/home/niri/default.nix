@@ -30,7 +30,18 @@
     hyprpicker
     brightnessctl
     kdePackages.kactivitymanagerd
+
+    wl-kbptr
   ];
+
+  # Bisect-only selection; Enter/Space then clicks the fetched option.
+  # Needs niri's wlr-layer-shell + wlr-virtual-pointer support.
+  xdg.configFile."wl-kbptr/config".text = ''
+    [general]
+    # Bisect down to an area, then click its center. Mid-bisect, g/h/b are
+    # left/right/middle click (the tool's fixed home-row set, layout-mapped).
+    modes=bisect,click
+  '';
 
   home.sessionVariables = {
     QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";

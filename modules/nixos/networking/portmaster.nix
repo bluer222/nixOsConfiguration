@@ -106,6 +106,14 @@ in
         settings = allowInternet;
       };
 
+      qemu-user = {
+        name = "QEMU User";
+        fingerprints = [
+          (mkPathRegex "^/nix/store/[a-z0-9]{32}-qemu-user(-[^/]+)?/bin/qemu-[^/]+$")
+        ];
+        settings = allowInternetP2P;
+      };
+
       timesyncd = {
         name = "timesyncd";
         fingerprints = [
@@ -373,6 +381,16 @@ in
         #wineWow64Packages.stableFull for fusion
         fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-wine-wow64-[^/]+/bin/wineserver$")
+        ];
+        settings = allowInternetP2P;
+      };
+
+      fusion360 = {
+        name = "Fusion 360";
+        fingerprints = [
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/fusion360/fusion-wine-build/bin/wineserver$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.local/share/fusion360/fusion-wine-build/lib/wine/x86_64-unix/wine-preloader$")
+          (mkPathRegex "^/nix/store/[^/]+-wine-wow64-[^/]+/lib/wine/x86_64-unix/wine-preloader$")
         ];
         settings = allowInternetP2P;
       };

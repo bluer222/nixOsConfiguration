@@ -9,7 +9,6 @@
 
   boot.initrd.availableKernelModules = [ "xhci_pci" "thunderbolt" "vmd" "nvme" "usb_storage" "sd_mod" ];
   boot.initrd.kernelModules = [ ];
-  boot.initrd.systemd.enable = true;
   boot.initrd.systemd.emergencyAccess = true;
 
   # LVM-on-LUKS. systemd stage 1 unlocks this, then discovers vg0 automatically

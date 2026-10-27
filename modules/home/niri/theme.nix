@@ -135,6 +135,16 @@ in
     gtk2.force = true;
   };
 
+  # KDE's gtkconfig kded module (started by the KDE apps) runs xsettingsd and
+  # owns the X11 XSETTINGS selection. It publishes Gtk/CursorThemeName from
+  # kcminputrc, which XWayland apps trust over niri's XCURSOR_THEME/gtk
+  # settings. Left unset it advertises KDE's default (breeze_cursors), so X11
+  # apps draw the Breeze pointer instead of the Bibata one.
+  home.activation.kdeCursorTheme = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kcminputrc --group Mouse --key cursorTheme "${config.gtk.cursorTheme.name}"
+    ${pkgs.kdePackages.kconfig}/bin/kwriteconfig6 --file kcminputrc --group Mouse --key cursorSize "${toString config.gtk.cursorTheme.size}"
+  '';
+
   # Templates from pkgs.catppuccin-kvantum (macchiato-blue), hex→qtct-aligned
   # Noctalia tokens; reduce_window_opacity=20 + #..cc for ~80% opacity.
   # See kvantum-templatize.py.

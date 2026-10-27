@@ -20,8 +20,6 @@
       "preempt=full"
     ];
     consoleLogLevel = 3;
-    # https://github.com/NixOS/nixpkgs/pull/108294
-    initrd.verbose = false;
     # Bootloader.
     loader = {
       #i dont want to wait

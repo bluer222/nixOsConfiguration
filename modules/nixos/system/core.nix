@@ -47,7 +47,7 @@
 
   # Kernel settings
   boot.kernel.sysctl = {
-    "vm.swappiness" = 100;
+    "vm.swappiness" = 60;
   };
 
   # Nix settings

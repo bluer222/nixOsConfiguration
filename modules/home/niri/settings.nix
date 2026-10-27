@@ -150,6 +150,10 @@ in {
         "Mod+V".action.spawn-sh = "noctalia msg panel-toggle clipboard";
         "Mod+C".action.spawn-sh = "hyprpicker -a";
 
+        # Keyboard pointer: bisect the output, then click. 0.4.1 has no
+        # --drag yet, so drags stay in the bisect click keys.
+        "Mod+Q".action.spawn = [ (lib.getExe pkgs.wl-kbptr) ];
+
         # Screenshots (Noctalia) + OCR (Noctalia region → tesseract pipe)
         "Print".action.spawn-sh = "noctalia msg screenshot-region";
         "Alt+Print".action.spawn-sh = "noctalia msg screenshot-fullscreen";
