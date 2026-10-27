@@ -210,6 +210,7 @@ in
         name = "T3 Code";
         fingerprints = [
           (mkPathRegex "^/nix/store/[^/]+-nodejs-slim-[^/]+/bin/node$")
+          (mkPathRegex "^${lib.escapeRegex config.users.users.samm.home}/\\.t3/tools/cloudflared/[^/]+/linux-x64/cloudflared$")
         ];
         settings = allowInternetP2P;
       };
